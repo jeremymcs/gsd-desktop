@@ -29,7 +29,7 @@
 - [x] **S05: Research Staging and Approval** `risk:medium` `depends:[S01,S03,S04]`
   > After this: research findings can be persisted as proposed output, reviewed in UI, and committed to canonical state only after user approval.
 
-- [ ] **S06: PLAN Proposal, Editing, and Validation** `risk:high` `depends:[S01,S02,S03,S04,S05]`
+- [x] **S06: PLAN Proposal, Editing, and Validation** `risk:high` `depends:[S01,S02,S03,S04,S05]`
   > After this: the app can propose milestones, slices, tasks, dependencies, and boundary maps, let the user edit them structurally, and block approval on lightweight validation failures.
 
 - [ ] **S07: End-to-End Desktop Verification** `risk:medium` `depends:[S02,S03,S04,S05,S06]`

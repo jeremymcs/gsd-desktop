@@ -2120,6 +2120,9 @@ export default function App() {
               onStartResearch={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningResearch(input))}
               onProposeResearch={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningResearch(input))}
               onReviewResearch={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningResearch(input))}
+              onStartPlan={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningPlan(input))}
+              onProposePlan={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningPlan(input))}
+              onReviewPlan={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningPlan(input))}
             />
           ) : (
             <section className="canvas canvas--empty">

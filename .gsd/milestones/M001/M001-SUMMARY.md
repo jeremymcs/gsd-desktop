@@ -58,6 +58,21 @@ Known blockers:
 - `pnpm --filter @pi-gui/desktop run test:e2e:core` rebuilt successfully and the Plan Builder specs passed, but the lane is blocked by existing failures in integrated terminal, new-thread composer/model onboarding, provider settings, and unread state specs outside the Plan Builder path.
 - `pnpm run simplify` is unavailable because the repo has no `simplify` script.
 
+### S06: PLAN Proposal, Editing, and Validation
+
+Plan Builder now advances from accepted RESEARCH into PLAN. Users can edit a structured proposal with boundary map, idea pool, milestones, phases, slices, tasks, and dependencies, stage proposed PLAN output, accept or reject it, and restore accepted PLAN output after restart. Invalid PLAN output is blocked by validation in both the UI and main process.
+
+Verification:
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts`
+- `pnpm typecheck`
+- `git diff --check`
+
+Known blockers:
+- `pnpm --filter @pi-gui/desktop run test:e2e:core` rebuilt successfully and the Plan Builder specs passed, but the lane is blocked by existing failures in integrated terminal, new-thread composer/model onboarding, provider settings, and unread state specs outside the Plan Builder path.
+- `pnpm run simplify` is unavailable because the repo has no `simplify` script.
+
 ## Next Slice
 
-S06: PLAN Proposal, Editing, and Validation.
+S07: End-to-End Desktop Verification.

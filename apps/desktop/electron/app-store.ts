@@ -46,14 +46,17 @@ import {
   type CreateWorktreeInput,
   type DesktopAppState,
   type NotificationPreferences,
+  type ProposePlanningPlanInput,
   type ProposePlanningResearchInput,
   type QueuedComposerMessage,
   type RecordPlanningAnswerInput,
+  type ReviewPlanningPlanInput,
   type ReviewPlanningResearchInput,
   type RemoveWorktreeInput,
   type RevisePlanningAnswerInput,
   type SelectedTranscriptRecord,
   type SelectPlanningPlanInput,
+  type StartPlanningPlanInput,
   type StartPlanningResearchInput,
   type StartThreadInput,
   type TranscriptMessage,
@@ -383,6 +386,18 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async reviewPlanningResearch(input: ReviewPlanningResearchInput): Promise<DesktopAppState> {
     return plans.reviewPlanningResearch(this, input);
+  }
+
+  async startPlanningPlan(input: StartPlanningPlanInput): Promise<DesktopAppState> {
+    return plans.startPlanningPlan(this, input);
+  }
+
+  async proposePlanningPlan(input: ProposePlanningPlanInput): Promise<DesktopAppState> {
+    return plans.proposePlanningPlan(this, input);
+  }
+
+  async reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState> {
+    return plans.reviewPlanningPlan(this, input);
   }
 
   /* ── Composer methods (delegated) ──────────────────────── */

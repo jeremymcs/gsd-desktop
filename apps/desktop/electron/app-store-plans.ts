@@ -12,14 +12,22 @@ import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningPlanInput,
   StartPlanningResearchInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
+import {
+  parsePlanProposal,
+  serializePlanProposal,
+  validatePlanProposal,
+} from "../src/plan-builder-plan";
 import {
   discussStageOrder,
   getDiscussQuestionsForStage,
@@ -371,6 +379,139 @@ export async function reviewPlanningResearch(
   });
 }
 
+export async function startPlanningPlan(
+  store: AppStoreInternals,
+  input: StartPlanningPlanInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedResearch(snapshot);
+
+      const roadmapStage = snapshot.stages.find((entry) => entry.stage === "roadmap");
+      const planAlreadyStarted =
+        roadmapStage?.status === "active" ||
+        roadmapStage?.status === "needs-review" ||
+        roadmapStage?.status === "approved";
+      if (planAlreadyStarted) {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "stage.updated",
+          stage: "roadmap",
+          status: "active",
+          activeQuestionId: "",
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function proposePlanningPlan(
+  store: AppStoreInternals,
+  input: ProposePlanningPlanInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedResearch(snapshot);
+      const validationIssues = validatePlanProposal(input.proposal);
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "generated-output.proposed",
+          output: {
+            id: randomUUID(),
+            stage: "roadmap",
+            title: "Plan proposal",
+            content: serializePlanProposal(input.proposal),
+            status: validationIssues.length > 0 ? "draft" : "proposed",
+          },
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "stage.updated",
+        stage: "roadmap",
+        status: validationIssues.length > 0 ? "active" : "needs-review",
+        activeQuestionId: "",
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function reviewPlanningPlan(
+  store: AppStoreInternals,
+  input: ReviewPlanningPlanInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      const output = snapshot.generatedOutputs.find((entry) => entry.id === input.outputId);
+      if (!output || output.stage !== "roadmap") {
+        throw new Error(`Unknown plan proposal: ${input.outputId}`);
+      }
+
+      if (input.status === "accepted") {
+        const proposal = parsePlanProposal(output.content);
+        const validationIssues = proposal ? validatePlanProposal(proposal) : [
+          { id: "plan-output", path: output.title, message: "Plan proposal content is invalid." },
+        ];
+        if (validationIssues.length > 0) {
+          throw new Error(`Plan approval blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
+        }
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "generated-output.reviewed",
+          outputId: input.outputId,
+          status: input.status,
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "stage.updated",
+        stage: "roadmap",
+        status: snapshot.generatedOutputs.some((entry) => entry.stage === "roadmap" && entry.status === "accepted")
+          ? "approved"
+          : "active",
+        activeQuestionId: "",
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
 function resolvePlanningWorkspace(
   store: AppStoreInternals,
   workspaceId: string,
@@ -430,6 +571,15 @@ function assertDiscussComplete(snapshot: PlanSnapshot): void {
   const complete = discussStageOrder.every((stage) => getDiscussStageProgress(snapshot, stage).depthConfirmed);
   if (!complete) {
     throw new Error("DISCUSS must be confirmed before research can start");
+  }
+}
+
+function assertAcceptedResearch(snapshot: PlanSnapshot): void {
+  const hasAcceptedResearch = snapshot.generatedOutputs.some(
+    (output) => output.stage === "research" && output.status === "accepted",
+  );
+  if (!hasAcceptedResearch) {
+    throw new Error("Accepted RESEARCH is required before PLAN can start");
   }
 }
 

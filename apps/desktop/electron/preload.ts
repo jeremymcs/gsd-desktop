@@ -29,13 +29,16 @@ import type {
   CreateWorktreeInput,
   DesktopAppState,
   NotificationPreferences,
+  ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
   SelectPlanningPlanInput,
+  StartPlanningPlanInput,
   StartPlanningResearchInput,
   StartThreadInput,
   WorkspaceSessionTarget,
@@ -159,6 +162,12 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.proposePlanningResearch, input) as Promise<DesktopAppState>,
   reviewPlanningResearch: (input: ReviewPlanningResearchInput) =>
     ipcRenderer.invoke(desktopIpc.reviewPlanningResearch, input) as Promise<DesktopAppState>,
+  startPlanningPlan: (input: StartPlanningPlanInput) =>
+    ipcRenderer.invoke(desktopIpc.startPlanningPlan, input) as Promise<DesktopAppState>,
+  proposePlanningPlan: (input: ProposePlanningPlanInput) =>
+    ipcRenderer.invoke(desktopIpc.proposePlanningPlan, input) as Promise<DesktopAppState>,
+  reviewPlanningPlan: (input: ReviewPlanningPlanInput) =>
+    ipcRenderer.invoke(desktopIpc.reviewPlanningPlan, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>
     ipcRenderer.invoke(desktopIpc.syncCurrentWorkspace) as Promise<DesktopAppState>,
   selectSession: (target: WorkspaceSessionTarget) =>

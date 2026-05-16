@@ -223,6 +223,63 @@ export interface ReviewPlanningResearchInput {
   readonly status: "accepted" | "rejected";
 }
 
+export interface PlanningTaskDraft {
+  readonly id: string;
+  readonly title: string;
+  readonly acceptance: string;
+  readonly dependencies: readonly string[];
+}
+
+export interface PlanningSliceDraft {
+  readonly id: string;
+  readonly title: string;
+  readonly goal: string;
+  readonly boundary: string;
+  readonly tasks: readonly PlanningTaskDraft[];
+}
+
+export interface PlanningMilestoneDraft {
+  readonly id: string;
+  readonly title: string;
+  readonly phase: string;
+  readonly outcome: string;
+  readonly slices: readonly PlanningSliceDraft[];
+}
+
+export interface PlanningPlanProposalDraft {
+  readonly version: 1;
+  readonly boundaryMap: string;
+  readonly ideaPool: string;
+  readonly milestones: readonly PlanningMilestoneDraft[];
+}
+
+export interface PlanningValidationIssue {
+  readonly id: string;
+  readonly path: string;
+  readonly message: string;
+}
+
+export interface StartPlanningPlanInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
+export interface ProposePlanningPlanInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly proposal: PlanningPlanProposalDraft;
+}
+
+export interface ReviewPlanningPlanInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly outputId: string;
+  readonly status: "accepted" | "rejected";
+}
+
 export interface DesktopAppState {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly worktreesByWorkspace: Readonly<Record<string, readonly WorktreeRecord[]>>;

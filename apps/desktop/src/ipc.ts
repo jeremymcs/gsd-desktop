@@ -15,13 +15,16 @@ import type {
   DesktopAppState,
   ModelSettingsScopeMode,
   NotificationPreferences,
+  ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
   SelectPlanningPlanInput,
+  StartPlanningPlanInput,
   StartPlanningResearchInput,
   StartThreadInput,
   WorkspaceSessionTarget,
@@ -62,6 +65,9 @@ export const desktopIpc = {
   startPlanningResearch: "pi-gui:start-planning-research",
   proposePlanningResearch: "pi-gui:propose-planning-research",
   reviewPlanningResearch: "pi-gui:review-planning-research",
+  startPlanningPlan: "pi-gui:start-planning-plan",
+  proposePlanningPlan: "pi-gui:propose-planning-plan",
+  reviewPlanningPlan: "pi-gui:review-planning-plan",
   syncCurrentWorkspace: "pi-gui:sync-current-workspace",
   selectSession: "pi-gui:select-session",
   archiveSession: "pi-gui:archive-session",
@@ -255,6 +261,9 @@ export interface PiDesktopApi {
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;
   proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState>;
   reviewPlanningResearch(input: ReviewPlanningResearchInput): Promise<DesktopAppState>;
+  startPlanningPlan(input: StartPlanningPlanInput): Promise<DesktopAppState>;
+  proposePlanningPlan(input: ProposePlanningPlanInput): Promise<DesktopAppState>;
+  reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState>;
   syncCurrentWorkspace(): Promise<DesktopAppState>;
   selectSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;
   archiveSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;

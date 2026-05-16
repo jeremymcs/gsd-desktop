@@ -59,7 +59,7 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
   }
 });
 
-test("persists DISCUSS memory and accepted RESEARCH output across restart", async () => {
+test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");
   const workspaceName = basename(workspacePath);
@@ -106,7 +106,22 @@ test("persists DISCUSS memory and accepted RESEARCH output across restart", asyn
     await window.getByRole("button", { name: "Stage research" }).click();
     await expect(window.getByTestId("research-output-proposed")).toContainText("Codebase and workflow research");
     await window.getByRole("button", { name: "Accept" }).click();
-    await expect(window.getByTestId("research-output-accepted")).toContainText("Codebase and workflow research");
+    await expect(window.getByTestId("plan-ready-card")).toBeVisible();
+    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+    await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
+    await window.getByTestId("plan-task-dependencies-input").fill("T404");
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Unknown dependency T404");
+    await window.getByRole("button", { name: "Stage plan" }).click();
+    const draftPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Draft" });
+    await expect(draftPlan).toContainText("Unknown dependency T404");
+    await expect(draftPlan.getByRole("button", { name: "Accept plan" })).toBeDisabled();
+    await window.getByTestId("plan-task-dependencies-input").fill("");
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
+    await window.getByRole("button", { name: "Stage plan" }).click();
+    const proposedPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Proposed" });
+    await proposedPlan.getByRole("button", { name: "Accept plan" }).click();
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await nameMemory.getByRole("button", { name: "Edit" }).click();
@@ -129,9 +144,8 @@ test("persists DISCUSS memory and accepted RESEARCH output across restart", asyn
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
-    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
-    await expect(window.getByTestId("research-output-accepted")).toContainText("Codebase and workflow research");
+    await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     await expect.poll(async () =>
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
@@ -142,6 +156,12 @@ test("persists DISCUSS memory and accepted RESEARCH output across restart", asyn
               output.stage === "research" &&
               output.status === "accepted" &&
               output.title === "Codebase and workflow research",
+          ) &&
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "roadmap" &&
+              output.status === "accepted" &&
+              output.title === "Plan proposal",
           ),
       ),
     ).toBe(true);
