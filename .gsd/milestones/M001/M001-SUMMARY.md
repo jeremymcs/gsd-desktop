@@ -10,7 +10,15 @@ Verification:
 - `pnpm --filter @pi-gui/gsd-planning test`
 - `pnpm typecheck`
 
+### S02: Projection Generator and Adoption Safety
+
+The planning package now renders and safely writes planning-phase GSD Markdown projections. It produces `PROJECT.md`, `REQUIREMENTS.md`, `STATE.md`, `DECISIONS.md`, milestone context/research/roadmap files, slice context/plan files, and task plan files from typed projection input. Files include generated ownership headers, skip unchanged rewrites, write atomically, and block legacy Markdown overwrite unless explicitly allowed.
+
+Verification:
+- `pnpm --filter @pi-gui/gsd-planning test`
+- `pnpm typecheck`
+
 ## Next Slice
 
-S02: Projection Generator and Adoption Safety.
+S03: Plan Builder Navigation Shell.
 

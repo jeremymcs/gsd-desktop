@@ -1,0 +1,140 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import {
+  generatePlanningProjections,
+  hasGeneratedProjectionHeader,
+  type GeneratePlanningProjectionsInput,
+  type ProjectionFile,
+} from "./projections.js";
+
+export interface WriteProjectionFilesInput {
+  readonly workspaceRoot: string;
+  readonly files: readonly ProjectionFile[];
+  readonly allowLegacyOverwrite?: boolean;
+}
+
+export interface RegenerateProjectionsInput {
+  readonly workspaceRoot: string;
+  readonly projectionInput: GeneratePlanningProjectionsInput;
+  readonly allowLegacyOverwrite?: boolean;
+}
+
+export type ProjectionWriteStatus = "written" | "skipped";
+
+export interface ProjectionWriteEntry {
+  readonly path: string;
+  readonly status: ProjectionWriteStatus;
+}
+
+export interface ProjectionWriteConflict {
+  readonly path: string;
+  readonly reason: "legacy-file";
+}
+
+export interface ProjectionWriteResult {
+  readonly written: readonly ProjectionWriteEntry[];
+  readonly skipped: readonly ProjectionWriteEntry[];
+  readonly conflicts: readonly ProjectionWriteConflict[];
+}
+
+export class ProjectionWriteConflictError extends Error {
+  readonly code = "PROJECTION_WRITE_CONFLICT";
+  readonly conflicts: readonly ProjectionWriteConflict[];
+
+  constructor(conflicts: readonly ProjectionWriteConflict[]) {
+    super(`Projection write blocked by ${conflicts.length} legacy file conflict${conflicts.length === 1 ? "" : "s"}`);
+    this.name = "ProjectionWriteConflictError";
+    this.conflicts = conflicts;
+  }
+}
+
+export async function regenerateProjections(input: RegenerateProjectionsInput): Promise<ProjectionWriteResult> {
+  return await writeProjectionFiles({
+    workspaceRoot: input.workspaceRoot,
+    files: generatePlanningProjections(input.projectionInput),
+    allowLegacyOverwrite: input.allowLegacyOverwrite,
+  });
+}
+
+export async function writeProjectionFiles(input: WriteProjectionFilesInput): Promise<ProjectionWriteResult> {
+  const workspaceRoot = resolve(input.workspaceRoot);
+  const writePlan = await Promise.all(
+    input.files.map(async (file) => {
+      const targetPath = resolveProjectionPath(workspaceRoot, file.path);
+      const existing = await readExisting(targetPath);
+      return { file, targetPath, existing };
+    }),
+  );
+
+  const conflicts = writePlan
+    .filter((entry) => entry.existing !== undefined && !hasGeneratedProjectionHeader(entry.existing))
+    .map((entry): ProjectionWriteConflict => ({ path: entry.file.path, reason: "legacy-file" }));
+
+  if (conflicts.length > 0 && input.allowLegacyOverwrite !== true) {
+    throw new ProjectionWriteConflictError(conflicts);
+  }
+
+  const written: ProjectionWriteEntry[] = [];
+  const skipped: ProjectionWriteEntry[] = [];
+
+  for (const entry of writePlan) {
+    if (entry.existing === entry.file.content) {
+      skipped.push({ path: entry.file.path, status: "skipped" });
+      continue;
+    }
+
+    await atomicWriteFile(entry.targetPath, entry.file.content);
+    written.push({ path: entry.file.path, status: "written" });
+  }
+
+  return { written, skipped, conflicts };
+}
+
+function resolveProjectionPath(workspaceRoot: string, relativePath: string): string {
+  const targetPath = resolve(workspaceRoot, relativePath);
+  const rootWithSeparator = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
+  if (targetPath !== workspaceRoot && !targetPath.startsWith(rootWithSeparator)) {
+    throw new Error(`Projection path escapes workspace root: ${relativePath}`);
+  }
+  return targetPath;
+}
+
+async function readExisting(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function atomicWriteFile(path: string, content: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  const tmpPath = join(dirname(path), `.${process.pid}.${randomUUID()}.${path.split("/").at(-1) ?? "projection"}.tmp`);
+  await writeFile(tmpPath, content, "utf8");
+
+  try {
+    await rename(tmpPath, path);
+  } catch (error) {
+    await cleanupTempFile(tmpPath);
+    throw error;
+  }
+}
+
+async function cleanupTempFile(path: string): Promise<void> {
+  try {
+    await unlink(path);
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error;
+    }
+  }
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+

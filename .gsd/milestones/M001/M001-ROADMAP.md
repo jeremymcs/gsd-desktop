@@ -17,7 +17,7 @@
 - [x] **S01: Planning Engine Foundation** `risk:high` `depends:[]`
   > After this: a package-level planning engine can create/open `.gsd/gsd.db`, store named plans, append events, recompute typed state, and enforce optimistic revision checks.
 
-- [ ] **S02: Projection Generator and Adoption Safety** `risk:high` `depends:[S01]`
+- [x] **S02: Projection Generator and Adoption Safety** `risk:high` `depends:[S01]`
   > After this: accepted planning state can generate GSD Markdown files through `PLAN`, including project and requirements artifacts, with ownership headers, atomic scoped writes, legacy-file protection, and manual regeneration support.
 
 - [ ] **S03: Plan Builder Navigation Shell** `risk:medium` `depends:[S01]`
