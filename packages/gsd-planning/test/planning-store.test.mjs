@@ -1,0 +1,150 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import {
+  openPlanningStore,
+  planningDatabasePath,
+  PlanningRevisionConflictError,
+} from "../dist/index.js";
+
+test("creates a repo-local planning database and replays event-backed plan state after reopen", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Plan Builder" });
+
+    assert.equal(created.readableId, "P001");
+    assert.equal(created.name, "Plan Builder");
+    assert.equal(created.revision, 0);
+    assert.equal(created.activePhase, "discuss");
+    assert.equal(created.activeStage, "project");
+    assert.equal(existsSync(planningDatabasePath(workspaceRoot)), true);
+    assert.match(await readFile(join(workspaceRoot, ".gitignore"), "utf8"), /^\.gsd\/gsd\.db$/m);
+
+    const withProject = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "project.updated",
+        project: {
+          title: "Database-backed Plan Builder",
+          vision: "Guide users from discussion to generated plans.",
+          antiGoals: ["Generic form wizard"],
+          constraints: ["Database is canonical"],
+          shape: {
+            complexity: "complex",
+            rationale: "Spans data, UI, and generated projections.",
+          },
+        },
+      },
+    });
+
+    const withAnswer = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withProject.revision,
+      event: {
+        type: "answer.recorded",
+        answer: {
+          stage: "project",
+          questionId: "vision",
+          prompt: "What do you want to build?",
+          answer: "A guided planning workbench.",
+          loadBearing: true,
+        },
+      },
+    });
+
+    const withRequirement = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withAnswer.revision,
+      event: {
+        type: "requirement.upserted",
+        requirement: {
+          id: "R001",
+          title: "Persist every answer",
+          class: "operational",
+          status: "active",
+          description: "Every committed wizard answer is durable before generated processing starts.",
+          why: "Users should not lose planning work on restart.",
+          source: "user",
+          owner: "M001/S01",
+          validationStatus: "covered",
+          notes: "S01 proves event-backed persistence.",
+        },
+      },
+    });
+
+    assert.equal(withRequirement.revision, 3);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+
+    assert.ok(reopened);
+    assert.equal(reopened.revision, 3);
+    assert.equal(reopened.project.title, "Database-backed Plan Builder");
+    assert.deepEqual(reopened.project.antiGoals, ["Generic form wizard"]);
+    assert.equal(reopened.answers.length, 1);
+    assert.equal(reopened.answers[0]?.answer, "A guided planning workbench.");
+    assert.equal(reopened.requirements.length, 1);
+    assert.equal(reopened.requirements[0]?.id, "R001");
+    assert.equal(reopened.requirements[0]?.validationStatus, "covered");
+    assert.equal(reopened.events.length, 3);
+    assert.equal(store.listPlans().length, 1);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("rejects stale writes with a revision conflict", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Revision Guard" });
+
+    store.appendEvent({
+      planId: created.id,
+      expectedRevision: 0,
+      event: {
+        type: "stage.updated",
+        stage: "project",
+        status: "active",
+        activeQuestionId: "vision",
+      },
+    });
+
+    assert.throws(
+      () => store.appendEvent({
+        planId: created.id,
+        expectedRevision: 0,
+        event: {
+          type: "stage.updated",
+          stage: "requirements",
+          status: "active",
+          activeQuestionId: "capability_contract",
+        },
+      }),
+      (error) => error instanceof PlanningRevisionConflictError
+        && error.code === "PLANNING_REVISION_CONFLICT"
+        && error.expectedRevision === 0
+        && error.actualRevision === 1,
+    );
+
+    assert.equal(store.getPlanSnapshot(created.id)?.revision, 1);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+async function makeWorkspace() {
+  return await mkdtemp(join(tmpdir(), "pi-gsd-planning-"));
+}
+
