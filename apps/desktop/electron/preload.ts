@@ -23,12 +23,17 @@ import type {
   AppView,
   ComposerAttachment,
   ComposerImageAttachment,
+  ConfirmPlanningStageInput,
+  CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
   DesktopAppState,
   NotificationPreferences,
+  RecordPlanningAnswerInput,
   RemoveWorktreeInput,
+  RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
+  SelectPlanningPlanInput,
   StartThreadInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -133,6 +138,18 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.openSkillInFinder, workspaceId, filePath) as Promise<void>,
   openExtensionInFinder: (workspaceId: string, filePath: string) =>
     ipcRenderer.invoke(desktopIpc.openExtensionInFinder, workspaceId, filePath) as Promise<void>,
+  loadPlanningWorkspace: (workspaceId: string) =>
+    ipcRenderer.invoke(desktopIpc.loadPlanningWorkspace, workspaceId) as Promise<DesktopAppState>,
+  createPlanningPlan: (input: CreatePlanningPlanInput) =>
+    ipcRenderer.invoke(desktopIpc.createPlanningPlan, input) as Promise<DesktopAppState>,
+  selectPlanningPlan: (input: SelectPlanningPlanInput) =>
+    ipcRenderer.invoke(desktopIpc.selectPlanningPlan, input) as Promise<DesktopAppState>,
+  recordPlanningAnswer: (input: RecordPlanningAnswerInput) =>
+    ipcRenderer.invoke(desktopIpc.recordPlanningAnswer, input) as Promise<DesktopAppState>,
+  revisePlanningAnswer: (input: RevisePlanningAnswerInput) =>
+    ipcRenderer.invoke(desktopIpc.revisePlanningAnswer, input) as Promise<DesktopAppState>,
+  confirmPlanningStage: (input: ConfirmPlanningStageInput) =>
+    ipcRenderer.invoke(desktopIpc.confirmPlanningStage, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>
     ipcRenderer.invoke(desktopIpc.syncCurrentWorkspace) as Promise<DesktopAppState>,
   selectSession: (target: WorkspaceSessionTarget) =>

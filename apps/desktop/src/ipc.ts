@@ -8,13 +8,18 @@ import type {
   AppView,
   ComposerAttachment,
   ComposerImageAttachment,
+  ConfirmPlanningStageInput,
+  CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
   DesktopAppState,
   ModelSettingsScopeMode,
   NotificationPreferences,
+  RecordPlanningAnswerInput,
   RemoveWorktreeInput,
+  RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
+  SelectPlanningPlanInput,
   StartThreadInput,
   WorkspaceSessionTarget,
 } from "./desktop-state";
@@ -45,6 +50,12 @@ export const desktopIpc = {
   removeWorktree: "pi-gui:remove-worktree",
   openSkillInFinder: "pi-gui:open-skill-in-finder",
   openExtensionInFinder: "pi-gui:open-extension-in-finder",
+  loadPlanningWorkspace: "pi-gui:load-planning-workspace",
+  createPlanningPlan: "pi-gui:create-planning-plan",
+  selectPlanningPlan: "pi-gui:select-planning-plan",
+  recordPlanningAnswer: "pi-gui:record-planning-answer",
+  revisePlanningAnswer: "pi-gui:revise-planning-answer",
+  confirmPlanningStage: "pi-gui:confirm-planning-stage",
   syncCurrentWorkspace: "pi-gui:sync-current-workspace",
   selectSession: "pi-gui:select-session",
   archiveSession: "pi-gui:archive-session",
@@ -229,6 +240,12 @@ export interface PiDesktopApi {
   removeWorktree(input: RemoveWorktreeInput): Promise<DesktopAppState>;
   openSkillInFinder(workspaceId: string, filePath: string): Promise<void>;
   openExtensionInFinder(workspaceId: string, filePath: string): Promise<void>;
+  loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState>;
+  createPlanningPlan(input: CreatePlanningPlanInput): Promise<DesktopAppState>;
+  selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState>;
+  recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
+  revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
+  confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   syncCurrentWorkspace(): Promise<DesktopAppState>;
   selectSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;
   archiveSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;

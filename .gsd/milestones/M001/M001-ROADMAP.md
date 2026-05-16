@@ -23,7 +23,7 @@
 - [x] **S03: Plan Builder Navigation Shell** `risk:medium` `depends:[S01]`
   > After this: the desktop app has a workspace-aware Plan Builder view in the sidebar and a "New plan" entry from the new-thread start flow, presented in the dark split-pane workbench shell.
 
-- [ ] **S04: Persisted DISCUSS Wizard** `risk:medium` `depends:[S01,S03]`
+- [x] **S04: Persisted DISCUSS Wizard** `risk:medium` `depends:[S01,S03]`
   > After this: a user can complete project, requirements, and milestone discussion stages in the screenshot-inspired split-pane UI with prompt-compatible depth gates, edit prior answers via revision events, and see a compact outline after restart.
 
 - [ ] **S05: Research Staging and Approval** `risk:medium` `depends:[S01,S03,S04]`

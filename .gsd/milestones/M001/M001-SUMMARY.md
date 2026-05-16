@@ -28,10 +28,21 @@ Verification:
 - `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts`
 - `pnpm typecheck`
 
+### S04: Persisted DISCUSS Wizard
+
+Plan Builder now creates database-backed plans and drives users through Project, Requirements, and Milestone DISCUSS questions. Answers persist immediately to `.gsd/gsd.db`, stage depth gates advance through the UI, parked notes can be captured as non-load-bearing memory, and previous answers can be revised through append-only revision events. The outline pane restores plan state, progress, and revised discussion memory after app restart.
+
+Verification:
+- `pnpm --filter @pi-gui/gsd-planning test`
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts`
+- `pnpm typecheck`
+
 Known blockers:
-- `pnpm --filter @pi-gui/desktop run test:e2e:core` is blocked by existing failures in integrated terminal, model/provider settings, and unread state specs outside the Plan Builder path.
+- `pnpm --filter @pi-gui/desktop run test:e2e:core` is blocked by existing failures in integrated terminal, new-thread auto-title, model/provider settings, and unread state specs outside the Plan Builder path.
 - `pnpm run simplify` is unavailable because the repo has no `simplify` script.
 
 ## Next Slice
 
-S04: Persisted DISCUSS Wizard.
+S05: Research Staging and Approval.

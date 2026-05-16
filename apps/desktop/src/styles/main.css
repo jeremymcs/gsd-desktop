@@ -2211,6 +2211,12 @@
   padding: 42px min(7vw, 76px);
 }
 
+.plan-builder__body--wizard {
+  align-content: start;
+  gap: 18px;
+  padding-block: 28px;
+}
+
 .plan-builder__mark {
   width: 66px;
   height: 66px;
@@ -2258,6 +2264,157 @@
   color: #a3a8b3;
   font-size: 16px;
   line-height: 1.5;
+}
+
+.plan-create,
+.plan-question-card,
+.plan-depth-card {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #2a2d35;
+  border-radius: 8px;
+  background: #15161a;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+}
+
+.plan-create__field {
+  display: grid;
+  gap: 8px;
+  color: #9aa1ad;
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.plan-create__field input,
+.plan-question-card textarea,
+.plan-memory__editor textarea {
+  width: 100%;
+  border: 1px solid #30343d;
+  border-radius: 8px;
+  background: #101114;
+  color: #f4f4f5;
+  font: inherit;
+}
+
+.plan-create__field input {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.plan-question-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #d7b269;
+  font-size: 12px;
+  font-weight: 720;
+  text-transform: uppercase;
+}
+
+.plan-question-card h2,
+.plan-depth-card h2 {
+  margin: 0;
+  color: #f4f4f5;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.plan-question-card p,
+.plan-depth-card p {
+  margin: 0;
+  color: #9aa1ad;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.plan-question-card textarea {
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.plan-question-card__actions,
+.plan-memory__editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-action-button,
+.plan-secondary-button,
+.plan-inline-button {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.plan-action-button {
+  min-height: 40px;
+  padding: 0 14px;
+  background: #d7b269;
+  color: #111214;
+}
+
+.plan-action-button:disabled,
+.plan-secondary-button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.plan-action-button--compact,
+.plan-secondary-button--compact {
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: 12px;
+}
+
+.plan-secondary-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-color: #30343d;
+  background: #1b1d22;
+  color: #d9dce3;
+}
+
+.plan-inline-button {
+  min-height: 28px;
+  padding: 0 9px;
+  border-color: #30343d;
+  background: #1b1d22;
+  color: #d7b269;
+}
+
+.plan-depth-card {
+  align-content: start;
+}
+
+.plan-depth-card--complete {
+  border-color: rgba(128, 201, 141, 0.34);
+  background: rgba(128, 201, 141, 0.08);
+}
+
+.plan-depth-card__eyebrow {
+  color: #d7b269;
+  font-size: 12px;
+  font-weight: 720;
+  text-transform: uppercase;
+}
+
+.plan-error {
+  padding: 10px 12px;
+  border: 1px solid rgba(236, 118, 118, 0.42);
+  border-radius: 8px;
+  background: rgba(236, 118, 118, 0.1);
+  color: #f1a5a5;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .plan-phase-strip {
@@ -2476,6 +2633,67 @@
   color: #8f96a3;
   font-size: 12px;
   font-weight: 560;
+}
+
+.plan-memory {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-memory__title {
+  color: #d9dce3;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.plan-memory__item {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #252832;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.plan-memory__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plan-memory__item-header span {
+  min-width: 0;
+  overflow: hidden;
+  color: #f4f4f5;
+  font-size: 13px;
+  font-weight: 690;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-memory__item p {
+  max-height: 96px;
+  margin: 0;
+  overflow: auto;
+  color: #a3a8b3;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.plan-memory__editor {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-memory__editor textarea {
+  min-height: 112px;
+  resize: vertical;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 @media (max-width: 1180px) {

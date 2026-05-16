@@ -1,5 +1,6 @@
 import type { HostUiRequest, SessionConfig } from "@pi-gui/session-driver";
 import type { ModelSettingsSnapshot, RuntimeCommandRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import type { PlanListEntry, PlanSnapshot, PlanStage, ProjectSummary } from "@pi-gui/gsd-planning";
 export type SessionStatus = "idle" | "running" | "failed";
 export type { SessionRole, TranscriptMessage } from "./timeline-types";
 import type { TranscriptMessage } from "./timeline-types";
@@ -151,9 +152,59 @@ export interface RemoveWorktreeInput {
   readonly worktreeId: string;
 }
 
+export interface WorkspacePlanningState {
+  readonly workspaceId: string;
+  readonly selectedPlanId: string;
+  readonly plans: readonly PlanListEntry[];
+  readonly selectedPlan?: PlanSnapshot;
+  readonly databasePath?: string;
+  readonly loadedAt: string;
+}
+
+export interface CreatePlanningPlanInput {
+  readonly workspaceId: string;
+  readonly name: string;
+}
+
+export interface SelectPlanningPlanInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+}
+
+export interface RecordPlanningAnswerInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly stage: PlanStage;
+  readonly questionId: string;
+  readonly prompt: string;
+  readonly answer: string;
+  readonly loadBearing: boolean;
+  readonly discretionRationale?: string;
+  readonly projectPatch?: Partial<ProjectSummary>;
+}
+
+export interface RevisePlanningAnswerInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly answerId: string;
+  readonly answer: string;
+  readonly rationale?: string;
+  readonly projectPatch?: Partial<ProjectSummary>;
+}
+
+export interface ConfirmPlanningStageInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly stage: PlanStage;
+}
+
 export interface DesktopAppState {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly worktreesByWorkspace: Readonly<Record<string, readonly WorktreeRecord[]>>;
+  readonly planningByWorkspace: Readonly<Record<string, WorkspacePlanningState>>;
   readonly selectedWorkspaceId: string;
   readonly selectedSessionId: string;
   readonly activeView: AppView;
@@ -192,6 +243,7 @@ export function createEmptyDesktopAppState(): DesktopAppState {
   return {
     workspaces: [],
     worktreesByWorkspace: {},
+    planningByWorkspace: {},
     selectedWorkspaceId: "",
     selectedSessionId: "",
     activeView: "threads",

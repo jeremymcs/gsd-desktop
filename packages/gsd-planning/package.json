@@ -16,8 +16,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "rebuild:native": "pnpm rebuild better-sqlite3",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test test/*.test.mjs"
+    "test": "pnpm run build && pnpm run rebuild:native && node --test test/*.test.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0"

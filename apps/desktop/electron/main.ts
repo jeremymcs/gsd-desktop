@@ -32,9 +32,14 @@ import type {
   ComposerAttachment,
   ComposerFileAttachment,
   ComposerImageAttachment,
+  ConfirmPlanningStageInput,
+  CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
+  RecordPlanningAnswerInput,
   RemoveWorktreeInput,
+  RevisePlanningAnswerInput,
+  SelectPlanningPlanInput,
   StartThreadInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -513,6 +518,24 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.removeWorktree, (_event, input: RemoveWorktreeInput) =>
     store.removeWorktree(input),
+  );
+  ipcMain.handle(desktopIpc.loadPlanningWorkspace, (_event, workspaceId: string) =>
+    store.loadPlanningWorkspace(workspaceId),
+  );
+  ipcMain.handle(desktopIpc.createPlanningPlan, (_event, input: CreatePlanningPlanInput) =>
+    store.createPlanningPlan(input),
+  );
+  ipcMain.handle(desktopIpc.selectPlanningPlan, (_event, input: SelectPlanningPlanInput) =>
+    store.selectPlanningPlan(input),
+  );
+  ipcMain.handle(desktopIpc.recordPlanningAnswer, (_event, input: RecordPlanningAnswerInput) =>
+    store.recordPlanningAnswer(input),
+  );
+  ipcMain.handle(desktopIpc.revisePlanningAnswer, (_event, input: RevisePlanningAnswerInput) =>
+    store.revisePlanningAnswer(input),
+  );
+  ipcMain.handle(desktopIpc.confirmPlanningStage, (_event, input: ConfirmPlanningStageInput) =>
+    store.confirmPlanningStage(input),
   );
   ipcMain.handle(desktopIpc.syncCurrentWorkspace, () => store.syncCurrentWorkspace());
   ipcMain.handle(desktopIpc.selectSession, (_event, target: WorkspaceSessionTarget) =>

@@ -37,16 +37,21 @@ import {
   type AppView,
   type ComposerAttachment,
   type ComposerDraftSyncSource,
+  type ConfirmPlanningStageInput,
   type ExtensionCommandCompatibilityRecord,
   type ModelSettingsScopeMode,
+  type CreatePlanningPlanInput,
   createEmptyDesktopAppState,
   type CreateSessionInput,
   type CreateWorktreeInput,
   type DesktopAppState,
   type NotificationPreferences,
   type QueuedComposerMessage,
+  type RecordPlanningAnswerInput,
   type RemoveWorktreeInput,
+  type RevisePlanningAnswerInput,
   type SelectedTranscriptRecord,
+  type SelectPlanningPlanInput,
   type StartThreadInput,
   type TranscriptMessage,
   type WorkspaceSessionTarget,
@@ -93,6 +98,7 @@ import { GitWorktreeManager } from "./worktree-manager";
 import * as workspace from "./app-store-workspace";
 import * as worktree from "./app-store-worktree";
 import * as composer from "./app-store-composer";
+import * as plans from "./app-store-plans";
 import { isSessionActivelyViewed } from "./session-visibility";
 
 type StateListener = (state: DesktopAppState) => void;
@@ -336,6 +342,32 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async removeWorktree(input: RemoveWorktreeInput): Promise<DesktopAppState> {
     return worktree.removeWorktree(this, input);
+  }
+
+  /* ── Planning methods (delegated) ─────────────────────── */
+
+  async loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState> {
+    return plans.loadPlanningWorkspace(this, workspaceId);
+  }
+
+  async createPlanningPlan(input: CreatePlanningPlanInput): Promise<DesktopAppState> {
+    return plans.createPlanningPlan(this, input);
+  }
+
+  async selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState> {
+    return plans.selectPlanningPlan(this, input);
+  }
+
+  async recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState> {
+    return plans.recordPlanningAnswer(this, input);
+  }
+
+  async revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState> {
+    return plans.revisePlanningAnswer(this, input);
+  }
+
+  async confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState> {
+    return plans.confirmPlanningStage(this, input);
   }
 
   /* ── Composer methods (delegated) ──────────────────────── */

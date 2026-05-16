@@ -1122,6 +1122,16 @@ export default function App() {
   }, [schedulePinnedBottomRealignment, selectedSession, selectedWorkspace?.id, snapshot]);
 
   useEffect(() => {
+    if (!api || snapshot?.activeView !== "plans" || !plansWorkspace?.id) {
+      return;
+    }
+    if (snapshot.planningByWorkspace[plansWorkspace.id]) {
+      return;
+    }
+    void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(plansWorkspace.id));
+  }, [api, plansWorkspace?.id, snapshot?.activeView, snapshot?.planningByWorkspace]);
+
+  useEffect(() => {
     if (!api || composerDraft === persistedComposerDraft) {
       return undefined;
     }
@@ -1357,8 +1367,15 @@ export default function App() {
         : plansWorkspace?.id || rootWorkspaceOptions[0]?.id || "";
     if (nextWorkspaceId) {
       setPlansWorkspaceId(nextWorkspaceId);
+      void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(nextWorkspaceId));
+      return;
     }
     setActiveView("plans");
+  };
+
+  const handleSelectPlansWorkspace = (workspaceId: string) => {
+    setPlansWorkspaceId(workspaceId);
+    void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(workspaceId));
   };
 
   const openNewThreadSurface = (workspaceId?: string) => {
@@ -2092,7 +2109,14 @@ export default function App() {
             <PlanBuilderView
               workspaces={rootWorkspaceOptions}
               selectedWorkspaceId={plansWorkspace?.id ?? rootWorkspaceOptions[0]?.id ?? ""}
-              onSelectWorkspace={setPlansWorkspaceId}
+              planningState={plansWorkspace ? snapshot.planningByWorkspace[plansWorkspace.id] : undefined}
+              lastError={snapshot.lastError}
+              onSelectWorkspace={handleSelectPlansWorkspace}
+              onCreatePlan={(input) => updateSnapshot(api, setSnapshot, () => api.createPlanningPlan(input))}
+              onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
+              onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
+              onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
+              onConfirmStage={(input) => updateSnapshot(api, setSnapshot, () => api.confirmPlanningStage(input))}
             />
           ) : (
             <section className="canvas canvas--empty">
