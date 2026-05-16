@@ -20,7 +20,7 @@
 - [x] **S02: Projection Generator and Adoption Safety** `risk:high` `depends:[S01]`
   > After this: accepted planning state can generate GSD Markdown files through `PLAN`, including project and requirements artifacts, with ownership headers, atomic scoped writes, legacy-file protection, and manual regeneration support.
 
-- [ ] **S03: Plan Builder Navigation Shell** `risk:medium` `depends:[S01]`
+- [x] **S03: Plan Builder Navigation Shell** `risk:medium` `depends:[S01]`
   > After this: the desktop app has a workspace-aware Plan Builder view in the sidebar and a "New plan" entry from the new-thread start flow, presented in the dark split-pane workbench shell.
 
 - [ ] **S04: Persisted DISCUSS Wizard** `risk:medium` `depends:[S01,S03]`

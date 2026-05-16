@@ -126,6 +126,16 @@ export function FileIcon() {
   );
 }
 
+export function PlanIcon() {
+  return (
+    <Icon>
+      <rect x="3.6" y="3.6" width="12.8" height="12.8" rx="2.1" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M6.6 7.1h6.8M6.6 10h4.8M6.6 12.9h3.1" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
+      <path d="M13.2 10.6 15 12.4l-3.2 3.2H10v-1.8l3.2-3.2Z" fill="currentColor" />
+    </Icon>
+  );
+}
+
 export function ArchiveIcon() {
   return (
     <Icon>

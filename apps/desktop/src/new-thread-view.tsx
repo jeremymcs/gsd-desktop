@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ClipboardEvent, type DragEvent, type KeyboardEvent, type RefObject } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { ComposerAttachment, NewThreadEnvironment, WorkspaceRecord } from "./desktop-state";
-import { ArrowUpIcon, PiLogoMark, PlusIcon } from "./icons";
+import { ArrowUpIcon, PiLogoMark, PlanIcon, PlusIcon } from "./icons";
 import {
   MODEL_OPTIONS_EMPTY_TITLE,
   type ComposerSlashCommand,
@@ -54,6 +54,7 @@ interface NewThreadViewProps {
   readonly onSelectMention: (filePath: string) => void;
   readonly onAddAttachments: (files: File[]) => void;
   readonly onRemoveAttachment: (attachmentId: string) => void;
+  readonly onNewPlan: () => void;
   readonly onSubmit: () => void;
 }
 
@@ -97,6 +98,7 @@ export function NewThreadView({
   onSelectMention,
   onAddAttachments,
   onRemoveAttachment,
+  onNewPlan,
   onSubmit,
 }: NewThreadViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -151,6 +153,13 @@ export function NewThreadView({
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="new-thread__quick-actions" aria-label="New project options">
+          <button className="new-thread__quick-action" type="button" onClick={onNewPlan}>
+            <PlanIcon />
+            <span>Plan a new project</span>
+          </button>
         </div>
 
         <div className="new-thread__composer composer">

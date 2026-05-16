@@ -32,6 +32,7 @@ import { ExtensionsView } from "./extensions-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
 import { SecondarySurface } from "./secondary-surface";
 import { NewThreadView } from "./new-thread-view";
+import { PlanBuilderView } from "./plan-builder-view";
 import { buildThreadGroups } from "./thread-groups";
 import { Sidebar } from "./sidebar";
 import { SidebarToggleButton } from "./sidebar-toggle-button";
@@ -109,7 +110,7 @@ function isEventInsideTerminal(event: globalThis.KeyboardEvent): boolean {
 }
 
 function canTogglePrimarySidebar(view: AppView | undefined): boolean {
-  return view === "threads" || view === "new-thread";
+  return view === "threads" || view === "new-thread" || view === "plans";
 }
 
 function useRunningLabel(startedAt: string | undefined) {
@@ -156,6 +157,7 @@ export default function App() {
   const [settingsWorkspaceId, setSettingsWorkspaceId] = useState("");
   const [skillsWorkspaceId, setSkillsWorkspaceId] = useState("");
   const [extensionsWorkspaceId, setExtensionsWorkspaceId] = useState("");
+  const [plansWorkspaceId, setPlansWorkspaceId] = useState("");
   const [pendingNewThreadWorkspaceId, setPendingNewThreadWorkspaceId] = useState("");
   const [newThreadRootWorkspaceId, setNewThreadRootWorkspaceId] = useState("");
   const [newThreadEnvironment, setNewThreadEnvironment] = useState<NewThreadEnvironment>("local");
@@ -330,6 +332,9 @@ export default function App() {
     : undefined;
   const extensionsWorkspace = extensionsWorkspaceId
     ? rootWorkspaceOptions.find((workspace) => workspace.id === extensionsWorkspaceId)
+    : undefined;
+  const plansWorkspace = plansWorkspaceId
+    ? rootWorkspaceOptions.find((workspace) => workspace.id === plansWorkspaceId)
     : undefined;
   const settingsRuntime = settingsWorkspace ? snapshot?.runtimeByWorkspace[settingsWorkspace.id] : undefined;
   const settingsModelRuntime = snapshot ? getEffectiveModelRuntime(snapshot, settingsWorkspace) : undefined;
@@ -892,6 +897,7 @@ export default function App() {
       setSettingsWorkspaceId("");
       setSkillsWorkspaceId("");
       setExtensionsWorkspaceId("");
+      setPlansWorkspaceId("");
       setPendingNewThreadWorkspaceId("");
       setNewThreadRootWorkspaceId("");
       setNewThreadEnvironment("local");
@@ -905,6 +911,9 @@ export default function App() {
       rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
     );
     setExtensionsWorkspaceId((current) =>
+      rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
+    );
+    setPlansWorkspaceId((current) =>
       rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
     );
     setNewThreadRootWorkspaceId((current) =>
@@ -1339,6 +1348,17 @@ export default function App() {
       setExtensionsWorkspaceId(nextWorkspaceId);
     }
     setActiveView("extensions");
+  };
+
+  const openPlans = (workspaceId?: string) => {
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : plansWorkspace?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId) {
+      setPlansWorkspaceId(nextWorkspaceId);
+    }
+    setActiveView("plans");
   };
 
   const openNewThreadSurface = (workspaceId?: string) => {
@@ -2032,6 +2052,7 @@ export default function App() {
           updateSnapshot={updateSnapshot}
           onNewThread={() => openNewThreadSurface(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
           onSetActiveView={setActiveView}
+          onOpenPlans={openPlans}
           onOpenSkills={openSkills}
           onOpenExtensions={openExtensions}
           onOpenSettings={openSettings}
@@ -2066,7 +2087,23 @@ export default function App() {
           terminalPanel
         ) : (
           <>
-        {snapshot.activeView === "new-thread" ? (
+        {snapshot.activeView === "plans" ? (
+          rootWorkspaceOptions.length > 0 ? (
+            <PlanBuilderView
+              workspaces={rootWorkspaceOptions}
+              selectedWorkspaceId={plansWorkspace?.id ?? rootWorkspaceOptions[0]?.id ?? ""}
+              onSelectWorkspace={setPlansWorkspaceId}
+            />
+          ) : (
+            <section className="canvas canvas--empty">
+              <div className="empty-panel">
+                <div className="session-header__eyebrow">Plans</div>
+                <h1>Open a folder to plan</h1>
+                <p>Add a project folder before starting the planning workflow.</p>
+              </div>
+            </section>
+          )
+        ) : snapshot.activeView === "new-thread" ? (
           rootWorkspaceOptions.length > 0 ? (
             <NewThreadView
               workspaces={rootWorkspaceOptions}
@@ -2112,6 +2149,7 @@ export default function App() {
               onSelectMention={newThreadMentionMenu.insertMention}
               onAddAttachments={handleNewThreadAddAttachments}
               onRemoveAttachment={handleNewThreadRemoveAttachment}
+              onNewPlan={() => openPlans(newThreadWorkspace?.id)}
               onSubmit={handleStartThread}
             />
           ) : (
