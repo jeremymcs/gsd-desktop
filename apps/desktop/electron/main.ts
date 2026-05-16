@@ -36,10 +36,13 @@ import type {
   CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
+  ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  ReviewPlanningResearchInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningResearchInput,
   StartThreadInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -536,6 +539,15 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.confirmPlanningStage, (_event, input: ConfirmPlanningStageInput) =>
     store.confirmPlanningStage(input),
+  );
+  ipcMain.handle(desktopIpc.startPlanningResearch, (_event, input: StartPlanningResearchInput) =>
+    store.startPlanningResearch(input),
+  );
+  ipcMain.handle(desktopIpc.proposePlanningResearch, (_event, input: ProposePlanningResearchInput) =>
+    store.proposePlanningResearch(input),
+  );
+  ipcMain.handle(desktopIpc.reviewPlanningResearch, (_event, input: ReviewPlanningResearchInput) =>
+    store.reviewPlanningResearch(input),
   );
   ipcMain.handle(desktopIpc.syncCurrentWorkspace, () => store.syncCurrentWorkspace());
   ipcMain.handle(desktopIpc.selectSession, (_event, target: WorkspaceSessionTarget) =>

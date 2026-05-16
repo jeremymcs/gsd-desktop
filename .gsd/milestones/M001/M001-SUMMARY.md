@@ -43,6 +43,21 @@ Known blockers:
 - `pnpm --filter @pi-gui/desktop run test:e2e:core` is blocked by existing failures in integrated terminal, new-thread auto-title, model/provider settings, and unread state specs outside the Plan Builder path.
 - `pnpm run simplify` is unavailable because the repo has no `simplify` script.
 
+### S05: Research Staging and Approval
+
+Plan Builder now advances from confirmed DISCUSS into RESEARCH. Users can start research after the three depth gates are confirmed, edit a deterministic research brief seeded from persisted discussion memory, stage findings as proposed database output, accept or reject proposed research, and restore accepted research after app restart.
+
+Verification:
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts`
+- `pnpm typecheck`
+- `git diff --check`
+
+Known blockers:
+- `pnpm --filter @pi-gui/desktop run test:e2e:core` rebuilt successfully and the Plan Builder specs passed, but the lane is blocked by existing failures in integrated terminal, new-thread composer/model onboarding, provider settings, and unread state specs outside the Plan Builder path.
+- `pnpm run simplify` is unavailable because the repo has no `simplify` script.
+
 ## Next Slice
 
-S05: Research Staging and Approval.
+S06: PLAN Proposal, Editing, and Validation.

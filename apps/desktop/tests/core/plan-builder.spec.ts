@@ -59,7 +59,7 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
   }
 });
 
-test("persists DISCUSS answers, revisions, and depth gates across restart", async () => {
+test("persists DISCUSS memory and accepted RESEARCH output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");
   const workspaceName = basename(workspacePath);
@@ -96,6 +96,17 @@ test("persists DISCUSS answers, revisions, and depth gates across restart", asyn
     await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
     await window.getByRole("button", { name: "Confirm Milestone" }).click();
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+    await window.getByRole("button", { name: "Start research" }).click();
+    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
+    await expect(window.getByTestId("research-content-textarea")).toContainText("Research checks:");
+    await window.getByTestId("research-title-input").fill("Codebase and workflow research");
+    await window
+      .getByTestId("research-content-textarea")
+      .fill("Findings: Planning state lives in the GSD database, and research output must be accepted before PLAN.");
+    await window.getByRole("button", { name: "Stage research" }).click();
+    await expect(window.getByTestId("research-output-proposed")).toContainText("Codebase and workflow research");
+    await window.getByRole("button", { name: "Accept" }).click();
+    await expect(window.getByTestId("research-output-accepted")).toContainText("Codebase and workflow research");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await nameMemory.getByRole("button", { name: "Edit" }).click();
@@ -119,10 +130,19 @@ test("persists DISCUSS answers, revisions, and depth gates across restart", asyn
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
+    await expect(window.getByTestId("research-output-accepted")).toContainText("Codebase and workflow research");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     await expect.poll(async () =>
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
-        (entry) => entry.selectedPlan?.name === "Launch plan",
+        (entry) =>
+          entry.selectedPlan?.name === "Launch plan" &&
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "research" &&
+              output.status === "accepted" &&
+              output.title === "Codebase and workflow research",
+          ),
       ),
     ).toBe(true);
   } finally {

@@ -2117,6 +2117,9 @@ export default function App() {
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
               onConfirmStage={(input) => updateSnapshot(api, setSnapshot, () => api.confirmPlanningStage(input))}
+              onStartResearch={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningResearch(input))}
+              onProposeResearch={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningResearch(input))}
+              onReviewResearch={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningResearch(input))}
             />
           ) : (
             <section className="canvas canvas--empty">

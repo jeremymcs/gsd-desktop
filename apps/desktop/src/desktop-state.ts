@@ -201,6 +201,28 @@ export interface ConfirmPlanningStageInput {
   readonly stage: PlanStage;
 }
 
+export interface StartPlanningResearchInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
+export interface ProposePlanningResearchInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly title: string;
+  readonly content: string;
+}
+
+export interface ReviewPlanningResearchInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly outputId: string;
+  readonly status: "accepted" | "rejected";
+}
+
 export interface DesktopAppState {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly worktreesByWorkspace: Readonly<Record<string, readonly WorktreeRecord[]>>;

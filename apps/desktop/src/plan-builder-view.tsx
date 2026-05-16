@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import type { AnswerRecord } from "@pi-gui/gsd-planning";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import type { AnswerRecord, GeneratedOutputRecord, PlanSnapshot, PlanStage, StageStatus } from "@pi-gui/gsd-planning";
 import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningResearchInput,
   WorkspacePlanningState,
   WorkspaceRecord,
 } from "./desktop-state";
@@ -44,6 +47,9 @@ interface PlanBuilderViewProps {
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
+  readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
+  readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
+  readonly onReviewResearch: (input: ReviewPlanningResearchInput) => Promise<DesktopAppState>;
 }
 
 export function PlanBuilderView({
@@ -57,24 +63,46 @@ export function PlanBuilderView({
   onRecordAnswer,
   onReviseAnswer,
   onConfirmStage,
+  onStartResearch,
+  onProposeResearch,
+  onReviewResearch,
 }: PlanBuilderViewProps) {
   const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
   const [planName, setPlanName] = useState("");
   const [answerDraft, setAnswerDraft] = useState("");
   const [editingAnswerId, setEditingAnswerId] = useState("");
   const [revisionDraft, setRevisionDraft] = useState("");
+  const [researchTitle, setResearchTitle] = useState("");
+  const [researchContent, setResearchContent] = useState("");
+  const [seededResearchPlanId, setSeededResearchPlanId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const snapshot = planningState?.selectedPlan;
   const activeQuestion = getActiveDiscussQuestion(snapshot);
-  const activeStage: DiscussStage = snapshot && isDiscussStage(snapshot.activeStage) ? snapshot.activeStage : "project";
+  const activePlanStage: PlanStage = snapshot?.activeStage ?? "project";
+  const activeDiscussStage: DiscussStage =
+    snapshot && isDiscussStage(snapshot.activeStage) ? snapshot.activeStage : "project";
   const stageProgress = useMemo(
     () => discussStageOrder.map((stage) => getDiscussStageProgress(snapshot, stage)),
     [snapshot],
   );
   const latestAnswers = useMemo(() => getLatestDiscussAnswers(snapshot), [snapshot]);
   const latestAnswersByQuestion = useMemo(() => getLatestAnswersByQuestion(snapshot), [snapshot]);
-  const currentProgress = stageProgress.find((progress) => progress.stage === activeStage) ?? stageProgress[0];
+  const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
+  const researchOutputs = useMemo(
+    () => (snapshot?.generatedOutputs ?? []).filter((output) => output.stage === "research"),
+    [snapshot],
+  );
+  const pendingResearchOutputs = researchOutputs.filter(
+    (output) => output.status === "draft" || output.status === "proposed",
+  );
+  const acceptedResearchOutputs = researchOutputs.filter((output) => output.status === "accepted");
+  const rejectedResearchOutputs = researchOutputs.filter((output) => output.status === "rejected");
+  const researchStage = snapshot?.stages.find((stage) => stage.stage === "research");
+  const researchStarted = Boolean(
+    snapshot && (snapshot.activePhase === "research" || researchStage || researchOutputs.length > 0),
+  );
+  const researchDraft = useMemo(() => buildResearchDraft(snapshot, latestAnswers), [latestAnswers, snapshot]);
 
   useEffect(() => {
     const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id)?.answer : "";
@@ -85,6 +113,21 @@ export function PlanBuilderView({
     setEditingAnswerId("");
     setRevisionDraft("");
   }, [snapshot?.id]);
+
+  useEffect(() => {
+    if (!snapshot || !researchStarted) {
+      setResearchTitle("");
+      setResearchContent("");
+      setSeededResearchPlanId("");
+      return;
+    }
+    if (seededResearchPlanId === snapshot.id) {
+      return;
+    }
+    setResearchTitle("Research brief");
+    setResearchContent(researchDraft);
+    setSeededResearchPlanId(snapshot.id);
+  }, [researchDraft, researchStarted, seededResearchPlanId, snapshot]);
 
   if (!workspace) {
     return (
@@ -181,15 +224,80 @@ export function PlanBuilderView({
       });
   };
 
+  const startResearch = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onStartResearch({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const proposeResearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!snapshot || submitting) {
+      return;
+    }
+    const title = researchTitle.trim();
+    const content = researchContent.trim();
+    if (!title || !content) {
+      return;
+    }
+    setSubmitting(true);
+    void onProposeResearch({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      title,
+      content,
+    })
+      .then(() => {
+        setResearchTitle("Research brief");
+        setResearchContent(researchDraft);
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
+  };
+
+  const reviewResearch = (output: GeneratedOutputRecord, status: "accepted" | "rejected") => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onReviewResearch({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      outputId: output.id,
+      status,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const answerCount = latestAnswers.filter((answer) => answer.loadBearing).length;
-  const parkedCount = latestAnswers.filter((answer) => !answer.loadBearing).length;
   const confirmedCount = stageProgress.filter((progress) => progress.depthConfirmed).length;
   const outlineStats = [
     { label: "Answers", value: String(answerCount) },
     { label: "Depth gates", value: `${confirmedCount}/3` },
-    { label: "Parked", value: String(parkedCount) },
+    { label: "Research", value: `${acceptedResearchOutputs.length}/${researchOutputs.length}` },
     { label: "Revision", value: String(snapshot?.revision ?? 0) },
   ] as const;
+  const composerStatus = activeQuestion
+    ? activeQuestion.prompt
+    : researchStarted
+      ? "Reviewable research is persisted in the planning database"
+      : allDiscussConfirmed
+        ? "Start research when you are ready to stage findings"
+        : snapshot
+          ? "DISCUSS memory is persisted in the planning database"
+          : "Start with the project outcome, constraints, and users";
 
   return (
     <section className="canvas canvas--plans" data-testid="plan-builder-view">
@@ -255,11 +363,95 @@ export function PlanBuilderView({
                 </button>
                 {lastError ? <div className="plan-error">{lastError}</div> : null}
               </form>
-            ) : allDiscussConfirmed ? (
+            ) : allDiscussConfirmed && !researchStarted ? (
               <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
                 <div className="plan-depth-card__eyebrow">DISCUSS complete</div>
                 <h2>Ready for RESEARCH</h2>
                 <p>The project, requirements, and milestone depth gates are confirmed.</p>
+                <button className="plan-action-button" disabled={submitting} onClick={startResearch} type="button">
+                  Start research
+                </button>
+              </div>
+            ) : allDiscussConfirmed && researchStarted ? (
+              <div className="plan-research" data-testid="plan-research-panel">
+                <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
+                  <div className="plan-depth-card__eyebrow">RESEARCH {formatStageStatus(researchStage?.status)}</div>
+                  <h2>Stage research findings</h2>
+                  <p>Proposed research stays reviewable until it is accepted or rejected.</p>
+                </div>
+
+                <form className="plan-research-form" onSubmit={proposeResearch}>
+                  <label className="plan-research-form__field">
+                    <span>Title</span>
+                    <input
+                      autoComplete="off"
+                      data-testid="research-title-input"
+                      onChange={(event) => setResearchTitle(event.target.value)}
+                      value={researchTitle}
+                    />
+                  </label>
+                  <label className="plan-research-form__field">
+                    <span>Findings</span>
+                    <textarea
+                      data-testid="research-content-textarea"
+                      onChange={(event) => setResearchContent(event.target.value)}
+                      value={researchContent}
+                    />
+                  </label>
+                  <div className="plan-question-card__actions">
+                    <button
+                      className="plan-action-button"
+                      disabled={!researchTitle.trim() || !researchContent.trim() || submitting}
+                      type="submit"
+                    >
+                      Stage research
+                    </button>
+                  </div>
+                </form>
+
+                {pendingResearchOutputs.length > 0 ? (
+                  <div className="plan-research-list" data-testid="research-output-proposed">
+                    <div className="plan-memory__title">Pending review</div>
+                    {pendingResearchOutputs.map((output) => (
+                      <ResearchOutputCard key={output.id} output={output}>
+                        <button
+                          className="plan-action-button plan-action-button--compact"
+                          disabled={submitting}
+                          onClick={() => reviewResearch(output, "accepted")}
+                          type="button"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          className="plan-secondary-button plan-secondary-button--compact"
+                          disabled={submitting}
+                          onClick={() => reviewResearch(output, "rejected")}
+                          type="button"
+                        >
+                          Reject
+                        </button>
+                      </ResearchOutputCard>
+                    ))}
+                  </div>
+                ) : null}
+
+                {acceptedResearchOutputs.length > 0 ? (
+                  <div className="plan-research-list" data-testid="research-output-accepted">
+                    <div className="plan-memory__title">Accepted research</div>
+                    {acceptedResearchOutputs.map((output) => (
+                      <ResearchOutputCard key={output.id} output={output} />
+                    ))}
+                  </div>
+                ) : null}
+
+                {rejectedResearchOutputs.length > 0 ? (
+                  <div className="plan-research-list" data-testid="research-output-rejected">
+                    <div className="plan-memory__title">Rejected research</div>
+                    {rejectedResearchOutputs.map((output) => (
+                      <ResearchOutputCard key={output.id} output={output} />
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : activeQuestion ? (
               <div className="plan-question-card" data-testid="plan-question-card">
@@ -312,13 +504,7 @@ export function PlanBuilderView({
 
           <footer className="plan-composer" aria-label="Plan prompt composer">
             <div className="plan-composer__field">
-              <span>
-                {activeQuestion
-                  ? activeQuestion.prompt
-                  : snapshot
-                    ? "DISCUSS memory is persisted in the planning database"
-                    : "Start with the project outcome, constraints, and users"}
-              </span>
+              <span>{composerStatus}</span>
             </div>
             <button className="plan-composer__send" type="button" disabled aria-label="Start planning">
               <ArrowUpIcon />
@@ -374,7 +560,7 @@ export function PlanBuilderView({
                 {snapshot?.name ?? "No plan selected"}
               </div>
               <div className="plan-outline-card__meta">
-                {snapshot ? `${snapshot.readableId} · ${stageLabel(activeStage)}` : "DISCUSS is ready to start"}
+                {snapshot ? `${snapshot.readableId} · ${stageLabel(activePlanStage)}` : "DISCUSS is ready to start"}
               </div>
             </div>
 
@@ -391,7 +577,7 @@ export function PlanBuilderView({
               {stageProgress.map((progress) => (
                 <div
                   className={`plan-stage-list__item ${
-                    progress.stage === activeStage && !progress.depthConfirmed ? "plan-stage-list__item--active" : ""
+                    progress.stage === activePlanStage && !progress.depthConfirmed ? "plan-stage-list__item--active" : ""
                   }`}
                   key={progress.stage}
                 >
@@ -405,6 +591,16 @@ export function PlanBuilderView({
                   </small>
                 </div>
               ))}
+              <div
+                className={`plan-stage-list__item ${
+                  activePlanStage === "research" && researchStage?.status !== "approved"
+                    ? "plan-stage-list__item--active"
+                    : ""
+                }`}
+              >
+                <span>Research</span>
+                <small>{formatResearchStatus(researchStage?.status, researchOutputs.length)}</small>
+              </div>
             </div>
 
             {latestAnswers.length > 0 ? (
@@ -471,7 +667,84 @@ export function PlanBuilderView({
   );
 }
 
-function stageLabel(stage: DiscussStage): string {
+function ResearchOutputCard({
+  output,
+  children,
+}: {
+  readonly output: GeneratedOutputRecord;
+  readonly children?: ReactNode;
+}) {
+  return (
+    <article className="plan-research-output">
+      <div className="plan-research-output__header">
+        <div>
+          <h3>{output.title}</h3>
+          <span>{formatOutputStatus(output.status)}</span>
+        </div>
+        {children ? <div className="plan-research-output__actions">{children}</div> : null}
+      </div>
+      <p>{output.content}</p>
+    </article>
+  );
+}
+
+function buildResearchDraft(snapshot: PlanSnapshot | undefined, answers: readonly AnswerRecord[]): string {
+  if (!snapshot) {
+    return "";
+  }
+  const project = snapshot.project;
+  const loadBearingAnswers = answers.filter((answer) => answer.loadBearing);
+  const lines = [
+    `Project: ${project.title ?? snapshot.name}`,
+    "",
+    "Research checks:",
+    "- Confirm the affected code areas and current ownership boundaries.",
+    "- Identify external systems, file formats, persistence paths, and migration risks.",
+    "- Note validation evidence needed before PLAN approval.",
+    "- Capture blockers, assumptions, and decisions that could change scope.",
+    "",
+    "Discuss memory:",
+    ...loadBearingAnswers.map((answer) => `- ${answer.prompt}: ${answer.answer.replace(/\s+/g, " ").trim()}`),
+  ];
+  return lines.join("\n");
+}
+
+function formatOutputStatus(status: GeneratedOutputRecord["status"]): string {
+  switch (status) {
+    case "draft":
+      return "Draft";
+    case "proposed":
+      return "Proposed";
+    case "accepted":
+      return "Accepted";
+    case "rejected":
+      return "Rejected";
+  }
+}
+
+function formatStageStatus(status: StageStatus | undefined): string {
+  return status ? `· ${formatResearchStatus(status, 0)}` : "";
+}
+
+function formatResearchStatus(status: StageStatus | undefined, outputCount: number): string {
+  switch (status) {
+    case "active":
+      return outputCount > 0 ? "Needs more research" : "Active";
+    case "needs-review":
+      return "Needs review";
+    case "approved":
+      return "Approved";
+    case "blocked":
+      return "Blocked";
+    case "not-started":
+    case undefined:
+      return outputCount > 0 ? "Staged" : "Queued";
+    default:
+      return status;
+  }
+}
+
+function stageLabel(stage: PlanStage): string {
   switch (stage) {
     case "project":
       return "Project";
@@ -479,5 +752,13 @@ function stageLabel(stage: DiscussStage): string {
       return "Requirements";
     case "milestone":
       return "Milestone";
+    case "research":
+      return "Research";
+    case "roadmap":
+      return "Roadmap";
+    case "slice-context":
+      return "Slice context";
+    case "task":
+      return "Task";
   }
 }

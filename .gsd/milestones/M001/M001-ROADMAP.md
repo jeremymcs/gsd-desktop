@@ -26,7 +26,7 @@
 - [x] **S04: Persisted DISCUSS Wizard** `risk:medium` `depends:[S01,S03]`
   > After this: a user can complete project, requirements, and milestone discussion stages in the screenshot-inspired split-pane UI with prompt-compatible depth gates, edit prior answers via revision events, and see a compact outline after restart.
 
-- [ ] **S05: Research Staging and Approval** `risk:medium` `depends:[S01,S03,S04]`
+- [x] **S05: Research Staging and Approval** `risk:medium` `depends:[S01,S03,S04]`
   > After this: research findings can be persisted as proposed output, reviewed in UI, and committed to canonical state only after user approval.
 
 - [ ] **S06: PLAN Proposal, Editing, and Validation** `risk:high` `depends:[S01,S02,S03,S04,S05]`
