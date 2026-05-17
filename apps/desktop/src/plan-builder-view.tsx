@@ -207,6 +207,9 @@ export function PlanBuilderView({
   const [seededPlanProposalPlanId, setSeededPlanProposalPlanId] = useState("");
   const [draftingIdeaId, setDraftingIdeaId] = useState("");
   const [composerReviewItemId, setComposerReviewItemId] = useState("");
+  const [proposalFocusRequest, setProposalFocusRequest] = useState<
+    { readonly proposalId: string; readonly token: number } | undefined
+  >();
   const [changeProposalTitleDraft, setChangeProposalTitleDraft] = useState("");
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
@@ -336,6 +339,7 @@ export function PlanBuilderView({
     setRevisionDraft("");
     setDraftingIdeaId("");
     setComposerReviewItemId("");
+    setProposalFocusRequest(undefined);
     setChangeProposalTitleDraft("");
     setChangeProposalSummaryDraft("");
     setChangeProposalImpactDraft("");
@@ -605,6 +609,13 @@ export function PlanBuilderView({
     setChangeProposalTitleDraft(buildChangeProposalTitle(item));
     setChangeProposalSummaryDraft(item.text);
     setChangeProposalImpactDraft(buildChangeProposalImpactDraft(item));
+  };
+
+  const focusChangeProposal = (proposal: ChangeProposalRecord) => {
+    setProposalFocusRequest((current) => ({
+      proposalId: proposal.id,
+      token: (current?.token ?? 0) + 1,
+    }));
   };
 
   const cancelDraftChangeProposal = () => {
@@ -1634,14 +1645,25 @@ export function PlanBuilderView({
                   Dismiss
                 </button>
                 {composerReviewItem.reviewStatus === "promotion-ready" ? (
-                  <button
-                    className="plan-inline-button"
-                    disabled={submitting || Boolean(composerReviewProposal)}
-                    onClick={() => startDraftChangeProposal(composerReviewItem)}
-                    type="button"
-                  >
-                    {composerReviewProposal ? "Drafted" : "Draft change"}
-                  </button>
+                  composerReviewProposal ? (
+                    <button
+                      className="plan-inline-button"
+                      disabled={submitting}
+                      onClick={() => focusChangeProposal(composerReviewProposal)}
+                      type="button"
+                    >
+                      Review proposal
+                    </button>
+                  ) : (
+                    <button
+                      className="plan-inline-button"
+                      disabled={submitting}
+                      onClick={() => startDraftChangeProposal(composerReviewItem)}
+                      type="button"
+                    >
+                      Draft change
+                    </button>
+                  )
                 ) : null}
               </div>
             </div>
@@ -2028,6 +2050,7 @@ export function PlanBuilderView({
                     acceptedPlanProposal={acceptedPlanProposal}
                     key={proposal.id}
                     proposal={proposal}
+                    focusToken={proposalFocusRequest?.proposalId === proposal.id ? proposalFocusRequest.token : 0}
                     submitting={submitting}
                     onApprove={approveChangeProposal}
                     onApproveModification={approveTaskModification}
@@ -3728,6 +3751,7 @@ function ResearchOutputCard({
 
 function ChangeProposalCard({
   acceptedPlanProposal,
+  focusToken,
   proposal,
   submitting,
   onApprove,
@@ -3735,12 +3759,15 @@ function ChangeProposalCard({
   onHideTask,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly focusToken: number;
   readonly proposal: ChangeProposalRecord;
   readonly submitting: boolean;
   readonly onApprove: (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => void;
   readonly onApproveModification: (proposal: ChangeProposalRecord, draft: PlanTaskModificationDraft) => void;
   readonly onHideTask: (taskPath: string, reason: string) => void;
 }) {
+  const cardRef = useRef<HTMLElement | null>(null);
+  const approvalFocusRef = useRef<HTMLSelectElement | null>(null);
   const targets = useMemo(() => getPlanSliceTargets(acceptedPlanProposal), [acceptedPlanProposal]);
   const taskEntries = useMemo(
     () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
@@ -3821,6 +3848,17 @@ function ChangeProposalCard({
     setModifiedDependencies(selectedModificationTask.task.dependencies.join(", "));
   }, [proposal.impactNotes, proposal.summary, proposal.title, selectedModificationTask?.taskPath]);
 
+  useEffect(() => {
+    if (focusToken <= 0) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const target = approvalFocusRef.current ?? cardRef.current;
+      target?.scrollIntoView({ block: "center" });
+      target?.focus();
+    });
+  }, [focusToken]);
+
   const submitApproval = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedTarget || !canApprove) {
@@ -3859,7 +3897,12 @@ function ChangeProposalCard({
   };
 
   return (
-    <article className="plan-memory__item plan-memory__item--proposal" data-testid="plan-change-proposal">
+    <article
+      className="plan-memory__item plan-memory__item--proposal"
+      data-testid="plan-change-proposal"
+      ref={cardRef}
+      tabIndex={-1}
+    >
       <div className="plan-memory__item-header">
         <span>{proposal.title}</span>
         <small data-testid="plan-change-proposal-status">{formatChangeProposalStatus(proposal.status)}</small>
@@ -3887,6 +3930,7 @@ function ChangeProposalCard({
             <select
               data-testid="plan-injection-target-select"
               onChange={(event) => setTargetId(event.target.value)}
+              ref={approvalFocusRef}
               value={targetId}
             >
               {targets.map((target) => (
