@@ -28,6 +28,9 @@ const discussAnswers = [
   ["What would make you comfortable shipping this project?", "Restart persistence passes and the outline matches the saved discussion."],
 ] as const;
 
+const projectDepthGatePrompt = "What constraints should shape every decision?";
+const requirementsDepthGatePrompt = "How should we know the requirements are complete enough to plan?";
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };
@@ -285,16 +288,16 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await dismissedIdea.getByRole("button", { name: "Dismiss" }).click();
     await expect(dismissedIdea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
 
-    for (const [index, [prompt, answer]] of discussAnswers.entries()) {
+    for (const [prompt, answer] of discussAnswers) {
       await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-answer-textarea").fill(answer);
       await window.getByRole("button", { name: "Save answer" }).click();
 
-      if (index === 6) {
+      if (prompt === projectDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await window.getByRole("button", { name: "Confirm Project" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
-      } else if (index === 10) {
+      } else if (prompt === requirementsDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await window.getByRole("button", { name: "Confirm Requirements" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / milestone");
