@@ -2141,6 +2141,7 @@ export default function App() {
                 updateSnapshot(api, setSnapshot, () => api.updatePlanningWorkflowPreferences(input))
               }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
+              onParkIdea={(input) => updateSnapshot(api, setSnapshot, () => api.parkPlanningIdea(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
               onUpsertRequirements={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.upsertPlanningRequirements(input))

@@ -16,7 +16,7 @@
 - [x] **S01: Direct Park-Idea Action** `risk:medium` `depends:[M013]`
   > After this: the desktop planning API can append a composer-origin parked idea without recording a synthetic answer.
 
-- [ ] **S02: Later-Phase Composer Parking** `risk:medium` `depends:[S01]`
+- [x] **S02: Later-Phase Composer Parking** `risk:medium` `depends:[S01]`
   > After this: a user can type a later-phase note in the Plan Builder composer and park it into the idea pool.
 
 ## Boundary Map

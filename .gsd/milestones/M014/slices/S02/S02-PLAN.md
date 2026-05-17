@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Enable composer text input for non-question, non-SHIP-summary workflow states.
-- [ ] Submit typed composer text through the direct park-idea action.
-- [ ] Clear and refocus the composer after parking.
-- [ ] Add Electron coverage for parking a later-phase note and persisting it.
+- [x] Enable composer text input for non-question, non-SHIP-summary workflow states.
+- [x] Submit typed composer text through the direct park-idea action.
+- [x] Clear and refocus the composer after parking.
+- [x] Add Electron coverage for parking a later-phase note and persisting it.
 
 ## Acceptance
 

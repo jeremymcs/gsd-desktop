@@ -31,6 +31,7 @@ import type {
   GlobalPlanningPreferences,
   HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
+  ParkPlanningIdeaInput,
   PlanningMilestoneDraft,
   PlanningPhaseDraft,
   PlanningPlanProposalDraft,
@@ -122,6 +123,7 @@ interface PlanBuilderViewProps {
   readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
+  readonly onParkIdea: (input: ParkPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onUpsertRequirements: (input: UpsertPlanningRequirementsInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
@@ -168,6 +170,7 @@ export function PlanBuilderView({
   onApplyWorkflowPreferences,
   onUpdateWorkflowPreferences,
   onRecordAnswer,
+  onParkIdea,
   onReviseAnswer,
   onUpsertRequirements,
   onReviewIdea,
@@ -445,6 +448,37 @@ export function PlanBuilderView({
         if (!loadBearing) {
           setAnswerDraft("");
         }
+        requestAnimationFrame(() => {
+          composerTextareaRef.current?.focus();
+        });
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
+  };
+
+  const parkComposerIdea = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    const text = answerDraft.trim();
+    if (!text) {
+      return;
+    }
+    const phaseLabel = snapshot.activePhase.toUpperCase();
+    setSubmitting(true);
+    void onParkIdea({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      sourceStage: snapshot.activeStage,
+      sourceQuestionId: `composer_${snapshot.activePhase}`,
+      sourcePrompt: `Composer note captured during ${phaseLabel}`,
+      text,
+      rationale: `Parked during ${phaseLabel}`,
+    })
+      .then(() => {
+        setAnswerDraft("");
         requestAnimationFrame(() => {
           composerTextareaRef.current?.focus();
         });
@@ -1133,6 +1167,8 @@ export function PlanBuilderView({
     { label: "Revision", value: String(snapshot?.revision ?? 0) },
   ] as const;
   const composerCanRecordShipSummary = !activeQuestion && shipStarted;
+  const composerCanParkIdea = Boolean(snapshot && !activeQuestion && !shipStarted);
+  const composerHasDraft = Boolean(answerDraft.trim());
   const latestShipSummary = snapshot?.shipSummaries.at(-1);
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
@@ -1194,15 +1230,22 @@ export function PlanBuilderView({
                 }
               : undefined
     : undefined;
-  const composerInputEnabled = Boolean(activeQuestion || composerCanRecordShipSummary);
+  const composerInputEnabled = Boolean(activeQuestion || composerCanRecordShipSummary || composerCanParkIdea);
+  const composerQuestion = activeQuestion?.prompt ?? (composerCanRecordShipSummary
+    ? "Final SHIP handoff summary"
+    : "Park a planning note or change request");
   const composerPlaceholder = activeQuestion
     ? "Answer with the context future planning decisions should remember."
-    : "Write the final handoff summary for the next session.";
+    : composerCanRecordShipSummary
+      ? "Write the final handoff summary for the next session."
+      : "Capture a parking-lot note, change request, or follow-up without changing the active plan.";
   const composerSubmitDisabled = activeQuestion
     ? answerActionDisabled
     : composerCanRecordShipSummary
       ? submitting || !answerDraft.trim()
-      : !composerPhaseAction || composerPhaseAction.disabled;
+      : composerCanParkIdea && composerHasDraft
+        ? submitting
+        : !composerPhaseAction || composerPhaseAction.disabled;
   const submitComposerAction = () => {
     if (activeQuestion) {
       recordAnswer(true);
@@ -1210,6 +1253,10 @@ export function PlanBuilderView({
     }
     if (composerCanRecordShipSummary) {
       recordShipSummary(answerDraft, { clearComposer: true });
+      return;
+    }
+    if (composerCanParkIdea && composerHasDraft) {
+      parkComposerIdea();
       return;
     }
     composerPhaseAction?.run();
@@ -1540,7 +1587,7 @@ export function PlanBuilderView({
               {composerInputEnabled ? (
                 <>
                   <div className="plan-composer__question" data-testid="plan-composer-question">
-                    {activeQuestion?.prompt ?? "Final SHIP handoff summary"}
+                    {composerQuestion}
                   </div>
                   <textarea
                     aria-label={activeQuestion ? "Answer current planning question" : "Write SHIP handoff summary"}
@@ -1576,7 +1623,9 @@ export function PlanBuilderView({
                   ? "Submit composer answer"
                   : composerCanRecordShipSummary
                     ? "Record composer ship summary"
-                    : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
+                    : composerCanParkIdea && composerHasDraft
+                      ? "Park composer idea"
+                      : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
               }
             >
               <ArrowUpIcon />
@@ -1784,6 +1833,7 @@ export function PlanBuilderView({
                 <div className="plan-memory__title">Idea pool</div>
                 {snapshot.parkedItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
+                  const sourceLabel = question?.label ?? (item.sourceType === "composer" ? item.sourcePrompt : item.sourceQuestionId);
                   const proposal = changeProposalsBySource.get(item.id);
                   const isDraftingProposal = draftingIdeaId === item.id;
                   return (
@@ -1793,7 +1843,7 @@ export function PlanBuilderView({
                       key={item.id}
                     >
                       <div className="plan-memory__item-header">
-                        <span>{question?.label ?? item.sourceQuestionId}</span>
+                        <span>{sourceLabel}</span>
                         <small data-testid="plan-idea-status">{formatIdeaReviewStatus(item.reviewStatus)}</small>
                       </div>
                       <p>{item.text}</p>

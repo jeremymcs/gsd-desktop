@@ -609,6 +609,68 @@ test("starts EXECUTE from the Plan Builder composer handoff", async () => {
   }
 });
 
+test("parks later-phase idea from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-later-idea");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromQuestionCards(window, "Composer later idea plan");
+    await window.getByTestId("start-execution-button").click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("Park a planning note or change request");
+    await window.getByTestId("plan-composer-textarea").fill("Consider a post-ship audit task.");
+    await window.getByLabel("Park composer idea").click();
+
+    await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: "Consider a post-ship audit task." });
+    await expect(idea).toContainText("Composer note captured during EXECUTE");
+    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Parked");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer later idea plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        answerCount: plan?.answers.length ?? -1,
+        parkedText: plan?.parkedItems.at(-1)?.text ?? "",
+        parkedSource: plan?.parkedItems.at(-1)?.sourceType ?? "",
+      };
+    }).toEqual({
+      activePhase: "execute",
+      answerCount: discussAnswers.length,
+      parkedText: "Consider a post-ship audit task.",
+      parkedSource: "composer",
+    });
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer later idea plan");
+    await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
+    await expect(window.getByTestId("plan-idea-item").filter({ hasText: "Consider a post-ship audit task." })).toBeVisible();
+  } finally {
+    await harness.close();
+  }
+});
+
 test("starts VERIFY from the Plan Builder composer handoff", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-start-verify");
