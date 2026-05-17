@@ -317,6 +317,7 @@ export function PlanBuilderView({
   const composerReviewItem = snapshot?.parkedItems.find(
     (item) => item.id === composerReviewItemId && item.sourceType === "composer",
   );
+  const composerReviewProposal = composerReviewItem ? changeProposalsBySource.get(composerReviewItem.id) : undefined;
   const modelOptions = useMemo(() => buildModelOptions(runtime), [runtime]);
   const answerActionDisabled = !activeQuestion || !answerDraft.trim() || submitting;
 
@@ -1621,6 +1622,16 @@ export function PlanBuilderView({
                 >
                   Dismiss
                 </button>
+                {composerReviewItem.reviewStatus === "promotion-ready" ? (
+                  <button
+                    className="plan-inline-button"
+                    disabled={submitting || Boolean(composerReviewProposal)}
+                    onClick={() => startDraftChangeProposal(composerReviewItem)}
+                    type="button"
+                  >
+                    {composerReviewProposal ? "Drafted" : "Draft change"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}

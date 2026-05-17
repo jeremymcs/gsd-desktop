@@ -735,6 +735,71 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
   }
 });
 
+test("starts a change draft from a prepared composer idea", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-change-draft");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+  const ideaText = "Add retry budget review before verification.";
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromQuestionCards(window, "Composer change draft plan");
+    await window.getByTestId("start-execution-button").click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await window.getByTestId("plan-composer-textarea").fill(ideaText);
+    await window.getByLabel("Park composer idea").click();
+
+    const review = window.getByTestId("plan-composer-parked-review");
+    await review.getByRole("button", { name: "Prepare" }).click();
+    await expect(review.getByRole("button", { name: "Draft change" })).toBeEnabled();
+    await review.getByRole("button", { name: "Draft change" }).click();
+
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
+    await idea.getByTestId("plan-change-title-input").fill("Retry budget change");
+    await idea.getByRole("button", { name: "Save draft" }).click();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
+    await expect(review.getByRole("button", { name: "Drafted" })).toBeDisabled();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer change draft plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        proposalTitle: plan?.changeProposals.at(-1)?.title ?? "",
+      };
+    }).toEqual({
+      activePhase: "execute",
+      proposalTitle: "Retry budget change",
+    });
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer change draft plan");
+    await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
+  } finally {
+    await harness.close();
+  }
+});
+
 test("starts VERIFY from the Plan Builder composer handoff", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-start-verify");
