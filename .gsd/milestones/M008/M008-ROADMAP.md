@@ -17,7 +17,7 @@
 - [x] **S01: Phase Draft Model and Validation** `risk:medium` `depends:[M007]`
   > After this: PLAN proposal JSON includes top-level phase rows, backward-compatible parsing derives phases for old JSON, and validation blocks invalid phase references.
 
-- [ ] **S02: Phase Editor and Assignment UI** `risk:medium` `depends:[S01]`
+- [x] **S02: Phase Editor and Assignment UI** `risk:medium` `depends:[S01]`
   > After this: users can add, edit, delete, and assign phases from the PLAN editor instead of typing an unvalidated milestone phase.
 
 - [ ] **S03: Phase-Aware Projections and Restart Coverage** `risk:medium` `depends:[S01,S02]`

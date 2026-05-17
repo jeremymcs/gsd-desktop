@@ -32,6 +32,7 @@ import type {
   HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
   PlanningMilestoneDraft,
+  PlanningPhaseDraft,
   PlanningPlanProposalDraft,
   PlanningProjectionSummary,
   PlanningSliceDraft,
@@ -847,6 +848,48 @@ export function PlanBuilderView({
     }));
   };
 
+  const updatePhase = (phaseIndex: number, patch: Partial<PlanningPhaseDraft>) => {
+    setPlanProposal((current) => ({
+      ...current,
+      phases: current.phases.map((phase, index) => (index === phaseIndex ? { ...phase, ...patch } : phase)),
+    }));
+  };
+
+  const addPhase = () => {
+    setPlanProposal((current) => {
+      const phaseId = nextPlanId("P", current.phases.map((phase) => phase.id));
+      return {
+        ...current,
+        phases: [
+          ...current.phases,
+          {
+            id: phaseId,
+            title: "New phase",
+            goal: "Define this phase goal.",
+          },
+        ],
+      };
+    });
+  };
+
+  const removePhase = (phaseIndex: number) => {
+    setPlanProposal((current) => {
+      if (current.phases.length <= 1) {
+        return current;
+      }
+      const removedPhase = current.phases[phaseIndex];
+      const phases = current.phases.filter((_phase, index) => index !== phaseIndex);
+      const fallbackPhaseId = phases[0]?.id ?? "";
+      return {
+        ...current,
+        phases,
+        milestones: current.milestones.map((milestone) =>
+          milestone.phase === removedPhase?.id ? { ...milestone, phase: fallbackPhaseId } : milestone,
+        ),
+      };
+    });
+  };
+
   const updateSlice = (milestoneIndex: number, sliceIndex: number, patch: Partial<PlanningSliceDraft>) => {
     setPlanProposal((current) => ({
       ...current,
@@ -1295,6 +1338,7 @@ export function PlanBuilderView({
                 submitting={submitting}
                 validationIssues={planValidationIssues}
                 onAddMilestone={addMilestone}
+                onAddPhase={addPhase}
                 onAddSlice={addSlice}
                 onAddTask={addTask}
                 onBoundaryMapChange={(value) => setPlanProposal((current) => ({ ...current, boundaryMap: value }))}
@@ -1303,10 +1347,12 @@ export function PlanBuilderView({
                 onRegenerateProjections={regenerateProjections}
                 onStartExecution={startExecution}
                 onRemoveMilestone={removeMilestone}
+                onRemovePhase={removePhase}
                 onRemoveSlice={removeSlice}
                 onRemoveTask={removeTask}
                 onReviewPlan={reviewPlan}
                 onUpdateMilestone={updateMilestone}
+                onUpdatePhase={updatePhase}
                 onUpdateSlice={updateSlice}
                 onUpdateTask={updateTask}
               />
@@ -1960,6 +2006,7 @@ function PlanProposalEditor({
   submitting,
   validationIssues,
   onAddMilestone,
+  onAddPhase,
   onAddSlice,
   onAddTask,
   onBoundaryMapChange,
@@ -1968,10 +2015,12 @@ function PlanProposalEditor({
   onRegenerateProjections,
   onStartExecution,
   onRemoveMilestone,
+  onRemovePhase,
   onRemoveSlice,
   onRemoveTask,
   onReviewPlan,
   onUpdateMilestone,
+  onUpdatePhase,
   onUpdateSlice,
   onUpdateTask,
 }: {
@@ -1985,6 +2034,7 @@ function PlanProposalEditor({
   readonly submitting: boolean;
   readonly validationIssues: readonly { readonly id: string; readonly path: string; readonly message: string }[];
   readonly onAddMilestone: () => void;
+  readonly onAddPhase: () => void;
   readonly onAddSlice: (milestoneIndex: number) => void;
   readonly onAddTask: (milestoneIndex: number, sliceIndex: number) => void;
   readonly onBoundaryMapChange: (value: string) => void;
@@ -1993,10 +2043,12 @@ function PlanProposalEditor({
   readonly onRegenerateProjections: () => void;
   readonly onStartExecution: () => void;
   readonly onRemoveMilestone: (milestoneIndex: number) => void;
+  readonly onRemovePhase: (phaseIndex: number) => void;
   readonly onRemoveSlice: (milestoneIndex: number, sliceIndex: number) => void;
   readonly onRemoveTask: (milestoneIndex: number, sliceIndex: number, taskIndex: number) => void;
   readonly onReviewPlan: (output: GeneratedOutputRecord, status: "accepted" | "rejected") => void;
   readonly onUpdateMilestone: (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => void;
+  readonly onUpdatePhase: (phaseIndex: number, patch: Partial<PlanningPhaseDraft>) => void;
   readonly onUpdateSlice: (milestoneIndex: number, sliceIndex: number, patch: Partial<PlanningSliceDraft>) => void;
   readonly onUpdateTask: (
     milestoneIndex: number,
@@ -2016,7 +2068,7 @@ function PlanProposalEditor({
       <div className="plan-depth-card plan-depth-card--complete">
         <div className="plan-depth-card__eyebrow">PLAN {formatStageStatus(roadmapStatus)}</div>
         <h2>Build the execution plan</h2>
-        <p>Structure milestones, slices, tasks, dependencies, and boundaries before approval.</p>
+        <p>Structure phases, milestones, slices, tasks, dependencies, and boundaries before approval.</p>
       </div>
 
       {acceptedPlanOutputs.length > 0 ? (
@@ -2069,6 +2121,64 @@ function PlanProposalEditor({
           />
         </label>
 
+        <section className="plan-roadmap-list" data-testid="plan-phase-editor">
+          <div className="plan-roadmap-card">
+            <div className="plan-roadmap-card__header">
+              <span>Phases</span>
+              <button
+                className="plan-inline-button"
+                data-testid="add-plan-phase-button"
+                onClick={onAddPhase}
+                type="button"
+              >
+                Add phase
+              </button>
+            </div>
+            {planProposal.phases.map((phase, phaseIndex) => (
+              <div className="plan-roadmap-nested" data-testid="plan-phase-row" key={`${phase.id}-${phaseIndex}`}>
+                <div className="plan-roadmap-card__header">
+                  <span>{phase.id || `P${phaseIndex + 1}`}</span>
+                  <button
+                    className="plan-inline-button"
+                    data-testid="delete-plan-phase-button"
+                    disabled={planProposal.phases.length <= 1}
+                    onClick={() => onRemovePhase(phaseIndex)}
+                    type="button"
+                  >
+                    Delete phase
+                  </button>
+                </div>
+                <div className="plan-roadmap-grid">
+                  <label className="plan-roadmap-form__field">
+                    <span>Phase ID</span>
+                    <input
+                      data-testid="plan-phase-id-input"
+                      onChange={(event) => onUpdatePhase(phaseIndex, { id: event.target.value })}
+                      value={phase.id}
+                    />
+                  </label>
+                  <label className="plan-roadmap-form__field">
+                    <span>Phase title</span>
+                    <input
+                      data-testid="plan-phase-title-input"
+                      onChange={(event) => onUpdatePhase(phaseIndex, { title: event.target.value })}
+                      value={phase.title}
+                    />
+                  </label>
+                </div>
+                <label className="plan-roadmap-form__field">
+                  <span>Phase goal</span>
+                  <textarea
+                    data-testid="plan-phase-goal-textarea"
+                    onChange={(event) => onUpdatePhase(phaseIndex, { goal: event.target.value })}
+                    value={phase.goal}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <div className="plan-roadmap-list">
           {planProposal.milestones.map((milestone, milestoneIndex) => (
             <article className="plan-roadmap-card" key={`${milestone.id}-${milestoneIndex}`}>
@@ -2093,10 +2203,20 @@ function PlanProposalEditor({
                 </label>
                 <label className="plan-roadmap-form__field">
                   <span>Phase</span>
-                  <input
+                  <select
+                    data-testid={milestoneIndex === 0 ? "plan-milestone-phase-select" : undefined}
                     onChange={(event) => onUpdateMilestone(milestoneIndex, { phase: event.target.value })}
                     value={milestone.phase}
-                  />
+                  >
+                    {planProposal.phases.some((phase) => phase.id === milestone.phase) || !milestone.phase ? null : (
+                      <option value={milestone.phase}>Unknown: {milestone.phase}</option>
+                    )}
+                    {planProposal.phases.map((phase) => (
+                      <option key={`${phase.id}-${phase.title}`} value={phase.id}>
+                        {phase.id}: {phase.title}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <label className="plan-roadmap-form__field">

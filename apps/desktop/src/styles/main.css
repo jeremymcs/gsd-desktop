@@ -2733,6 +2733,7 @@
 }
 
 .plan-roadmap-form__field input,
+.plan-roadmap-form__field select,
 .plan-roadmap-form__field textarea {
   width: 100%;
   border: 1px solid #30343d;
@@ -2742,7 +2743,8 @@
   font: inherit;
 }
 
-.plan-roadmap-form__field input {
+.plan-roadmap-form__field input,
+.plan-roadmap-form__field select {
   min-height: 38px;
   padding: 0 10px;
 }
@@ -3801,6 +3803,7 @@
 .canvas--plans .plan-question-card textarea,
 .canvas--plans .plan-memory__editor textarea,
 .canvas--plans .plan-roadmap-form__field input,
+.canvas--plans .plan-roadmap-form__field select,
 .canvas--plans .plan-roadmap-form__field textarea,
 .canvas--plans .plan-execution-task-editor__field select,
 .canvas--plans .plan-execution-task-editor__field textarea,
