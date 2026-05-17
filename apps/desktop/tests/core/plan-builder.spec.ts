@@ -202,6 +202,7 @@ test("resolves saved follow-up guidance through answer revision", async () => {
     await window.getByRole("button", { name: "Save answer" }).click();
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
+    await expect(window.getByTestId("adaptive-guidance-rollup-summary")).toContainText("1 unresolved");
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await expect(nameMemory.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
     await expect(nameMemory.getByTestId("adaptive-follow-up-action")).toHaveText("Edit answer");
@@ -212,6 +213,7 @@ test("resolves saved follow-up guidance through answer revision", async () => {
 
     await expect(nameMemory).toContainText("Resolved launch plan");
     await expect(nameMemory.getByTestId("adaptive-follow-up")).toHaveCount(0);
+    await expect(window.getByTestId("adaptive-guidance-rollup")).toHaveCount(0);
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -271,6 +273,12 @@ test("labels weak requirements answers with requirement contract context", async
       .getByTestId("plan-answer-history")
       .locator(".plan-memory__item")
       .filter({ hasText: "Capabilities" });
+    const requirementsRollup = window
+      .getByTestId("adaptive-guidance-rollup-item")
+      .filter({ hasText: "DISCUSS / Requirements" });
+    await expect(window.getByTestId("adaptive-guidance-rollup-summary")).toContainText("1 unresolved");
+    await expect(requirementsRollup.getByTestId("adaptive-guidance-rollup-count")).toHaveText("1 medium");
+    await expect(requirementsRollup.getByTestId("adaptive-guidance-rollup-signals")).toContainText("R001");
     await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");
     await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-severity")).toHaveText("Medium signal");
     await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-signals")).toContainText("R001");

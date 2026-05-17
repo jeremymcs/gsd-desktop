@@ -146,6 +146,14 @@ interface PlanBuilderViewProps {
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
 
+interface GuidanceRollupItem {
+  readonly stage: DiscussStage;
+  readonly total: number;
+  readonly high: number;
+  readonly medium: number;
+  readonly signals: readonly string[];
+}
+
 export function PlanBuilderView({
   workspaces,
   selectedWorkspaceId,
@@ -215,6 +223,20 @@ export function PlanBuilderView({
   const activeFollowUp = useMemo(
     () => buildAdaptiveFollowUpForDraft(activeQuestion, answerDraft, { requirements: requirementRows }),
     [activeQuestion, answerDraft, requirementRows],
+  );
+  const followUpsByAnswerId = useMemo(() => {
+    const next = new Map<string, AdaptiveFollowUp>();
+    for (const answer of latestAnswers) {
+      const followUp = buildAdaptiveFollowUpForAnswer(answer, { requirements: requirementRows });
+      if (followUp) {
+        next.set(answer.id, followUp);
+      }
+    }
+    return next;
+  }, [latestAnswers, requirementRows]);
+  const guidanceRollup = useMemo(
+    () => buildGuidanceRollup(latestAnswers, followUpsByAnswerId),
+    [followUpsByAnswerId, latestAnswers],
   );
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
@@ -1438,6 +1460,8 @@ export function PlanBuilderView({
               </div>
             </div>
 
+            {guidanceRollup.length > 0 ? <GuidanceRollupCard items={guidanceRollup} /> : null}
+
             {latestAnswers.length > 0 ? (
               <div className="plan-memory" data-testid="plan-answer-history">
                 <div className="plan-memory__title">Discussion memory</div>
@@ -1445,7 +1469,7 @@ export function PlanBuilderView({
                   const question = getDiscussQuestion(answer.questionId);
                   const prompt = answer.prompt || question?.prompt;
                   const isEditing = editingAnswerId === answer.id;
-                  const followUp = buildAdaptiveFollowUpForAnswer(answer, { requirements: requirementRows });
+                  const followUp = followUpsByAnswerId.get(answer.id);
                   return (
                     <article className="plan-memory__item" key={answer.id}>
                       <div className="plan-memory__item-header">
@@ -1697,6 +1721,48 @@ function AdaptiveFollowUpCard({
   );
 }
 
+function GuidanceRollupCard({ items }: { readonly items: readonly GuidanceRollupItem[] }) {
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+  const high = items.reduce((sum, item) => sum + item.high, 0);
+  return (
+    <div className="plan-memory plan-guidance-rollup" data-testid="adaptive-guidance-rollup">
+      <div className="plan-memory__title">Guidance rollup</div>
+      <article className="plan-memory__item" data-testid="adaptive-guidance-rollup-summary">
+        <div className="plan-memory__item-header">
+          <span>DISCUSS readiness</span>
+          <small>{total} unresolved</small>
+        </div>
+        <p>
+          {high > 0
+            ? `${high} high-signal answer${high === 1 ? "" : "s"} should be revised before later phases trust them.`
+            : "Medium-signal answers should be tightened before later phases trust them."}
+        </p>
+      </article>
+      {items.map((item) => (
+        <article
+          className="plan-memory__item plan-guidance-rollup__item"
+          data-testid="adaptive-guidance-rollup-item"
+          key={item.stage}
+        >
+          <div className="plan-memory__item-header">
+            <span data-testid="adaptive-guidance-rollup-stage">DISCUSS / {stageLabel(item.stage)}</span>
+            <small data-testid="adaptive-guidance-rollup-count">{formatGuidanceRollupCount(item)}</small>
+          </div>
+          <p>
+            {item.total} answer{item.total === 1 ? "" : "s"} need{item.total === 1 ? "s" : ""} revision before moving
+            forward.
+          </p>
+          <div className="plan-follow-up__signals" data-testid="adaptive-guidance-rollup-signals">
+            {item.signals.map((signal) => (
+              <span key={signal}>{signal}</span>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function RequirementsContractCard({
   draftCount,
   requirements,
@@ -1747,6 +1813,76 @@ function RequirementsContractCard({
       ))}
     </div>
   );
+}
+
+function buildGuidanceRollup(
+  answers: readonly AnswerRecord[],
+  followUpsByAnswerId: ReadonlyMap<string, AdaptiveFollowUp>,
+): readonly GuidanceRollupItem[] {
+  const rollupByStage = new Map<
+    DiscussStage,
+    {
+      high: number;
+      medium: number;
+      signals: Set<string>;
+      total: number;
+    }
+  >();
+
+  for (const answer of answers) {
+    if (!isDiscussStage(answer.stage)) {
+      continue;
+    }
+    const followUp = followUpsByAnswerId.get(answer.id);
+    if (!followUp) {
+      continue;
+    }
+    const current =
+      rollupByStage.get(answer.stage) ??
+      {
+        high: 0,
+        medium: 0,
+        signals: new Set<string>(),
+        total: 0,
+      };
+    current.total += 1;
+    if (followUp.severity === "high") {
+      current.high += 1;
+    } else {
+      current.medium += 1;
+    }
+    for (const signal of followUp.signals) {
+      current.signals.add(signal);
+    }
+    rollupByStage.set(answer.stage, current);
+  }
+
+  return discussStageOrder.flatMap((stage) => {
+    const item = rollupByStage.get(stage);
+    if (!item) {
+      return [];
+    }
+    return [
+      {
+        stage,
+        total: item.total,
+        high: item.high,
+        medium: item.medium,
+        signals: [...item.signals].slice(0, 4),
+      },
+    ];
+  });
+}
+
+function formatGuidanceRollupCount(item: GuidanceRollupItem): string {
+  const parts = [];
+  if (item.high > 0) {
+    parts.push(`${item.high} high`);
+  }
+  if (item.medium > 0) {
+    parts.push(`${item.medium} medium`);
+  }
+  return parts.join(" / ");
 }
 
 function PlanProposalEditor({
