@@ -234,6 +234,52 @@ test("resolves saved follow-up guidance through answer revision", async () => {
   }
 });
 
+test("saves the active DISCUSS answer from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-answer");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer answer plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-composer-textarea").fill("Composer Driven Plan");
+    await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("Composer Driven Plan");
+    await window.getByLabel("Save answer from composer").click();
+
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await expect(window.getByTestId("plan-answer-history")).toContainText("Composer Driven Plan");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer answer plan",
+      )?.selectedPlan;
+      const answer = plan?.answers.find((entry) => entry.questionId === "project_title");
+      return {
+        answer: answer?.answer ?? "",
+        prompt: answer?.prompt ?? "",
+        loadBearing: answer?.loadBearing ?? false,
+      };
+    }).toEqual({
+      answer: "Composer Driven Plan",
+      prompt: "What should we call this project?",
+      loadBearing: true,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("labels weak requirements answers with requirement contract context", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-requirement-guidance");

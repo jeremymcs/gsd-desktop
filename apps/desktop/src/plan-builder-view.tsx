@@ -1406,14 +1406,36 @@ export function PlanBuilderView({
             ) : null}
           </div>
 
-          <footer className="plan-composer" aria-label="Plan prompt composer">
+          <form
+            className="plan-composer"
+            aria-label="Plan prompt composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              recordAnswer(true);
+            }}
+          >
             <div className="plan-composer__field">
-              <span>{composerStatus}</span>
+              {activeQuestion ? (
+                <textarea
+                  aria-label="Answer current planning question"
+                  data-testid="plan-composer-textarea"
+                  onChange={(event) => setAnswerDraft(event.target.value)}
+                  placeholder={activeQuestion.prompt}
+                  value={answerDraft}
+                />
+              ) : (
+                <span>{composerStatus}</span>
+              )}
             </div>
-            <button className="plan-composer__send" type="button" disabled aria-label="Start planning">
+            <button
+              className="plan-composer__send"
+              type="submit"
+              disabled={!activeQuestion || !answerDraft.trim() || submitting}
+              aria-label="Save answer from composer"
+            >
               <ArrowUpIcon />
             </button>
-          </footer>
+          </form>
         </div>
 
         <aside className="plan-workbench__pane plan-workbench__pane--side">

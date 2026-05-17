@@ -3311,6 +3311,23 @@
   white-space: nowrap;
 }
 
+.plan-composer__field textarea {
+  width: 100%;
+  min-height: 38px;
+  max-height: 120px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.35;
+  resize: vertical;
+  outline: none;
+}
+
+.plan-composer__field textarea::placeholder {
+  color: #8f96a3;
+}
+
 .plan-composer__send {
   width: 46px;
   height: 46px;
@@ -3802,6 +3819,7 @@
 .canvas--plans .plan-research-form__field textarea,
 .canvas--plans .plan-question-card textarea,
 .canvas--plans .plan-memory__editor textarea,
+.canvas--plans .plan-composer__field textarea,
 .canvas--plans .plan-roadmap-form__field input,
 .canvas--plans .plan-roadmap-form__field select,
 .canvas--plans .plan-roadmap-form__field textarea,
@@ -3969,6 +3987,10 @@
 }
 
 .canvas--plans .plan-guidance-card__meta dd span {
+  color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-composer__field textarea::placeholder {
   color: var(--plan-muted-text);
 }
 
