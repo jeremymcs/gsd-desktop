@@ -213,6 +213,7 @@ export function PlanBuilderView({
   const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const changeDraftTitleInputRef = useRef<HTMLInputElement | null>(null);
   const snapshot = planningState?.selectedPlan;
   const activeQuestion = getActiveDiscussQuestion(snapshot);
   const activePlanStage: PlanStage = snapshot?.activeStage ?? "project";
@@ -343,6 +344,16 @@ export function PlanBuilderView({
   useEffect(() => {
     setResearchReadinessAcknowledged(false);
   }, [readinessSignature, snapshot?.id]);
+
+  useEffect(() => {
+    if (!draftingIdeaId) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      changeDraftTitleInputRef.current?.scrollIntoView({ block: "center" });
+      changeDraftTitleInputRef.current?.focus();
+    });
+  }, [draftingIdeaId]);
 
   useEffect(() => {
     if (!snapshot || !researchStarted) {
@@ -1959,6 +1970,7 @@ export function PlanBuilderView({
                             <input
                               data-testid="plan-change-title-input"
                               onChange={(event) => setChangeProposalTitleDraft(event.target.value)}
+                              ref={changeDraftTitleInputRef}
                               value={changeProposalTitleDraft}
                             />
                           </label>

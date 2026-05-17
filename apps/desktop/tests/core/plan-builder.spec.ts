@@ -761,7 +761,9 @@ test("starts a change draft from a prepared composer idea", async () => {
 
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
-    await idea.getByTestId("plan-change-title-input").fill("Retry budget change");
+    const titleInput = idea.getByTestId("plan-change-title-input");
+    await expect(titleInput).toBeFocused();
+    await titleInput.fill("Retry budget change");
     await idea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
     await expect(review.getByRole("button", { name: "Drafted" })).toBeDisabled();

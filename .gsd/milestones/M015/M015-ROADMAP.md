@@ -19,6 +19,9 @@
 - [x] **S02: Composer Change-Draft Handoff** `risk:medium` `depends:[S01]`
   > After this: a prepared composer idea can open the existing change-draft form directly from the composer follow-up.
 
+- [x] **S03: Composer Draft Focus Handoff** `risk:low` `depends:[S02]`
+  > After this: opening a change draft from the composer moves focus directly into the existing draft form.
+
 ## Boundary Map
 
 ### M014 -> S01
@@ -36,3 +39,11 @@ Produces:
 
 Consumes:
   composer change-draft handoff -> opens the existing draft form without replacing the current change-control workflow
+
+### S02 -> S03
+
+Produces:
+  opened change-draft form -> existing idea-pool editor visible after composer action
+
+Consumes:
+  focus handoff -> keyboard continues in the draft form without forcing the user to find the side-pane editor
