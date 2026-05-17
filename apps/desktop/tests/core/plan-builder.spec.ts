@@ -51,6 +51,43 @@ async function completeDiscussFromQuestionCard(window: Page): Promise<void> {
   await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
 }
 
+async function createAcceptedPlanFromQuestionCards(window: Page, planName: string): Promise<void> {
+  await window.getByRole("button", { name: "Plans", exact: true }).click();
+  await window.getByTestId("plan-name-input").fill(planName);
+  await window.getByRole("button", { name: "Create plan" }).click();
+  await completeDiscussFromQuestionCard(window);
+  await window.getByRole("button", { name: "Start research" }).click();
+  await window.getByTestId("research-title-input").fill(`${planName} research`);
+  await window.getByTestId("research-content-textarea").fill("Research accepted before composer completion handoff.");
+  await window.getByRole("button", { name: "Stage research" }).click();
+  await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
+  await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+  await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
+  await window.getByRole("button", { name: "Stage plan" }).click();
+  await window
+    .getByTestId("plan-output-proposed")
+    .locator(".plan-research-output")
+    .filter({ hasText: "Proposed" })
+    .getByRole("button", { name: "Accept plan" })
+    .click();
+  await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
+}
+
+async function saveDoneExecutionEvidenceForAllTasks(window: Page): Promise<void> {
+  const tasks = window.getByTestId("execution-task");
+  const taskCount = await tasks.count();
+  expect(taskCount).toBeGreaterThan(0);
+
+  for (let index = 0; index < taskCount; index += 1) {
+    const task = tasks.nth(index);
+    await task.getByTestId("task-status-select").selectOption("done");
+    await task.getByTestId("task-note-textarea").fill(`Task ${index + 1} completed.`);
+    await task.getByTestId("task-evidence-textarea").fill(`Evidence ${index + 1} saved from EXECUTE.`);
+    await task.getByTestId("update-task-execution-button").click();
+    await expect(task.getByTestId("task-status-pill")).toContainText("Done");
+  }
+}
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };
@@ -538,6 +575,48 @@ test("starts EXECUTE from the Plan Builder composer handoff", async () => {
       };
     }).toEqual({
       activePhase: "execute",
+      activeStage: "task",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("starts VERIFY from the Plan Builder composer handoff", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-start-verify");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromQuestionCards(window, "Composer verify handoff plan");
+    await window.getByTestId("start-execution-button").click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await expect(window.getByText("Complete every EXECUTE task with evidence before VERIFY")).toBeVisible();
+    await expect(window.getByLabel("Advance composer to VERIFY")).toHaveCount(0);
+
+    await saveDoneExecutionEvidenceForAllTasks(window);
+    await expect(window.getByText("Start VERIFY when all task evidence is ready")).toBeVisible();
+    await window.getByLabel("Advance composer to VERIFY").click();
+
+    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer verify handoff plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        activeStage: plan?.activeStage ?? "",
+      };
+    }).toEqual({
+      activePhase: "verify",
       activeStage: "task",
     });
   } finally {
