@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type {
   AnswerRecord,
@@ -208,6 +208,7 @@ export function PlanBuilderView({
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
   const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const snapshot = planningState?.selectedPlan;
   const activeQuestion = getActiveDiscussQuestion(snapshot);
   const activePlanStage: PlanStage = snapshot?.activeStage ?? "project";
@@ -289,6 +290,10 @@ export function PlanBuilderView({
     const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id) : undefined;
     setAnswerDraft(existingAnswer?.loadBearing ? existingAnswer.answer : "");
   }, [activeQuestion?.id, latestAnswersByQuestion, snapshot?.id]);
+
+  useEffect(() => {
+    composerTextareaRef.current?.focus();
+  }, [activeQuestion?.id]);
 
   useEffect(() => {
     setEditingAnswerId("");
@@ -413,6 +418,9 @@ export function PlanBuilderView({
         if (!loadBearing) {
           setAnswerDraft("");
         }
+        requestAnimationFrame(() => {
+          composerTextareaRef.current?.focus();
+        });
       })
       .finally(() => {
         setSubmitting(false);
@@ -1426,6 +1434,7 @@ export function PlanBuilderView({
                     data-testid="plan-composer-textarea"
                     onChange={(event) => setAnswerDraft(event.target.value)}
                     placeholder="Answer with the context future planning decisions should remember."
+                    ref={composerTextareaRef}
                     value={answerDraft}
                   />
                 </>

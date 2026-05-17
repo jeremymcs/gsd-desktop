@@ -16,7 +16,7 @@
 - [x] **S01: Composer Question Context** `risk:low` `depends:[M009]`
   > After this: users can still see the active DISCUSS question inside the composer after they begin typing.
 
-- [ ] **S02: Composer Focus Retention** `risk:medium` `depends:[S01]`
+- [x] **S02: Composer Focus Retention** `risk:medium` `depends:[S01]`
   > After this: saving or parking from the composer returns focus to the composer for the current or next question.
 
 - [ ] **S03: Composer Keyboard Submit** `risk:medium` `depends:[S01,S02]`
