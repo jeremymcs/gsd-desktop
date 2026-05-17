@@ -32,6 +32,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
@@ -168,6 +169,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.proposePlanningPlan, input) as Promise<DesktopAppState>,
   reviewPlanningPlan: (input: ReviewPlanningPlanInput) =>
     ipcRenderer.invoke(desktopIpc.reviewPlanningPlan, input) as Promise<DesktopAppState>,
+  regeneratePlanningProjections: (input: RegeneratePlanningProjectionsInput) =>
+    ipcRenderer.invoke(desktopIpc.regeneratePlanningProjections, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>
     ipcRenderer.invoke(desktopIpc.syncCurrentWorkspace) as Promise<DesktopAppState>,
   selectSession: (target: WorkspaceSessionTarget) =>

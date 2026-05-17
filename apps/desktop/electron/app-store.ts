@@ -50,6 +50,7 @@ import {
   type ProposePlanningResearchInput,
   type QueuedComposerMessage,
   type RecordPlanningAnswerInput,
+  type RegeneratePlanningProjectionsInput,
   type ReviewPlanningPlanInput,
   type ReviewPlanningResearchInput,
   type RemoveWorktreeInput,
@@ -398,6 +399,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState> {
     return plans.reviewPlanningPlan(this, input);
+  }
+
+  async regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState> {
+    return plans.regeneratePlanningProjectionsForPlan(this, input);
   }
 
   /* ── Composer methods (delegated) ──────────────────────── */

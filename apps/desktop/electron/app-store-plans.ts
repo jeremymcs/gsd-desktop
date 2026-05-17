@@ -1,6 +1,8 @@
 import {
   openPlanningStore,
   planningDatabasePath,
+  ProjectionWriteConflictError,
+  regenerateProjections,
   type PlanEvent,
   type PlanListEntry,
   type PlanSnapshot,
@@ -12,9 +14,11 @@ import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  PlanningProjectionSummary,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
@@ -28,6 +32,7 @@ import {
   serializePlanProposal,
   validatePlanProposal,
 } from "../src/plan-builder-plan";
+import { buildPlanningProjectionInput } from "../src/plan-builder-projections";
 import {
   discussStageOrder,
   getDiscussQuestionsForStage,
@@ -472,7 +477,7 @@ export async function reviewPlanningPlan(
   }
 
   return store.withErrorHandling(async () => {
-    return withPlanningStore(workspace.path, (planningStore) => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
       let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       const output = snapshot.generatedOutputs.find((entry) => entry.id === input.outputId);
       if (!output || output.stage !== "roadmap") {
@@ -507,7 +512,42 @@ export async function reviewPlanningPlan(
         activeQuestionId: "",
       });
 
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      const projectionSummary =
+        input.status === "accepted" ? await writePlanningProjections(workspace.path, snapshot) : undefined;
+
+      return publishCurrentPlanningState(
+        store,
+        planningStore,
+        workspace.id,
+        workspace.path,
+        snapshot,
+        projectionSummary ? { projectionSummary } : {},
+      );
+    });
+  });
+}
+
+export async function regeneratePlanningProjectionsForPlan(
+  store: AppStoreInternals,
+  input: RegeneratePlanningProjectionsInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      const snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      const projectionSummary = await writePlanningProjections(
+        workspace.path,
+        snapshot,
+        input.allowLegacyOverwrite,
+      );
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
     });
   });
 }
@@ -606,6 +646,38 @@ function advanceDiscussStageAfterAnswer(
   });
 }
 
+async function writePlanningProjections(
+  workspacePath: string,
+  snapshot: PlanSnapshot,
+  allowLegacyOverwrite?: boolean,
+): Promise<PlanningProjectionSummary> {
+  const generatedAt = new Date().toISOString();
+  try {
+    const result = await regenerateProjections({
+      workspaceRoot: workspacePath,
+      projectionInput: buildPlanningProjectionInput(snapshot, generatedAt),
+      ...(allowLegacyOverwrite !== undefined ? { allowLegacyOverwrite } : {}),
+    });
+
+    return {
+      generatedAt,
+      written: result.written.length,
+      skipped: result.skipped.length,
+      conflicts: result.conflicts.map((conflict) => conflict.path),
+    };
+  } catch (error) {
+    if (error instanceof ProjectionWriteConflictError) {
+      return {
+        generatedAt,
+        written: 0,
+        skipped: 0,
+        conflicts: error.conflicts.map((conflict) => conflict.path),
+      };
+    }
+    throw error;
+  }
+}
+
 function resolveSelectedPlanId(
   plans: readonly { readonly id: string; readonly updatedAt: string }[],
   preferredPlanId: string | undefined,
@@ -622,9 +694,11 @@ function publishCurrentPlanningState(
   workspaceId: string,
   workspacePath: string,
   selectedPlan: PlanSnapshot | undefined,
+  options: { readonly projectionSummary?: PlanningProjectionSummary } = {},
 ): Promise<DesktopAppState> {
   return publishPlanningState(store, workspaceId, workspacePath, planningStore.listPlans(), selectedPlan, {
     activeView: "plans",
+    ...(options.projectionSummary ? { projectionSummary: options.projectionSummary } : {}),
   });
 }
 
@@ -634,7 +708,7 @@ async function publishPlanningState(
   workspacePath: string,
   plans: readonly PlanListEntry[],
   selectedPlan: PlanSnapshot | undefined,
-  options: { readonly activeView?: "plans" } = {},
+  options: { readonly activeView?: "plans"; readonly projectionSummary?: PlanningProjectionSummary } = {},
 ): Promise<DesktopAppState> {
   const planningState: WorkspacePlanningState = {
     workspaceId,
@@ -642,6 +716,7 @@ async function publishPlanningState(
     plans,
     ...(selectedPlan ? { selectedPlan } : {}),
     databasePath: planningDatabasePath(workspacePath),
+    ...(options.projectionSummary ? { projectionSummary: options.projectionSummary } : {}),
     loadedAt: new Date().toISOString(),
   };
 

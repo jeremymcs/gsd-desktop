@@ -18,6 +18,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
@@ -68,6 +69,7 @@ export const desktopIpc = {
   startPlanningPlan: "pi-gui:start-planning-plan",
   proposePlanningPlan: "pi-gui:propose-planning-plan",
   reviewPlanningPlan: "pi-gui:review-planning-plan",
+  regeneratePlanningProjections: "pi-gui:regenerate-planning-projections",
   syncCurrentWorkspace: "pi-gui:sync-current-workspace",
   selectSession: "pi-gui:select-session",
   archiveSession: "pi-gui:archive-session",
@@ -264,6 +266,7 @@ export interface PiDesktopApi {
   startPlanningPlan(input: StartPlanningPlanInput): Promise<DesktopAppState>;
   proposePlanningPlan(input: ProposePlanningPlanInput): Promise<DesktopAppState>;
   reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState>;
+  regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState>;
   syncCurrentWorkspace(): Promise<DesktopAppState>;
   selectSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;
   archiveSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;

@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
@@ -122,12 +122,23 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const proposedPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Proposed" });
     await proposedPlan.getByRole("button", { name: "Accept plan" }).click();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
+    await expect(window.getByTestId("projection-summary")).toContainText("Projections");
+    await access(join(workspacePath, ".gsd", "PROJECT.md"));
+    await access(join(workspacePath, ".gsd", "STATE.md"));
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await nameMemory.getByRole("button", { name: "Edit" }).click();
     await window.getByTestId("plan-revision-textarea").fill("Launch Control Revised");
     await nameMemory.getByRole("button", { name: "Save revision" }).click();
     await expect(nameMemory).toContainText("Launch Control Revised");
+    await window.getByTestId("regenerate-projections-button").click();
+    await expect(window.getByTestId("projection-summary")).toContainText("written");
+
+    const projectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
+    expect(projectProjection).toContain("pi-gui-plan-builder-generated");
+    expect(projectProjection).toContain("# Project: Launch Control Revised");
+    const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
+    expect(roadmapProjection).toContain("Plan Builder vertical slice");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -147,6 +158,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
+    const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
+    expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
     await expect.poll(async () =>
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
         (entry) =>

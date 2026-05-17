@@ -158,7 +158,15 @@ export interface WorkspacePlanningState {
   readonly plans: readonly PlanListEntry[];
   readonly selectedPlan?: PlanSnapshot;
   readonly databasePath?: string;
+  readonly projectionSummary?: PlanningProjectionSummary;
   readonly loadedAt: string;
+}
+
+export interface PlanningProjectionSummary {
+  readonly generatedAt: string;
+  readonly written: number;
+  readonly skipped: number;
+  readonly conflicts: readonly string[];
 }
 
 export interface CreatePlanningPlanInput {
@@ -278,6 +286,12 @@ export interface ReviewPlanningPlanInput {
   readonly expectedRevision: number;
   readonly outputId: string;
   readonly status: "accepted" | "rejected";
+}
+
+export interface RegeneratePlanningProjectionsInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly allowLegacyOverwrite?: boolean;
 }
 
 export interface DesktopAppState {

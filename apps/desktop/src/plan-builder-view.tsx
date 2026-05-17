@@ -6,11 +6,13 @@ import type {
   DesktopAppState,
   PlanningMilestoneDraft,
   PlanningPlanProposalDraft,
+  PlanningProjectionSummary,
   PlanningSliceDraft,
   PlanningTaskDraft,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
@@ -67,6 +69,7 @@ interface PlanBuilderViewProps {
   readonly onStartPlan: (input: StartPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onProposePlan: (input: ProposePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onReviewPlan: (input: ReviewPlanningPlanInput) => Promise<DesktopAppState>;
+  readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
 
 export function PlanBuilderView({
@@ -86,6 +89,7 @@ export function PlanBuilderView({
   onStartPlan,
   onProposePlan,
   onReviewPlan,
+  onRegenerateProjections,
 }: PlanBuilderViewProps) {
   const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
   const [planName, setPlanName] = useState("");
@@ -371,6 +375,19 @@ export function PlanBuilderView({
       expectedRevision: snapshot.revision,
       outputId: output.id,
       status,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const regenerateProjections = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onRegenerateProjections({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -751,6 +768,7 @@ export function PlanBuilderView({
                 lastError={lastError}
                 pendingPlanOutputs={pendingPlanOutputs}
                 planProposal={planProposal}
+                projectionSummary={planningState?.projectionSummary}
                 rejectedPlanOutputs={rejectedPlanOutputs}
                 roadmapStatus={roadmapStage?.status}
                 submitting={submitting}
@@ -761,6 +779,7 @@ export function PlanBuilderView({
                 onBoundaryMapChange={(value) => setPlanProposal((current) => ({ ...current, boundaryMap: value }))}
                 onIdeaPoolChange={(value) => setPlanProposal((current) => ({ ...current, ideaPool: value }))}
                 onProposePlan={proposePlan}
+                onRegenerateProjections={regenerateProjections}
                 onRemoveMilestone={removeMilestone}
                 onRemoveSlice={removeSlice}
                 onRemoveTask={removeTask}
@@ -998,6 +1017,7 @@ function PlanProposalEditor({
   lastError,
   pendingPlanOutputs,
   planProposal,
+  projectionSummary,
   rejectedPlanOutputs,
   roadmapStatus,
   submitting,
@@ -1008,6 +1028,7 @@ function PlanProposalEditor({
   onBoundaryMapChange,
   onIdeaPoolChange,
   onProposePlan,
+  onRegenerateProjections,
   onRemoveMilestone,
   onRemoveSlice,
   onRemoveTask,
@@ -1020,6 +1041,7 @@ function PlanProposalEditor({
   readonly lastError?: string;
   readonly pendingPlanOutputs: readonly GeneratedOutputRecord[];
   readonly planProposal: PlanningPlanProposalDraft;
+  readonly projectionSummary?: PlanningProjectionSummary;
   readonly rejectedPlanOutputs: readonly GeneratedOutputRecord[];
   readonly roadmapStatus?: StageStatus;
   readonly submitting: boolean;
@@ -1030,6 +1052,7 @@ function PlanProposalEditor({
   readonly onBoundaryMapChange: (value: string) => void;
   readonly onIdeaPoolChange: (value: string) => void;
   readonly onProposePlan: (event: FormEvent<HTMLFormElement>) => void;
+  readonly onRegenerateProjections: () => void;
   readonly onRemoveMilestone: (milestoneIndex: number) => void;
   readonly onRemoveSlice: (milestoneIndex: number, sliceIndex: number) => void;
   readonly onRemoveTask: (milestoneIndex: number, sliceIndex: number, taskIndex: number) => void;
@@ -1043,6 +1066,12 @@ function PlanProposalEditor({
     patch: Partial<PlanningTaskDraft>,
   ) => void;
 }) {
+  const projectionStatus = projectionSummary
+    ? projectionSummary.conflicts.length > 0
+      ? `${projectionSummary.conflicts.length} legacy file conflict${projectionSummary.conflicts.length === 1 ? "" : "s"}`
+      : `${projectionSummary.written} written / ${projectionSummary.skipped} unchanged`
+    : "Ready to regenerate generated Markdown files";
+
   return (
     <div className="plan-roadmap" data-testid="plan-proposal-panel">
       <div className="plan-depth-card plan-depth-card--complete">
@@ -1050,6 +1079,29 @@ function PlanProposalEditor({
         <h2>Build the execution plan</h2>
         <p>Structure milestones, slices, tasks, dependencies, and boundaries before approval.</p>
       </div>
+
+      {acceptedPlanOutputs.length > 0 ? (
+        <div
+          className={`plan-projection-card ${
+            projectionSummary?.conflicts.length ? "plan-projection-card--blocked" : ""
+          }`}
+          data-testid="projection-summary"
+        >
+          <div>
+            <strong>Projections</strong>
+            <span>{projectionStatus}</span>
+          </div>
+          <button
+            className="plan-secondary-button plan-secondary-button--compact"
+            data-testid="regenerate-projections-button"
+            disabled={submitting}
+            onClick={onRegenerateProjections}
+            type="button"
+          >
+            Regenerate projections
+          </button>
+        </div>
+      ) : null}
 
       <form className="plan-roadmap-form" onSubmit={onProposePlan}>
         <label className="plan-roadmap-form__field">

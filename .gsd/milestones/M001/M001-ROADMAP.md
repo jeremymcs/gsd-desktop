@@ -32,7 +32,7 @@
 - [x] **S06: PLAN Proposal, Editing, and Validation** `risk:high` `depends:[S01,S02,S03,S04,S05]`
   > After this: the app can propose milestones, slices, tasks, dependencies, and boundary maps, let the user edit them structurally, and block approval on lightweight validation failures.
 
-- [ ] **S07: End-to-End Desktop Verification** `risk:medium` `depends:[S02,S03,S04,S05,S06]`
+- [x] **S07: End-to-End Desktop Verification** `risk:medium` `depends:[S02,S03,S04,S05,S06]`
   > After this: the first Plan Builder milestone is proven on the real Electron surface, including restart persistence, projection files, manual regeneration, and packaged SQLite loading.
 
 ## Boundary Map

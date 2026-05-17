@@ -2123,6 +2123,9 @@ export default function App() {
               onStartPlan={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningPlan(input))}
               onProposePlan={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningPlan(input))}
               onReviewPlan={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningPlan(input))}
+              onRegenerateProjections={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))
+              }
             />
           ) : (
             <section className="canvas canvas--empty">
