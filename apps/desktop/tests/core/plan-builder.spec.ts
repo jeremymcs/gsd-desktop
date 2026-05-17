@@ -344,6 +344,48 @@ test("keeps focus in the Plan Builder composer after submit and park", async () 
   }
 });
 
+test("submits the active DISCUSS answer from the Plan Builder composer keyboard shortcut", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-keyboard");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer keyboard plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByTestId("plan-composer-textarea").fill("Keyboard Shortcut Plan");
+    await window.getByTestId("plan-composer-textarea").press("Control+Enter");
+
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await expect(window.getByTestId("plan-answer-history")).toContainText("Keyboard Shortcut Plan");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer keyboard plan",
+      )?.selectedPlan;
+      const answer = plan?.answers.find((entry) => entry.questionId === "project_title");
+      return {
+        answer: answer?.answer ?? "",
+        loadBearing: answer?.loadBearing ?? false,
+      };
+    }).toEqual({
+      answer: "Keyboard Shortcut Plan",
+      loadBearing: true,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-park");

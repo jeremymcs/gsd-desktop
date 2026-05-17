@@ -19,7 +19,7 @@
 - [x] **S02: Composer Focus Retention** `risk:medium` `depends:[S01]`
   > After this: saving or parking from the composer returns focus to the composer for the current or next question.
 
-- [ ] **S03: Composer Keyboard Submit** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Composer Keyboard Submit** `risk:medium` `depends:[S01,S02]`
   > After this: keyboard users can submit the active composer answer with a standard command/control-enter shortcut.
 
 ## Boundary Map

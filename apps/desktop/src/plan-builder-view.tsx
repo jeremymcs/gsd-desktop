@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type {
   AnswerRecord,
@@ -425,6 +425,14 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const submitComposerFromKeyboard = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) {
+      return;
+    }
+    event.preventDefault();
+    recordAnswer(true);
   };
 
   const confirmStage = () => {
@@ -1433,6 +1441,7 @@ export function PlanBuilderView({
                     aria-label="Answer current planning question"
                     data-testid="plan-composer-textarea"
                     onChange={(event) => setAnswerDraft(event.target.value)}
+                    onKeyDown={submitComposerFromKeyboard}
                     placeholder="Answer with the context future planning decisions should remember."
                     ref={composerTextareaRef}
                     value={answerDraft}
