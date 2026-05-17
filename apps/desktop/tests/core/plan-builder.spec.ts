@@ -104,6 +104,17 @@ async function savePassedVerificationForAllTasks(window: Page): Promise<void> {
   }
 }
 
+async function reachShipFromQuestionCards(window: Page, planName: string): Promise<void> {
+  await createAcceptedPlanFromQuestionCards(window, planName);
+  await window.getByTestId("start-execution-button").click();
+  await saveDoneExecutionEvidenceForAllTasks(window);
+  await window.getByLabel("Advance composer to VERIFY").click();
+  await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+  await savePassedVerificationForAllTasks(window);
+  await window.getByLabel("Advance composer to SHIP").click();
+  await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+}
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };
@@ -679,6 +690,40 @@ test("starts SHIP from the Plan Builder composer handoff", async () => {
       activePhase: "ship",
       activeStage: "task",
     });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("records SHIP summary from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-ship-summary");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await reachShipFromQuestionCards(window, "Composer ship summary plan");
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("Final SHIP handoff summary");
+    await window.getByTestId("plan-composer-textarea").fill("Composer closeout saved for the next session.");
+    await window.getByLabel("Record composer ship summary").click();
+
+    await expect(window.getByTestId("ship-summary-recorded")).toContainText(
+      "Composer closeout saved for the next session.",
+    );
+    await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer ship summary plan",
+      )?.selectedPlan;
+      return plan?.shipSummaries.at(-1)?.summary ?? "";
+    }).toBe("Composer closeout saved for the next session.");
   } finally {
     await harness.close();
   }

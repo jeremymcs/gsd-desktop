@@ -459,7 +459,7 @@ export function PlanBuilderView({
       return;
     }
     event.preventDefault();
-    recordAnswer(true);
+    submitComposerAction();
   };
 
   const confirmStage = () => {
@@ -868,8 +868,12 @@ export function PlanBuilderView({
     });
   };
 
-  const recordShipSummary = (summary: string) => {
+  const recordShipSummary = (summary: string, options?: { readonly clearComposer?: boolean }) => {
     if (!snapshot || submitting) {
+      return;
+    }
+    const trimmed = summary.trim();
+    if (!trimmed) {
       return;
     }
     setSubmitting(true);
@@ -877,10 +881,19 @@ export function PlanBuilderView({
       workspaceId: workspace.id,
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
-      summary,
-    }).finally(() => {
-      setSubmitting(false);
-    });
+      summary: trimmed,
+    })
+      .then(() => {
+        if (options?.clearComposer) {
+          setAnswerDraft("");
+          requestAnimationFrame(() => {
+            composerTextareaRef.current?.focus();
+          });
+        }
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
   };
 
   const updateMilestone = (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => {
@@ -1119,10 +1132,14 @@ export function PlanBuilderView({
     { label: "Plan", value: `${acceptedPlanOutputs.length}/${planOutputs.length}` },
     { label: "Revision", value: String(snapshot?.revision ?? 0) },
   ] as const;
+  const composerCanRecordShipSummary = !activeQuestion && shipStarted;
+  const latestShipSummary = snapshot?.shipSummaries.at(-1);
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
     : shipStarted
-      ? "SHIP gate is active; prepare the final handoff summary"
+      ? latestShipSummary
+        ? "SHIP summary saved; update the final handoff summary from the composer"
+        : "Write the final SHIP handoff summary in the composer"
     : verifyStarted
       ? verificationReadyForShip
         ? "Start SHIP when all task verifications pass"
@@ -1177,10 +1194,22 @@ export function PlanBuilderView({
                 }
               : undefined
     : undefined;
-  const composerSubmitDisabled = activeQuestion ? answerActionDisabled : !composerPhaseAction || composerPhaseAction.disabled;
+  const composerInputEnabled = Boolean(activeQuestion || composerCanRecordShipSummary);
+  const composerPlaceholder = activeQuestion
+    ? "Answer with the context future planning decisions should remember."
+    : "Write the final handoff summary for the next session.";
+  const composerSubmitDisabled = activeQuestion
+    ? answerActionDisabled
+    : composerCanRecordShipSummary
+      ? submitting || !answerDraft.trim()
+      : !composerPhaseAction || composerPhaseAction.disabled;
   const submitComposerAction = () => {
     if (activeQuestion) {
       recordAnswer(true);
+      return;
+    }
+    if (composerCanRecordShipSummary) {
+      recordShipSummary(answerDraft, { clearComposer: true });
       return;
     }
     composerPhaseAction?.run();
@@ -1507,18 +1536,18 @@ export function PlanBuilderView({
               submitComposerAction();
             }}
           >
-            <div className={`plan-composer__field ${activeQuestion ? "plan-composer__field--active" : ""}`}>
-              {activeQuestion ? (
+            <div className={`plan-composer__field ${composerInputEnabled ? "plan-composer__field--active" : ""}`}>
+              {composerInputEnabled ? (
                 <>
                   <div className="plan-composer__question" data-testid="plan-composer-question">
-                    {activeQuestion.prompt}
+                    {activeQuestion?.prompt ?? "Final SHIP handoff summary"}
                   </div>
                   <textarea
-                    aria-label="Answer current planning question"
+                    aria-label={activeQuestion ? "Answer current planning question" : "Write SHIP handoff summary"}
                     data-testid="plan-composer-textarea"
                     onChange={(event) => setAnswerDraft(event.target.value)}
                     onKeyDown={submitComposerFromKeyboard}
-                    placeholder="Answer with the context future planning decisions should remember."
+                    placeholder={composerPlaceholder}
                     ref={composerTextareaRef}
                     value={answerDraft}
                   />
@@ -1542,7 +1571,13 @@ export function PlanBuilderView({
               className="plan-composer__send"
               type="submit"
               disabled={composerSubmitDisabled}
-              aria-label={activeQuestion ? "Submit composer answer" : (composerPhaseAction?.ariaLabel ?? "Plan composer action")}
+              aria-label={
+                activeQuestion
+                  ? "Submit composer answer"
+                  : composerCanRecordShipSummary
+                    ? "Record composer ship summary"
+                    : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
+              }
             >
               <ArrowUpIcon />
             </button>
