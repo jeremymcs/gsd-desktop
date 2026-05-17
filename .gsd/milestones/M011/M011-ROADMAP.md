@@ -16,7 +16,7 @@
 - [x] **S01: Composer RESEARCH Handoff** `risk:medium` `depends:[M010]`
   > After this: a user can start RESEARCH from the bottom composer after DISCUSS gates are confirmed.
 
-- [ ] **S02: Composer PLAN Handoff** `risk:medium` `depends:[S01]`
+- [x] **S02: Composer PLAN Handoff** `risk:medium` `depends:[S01]`
   > After this: a user can start PLAN from the bottom composer after accepting research.
 
 - [ ] **S03: Composer EXECUTE Handoff** `risk:medium` `depends:[S02]`

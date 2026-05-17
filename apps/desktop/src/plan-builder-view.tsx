@@ -1111,12 +1111,20 @@ export function PlanBuilderView({
         : snapshot
           ? "DISCUSS memory is persisted in the planning database"
           : "Start with the project outcome, constraints, and users";
-  const composerPhaseAction = !activeQuestion && snapshot && allDiscussConfirmed && !researchStarted
-    ? {
-        ariaLabel: "Advance composer to RESEARCH",
-        disabled: submitting || (researchReadinessRequiresOverride && !researchReadinessAcknowledged),
-        run: startResearch,
-      }
+  const composerPhaseAction = !activeQuestion && snapshot && allDiscussConfirmed
+    ? !researchStarted
+      ? {
+          ariaLabel: "Advance composer to RESEARCH",
+          disabled: submitting || (researchReadinessRequiresOverride && !researchReadinessAcknowledged),
+          run: startResearch,
+        }
+      : acceptedResearchOutputs.length > 0 && !planStarted
+        ? {
+            ariaLabel: "Advance composer to PLAN",
+            disabled: submitting,
+            run: startPlan,
+          }
+        : undefined
     : undefined;
   const composerSubmitDisabled = activeQuestion ? answerActionDisabled : !composerPhaseAction || composerPhaseAction.disabled;
   const submitComposerAction = () => {

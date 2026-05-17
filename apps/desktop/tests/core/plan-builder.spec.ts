@@ -445,6 +445,52 @@ test("starts RESEARCH from the Plan Builder composer handoff", async () => {
   }
 });
 
+test("starts PLAN from the Plan Builder composer handoff", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-start-plan");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer plan handoff plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await completeDiscussFromQuestionCard(window);
+    await window.getByRole("button", { name: "Start research" }).click();
+    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
+    await window.getByTestId("research-title-input").fill("Composer handoff research");
+    await window.getByTestId("research-content-textarea").fill("Research accepted before composer PLAN handoff.");
+    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
+    await expect(window.getByTestId("plan-ready-card")).toBeVisible();
+    await expect(window.getByText("Start PLAN when you are ready to structure the roadmap")).toBeVisible();
+    await window.getByLabel("Advance composer to PLAN").click();
+
+    await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer plan handoff plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        activeStage: plan?.activeStage ?? "",
+      };
+    }).toEqual({
+      activePhase: "plan",
+      activeStage: "roadmap",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-park");
