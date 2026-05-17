@@ -1087,6 +1087,24 @@ export default function App() {
     snapshot?.activeView,
   ]);
 
+  useLayoutEffect(() => {
+    if (
+      disableTimelineVirtualization ||
+      snapshot?.activeView !== "threads" ||
+      !selectedSession ||
+      exactBottomRestoreSessionKeyRef.current !== selectedSessionKey
+    ) {
+      return;
+    }
+
+    scrollTimelineToBottom();
+    window.requestAnimationFrame(() => {
+      if (exactBottomRestoreSessionKeyRef.current === selectedSessionKey) {
+        scrollTimelineToBottom();
+      }
+    });
+  }, [disableTimelineVirtualization, scrollTimelineToBottom, selectedSession, selectedSessionKey, snapshot?.activeView]);
+
   useEffect(() => {
     setTreeModalState((current) =>
       current.open
