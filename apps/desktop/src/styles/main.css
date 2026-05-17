@@ -3305,15 +3305,34 @@
   font-weight: 540;
 }
 
+.plan-composer__field--active {
+  min-height: 78px;
+  align-items: stretch;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding-block: 10px;
+}
+
 .plan-composer__field span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.plan-composer__question {
+  overflow: hidden;
+  color: #d9dce3;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .plan-composer__field textarea {
   width: 100%;
-  min-height: 38px;
+  min-height: 32px;
   max-height: 120px;
   border: 0;
   background: transparent;
@@ -3777,6 +3796,10 @@
 }
 
 .canvas--plans .plan-memory__item .plan-memory__question {
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-composer__question {
   color: var(--plan-header-text);
 }
 

@@ -280,6 +280,35 @@ test("saves the active DISCUSS answer from the Plan Builder composer", async () 
   }
 });
 
+test("keeps the active DISCUSS question visible inside the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-question-context");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer question context plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-composer-textarea").fill("Question Stays Visible");
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("What should we call this project?");
+    await window.getByLabel("Submit composer answer").click();
+
+    await expect(window.getByTestId("plan-composer-question")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+  } finally {
+    await harness.close();
+  }
+});
+
 test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-park");

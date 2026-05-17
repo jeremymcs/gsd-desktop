@@ -1415,15 +1415,20 @@ export function PlanBuilderView({
               recordAnswer(true);
             }}
           >
-            <div className="plan-composer__field">
+            <div className={`plan-composer__field ${activeQuestion ? "plan-composer__field--active" : ""}`}>
               {activeQuestion ? (
-                <textarea
-                  aria-label="Answer current planning question"
-                  data-testid="plan-composer-textarea"
-                  onChange={(event) => setAnswerDraft(event.target.value)}
-                  placeholder={activeQuestion.prompt}
-                  value={answerDraft}
-                />
+                <>
+                  <div className="plan-composer__question" data-testid="plan-composer-question">
+                    {activeQuestion.prompt}
+                  </div>
+                  <textarea
+                    aria-label="Answer current planning question"
+                    data-testid="plan-composer-textarea"
+                    onChange={(event) => setAnswerDraft(event.target.value)}
+                    placeholder="Answer with the context future planning decisions should remember."
+                    value={answerDraft}
+                  />
+                </>
               ) : (
                 <span>{composerStatus}</span>
               )}
