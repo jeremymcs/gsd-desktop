@@ -43,6 +43,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
@@ -547,6 +548,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.revisePlanningAnswer, (_event, input: RevisePlanningAnswerInput) =>
     store.revisePlanningAnswer(input),
+  );
+  ipcMain.handle(desktopIpc.reviewPlanningIdea, (_event, input: ReviewPlanningIdeaInput) =>
+    store.reviewPlanningIdea(input),
   );
   ipcMain.handle(desktopIpc.confirmPlanningStage, (_event, input: ConfirmPlanningStageInput) =>
     store.confirmPlanningStage(input),

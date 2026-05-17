@@ -4,6 +4,7 @@ import type {
   PlanListEntry,
   PlanSnapshot,
   PlanStage,
+  ParkedItemReviewStatus,
   ProjectSummary,
   TaskExecutionStatus,
   TaskVerificationStatus,
@@ -207,6 +208,15 @@ export interface RevisePlanningAnswerInput {
   readonly answer: string;
   readonly rationale?: string;
   readonly projectPatch?: Partial<ProjectSummary>;
+}
+
+export interface ReviewPlanningIdeaInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly itemId: string;
+  readonly status: ParkedItemReviewStatus;
+  readonly note?: string;
 }
 
 export interface ConfirmPlanningStageInput {

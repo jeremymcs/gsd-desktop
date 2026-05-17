@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import type {
   AnswerRecord,
   GeneratedOutputRecord,
+  ParkedItemReviewStatus,
   PlanSnapshot,
   PlanStage,
   ShipSummaryRecord,
@@ -28,6 +29,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
@@ -82,6 +84,7 @@ interface PlanBuilderViewProps {
   readonly onSelectPlan: (input: SelectPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
+  readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
@@ -110,6 +113,7 @@ export function PlanBuilderView({
   onSelectPlan,
   onRecordAnswer,
   onReviseAnswer,
+  onReviewIdea,
   onConfirmStage,
   onStartResearch,
   onProposeResearch,
@@ -321,6 +325,23 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const reviewIdea = (itemId: string, status: ParkedItemReviewStatus) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onReviewIdea({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      itemId,
+      status,
+      note: reviewIdeaNote(status),
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const startResearch = () => {
@@ -1233,12 +1254,43 @@ export function PlanBuilderView({
                 {snapshot.parkedItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
                   return (
-                    <article className="plan-memory__item plan-memory__item--parked" key={item.id}>
+                    <article
+                      className="plan-memory__item plan-memory__item--parked"
+                      data-testid="plan-idea-item"
+                      key={item.id}
+                    >
                       <div className="plan-memory__item-header">
                         <span>{question?.label ?? item.sourceQuestionId}</span>
-                        <small>Parked</small>
+                        <small data-testid="plan-idea-status">{formatIdeaReviewStatus(item.reviewStatus)}</small>
                       </div>
                       <p>{item.text}</p>
+                      {item.reviewNote ? <p className="plan-memory__note">{item.reviewNote}</p> : null}
+                      <div className="plan-idea-actions">
+                        <button
+                          className="plan-inline-button"
+                          disabled={submitting || item.reviewStatus === "kept"}
+                          onClick={() => reviewIdea(item.id, "kept")}
+                          type="button"
+                        >
+                          Keep
+                        </button>
+                        <button
+                          className="plan-inline-button"
+                          disabled={submitting || item.reviewStatus === "promotion-ready"}
+                          onClick={() => reviewIdea(item.id, "promotion-ready")}
+                          type="button"
+                        >
+                          Prepare
+                        </button>
+                        <button
+                          className="plan-inline-button"
+                          disabled={submitting || item.reviewStatus === "dismissed"}
+                          onClick={() => reviewIdea(item.id, "dismissed")}
+                          type="button"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </article>
                   );
                 })}
@@ -2414,6 +2466,32 @@ function formatTaskVerificationStatus(status: TaskVerificationStatus | undefined
       return "Failed";
     case undefined:
       return "Pending";
+  }
+}
+
+function formatIdeaReviewStatus(status: ParkedItemReviewStatus): string {
+  switch (status) {
+    case "parked":
+      return "Parked";
+    case "kept":
+      return "Kept";
+    case "promotion-ready":
+      return "Ready to promote";
+    case "dismissed":
+      return "Dismissed";
+  }
+}
+
+function reviewIdeaNote(status: ParkedItemReviewStatus): string {
+  switch (status) {
+    case "parked":
+      return "Parked for later review";
+    case "kept":
+      return "Kept in the idea pool for later review.";
+    case "promotion-ready":
+      return "Prepared for promotion into a change proposal.";
+    case "dismissed":
+      return "Dismissed from active consideration.";
   }
 }
 

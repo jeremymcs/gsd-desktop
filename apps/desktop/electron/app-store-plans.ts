@@ -23,6 +23,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
@@ -225,6 +226,42 @@ export async function revisePlanningAnswer(
           project: input.projectPatch,
         });
       }
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function reviewPlanningIdea(
+  store: AppStoreInternals,
+  input: ReviewPlanningIdeaInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = planningStore.getPlanSnapshot(input.planId);
+      if (!current) {
+        throw new Error(`Unknown plan: ${input.planId}`);
+      }
+      if (!current.parkedItems.some((item) => item.id === input.itemId)) {
+        throw new Error(`Unknown parked idea: ${input.itemId}`);
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "idea.reviewed",
+          itemId: input.itemId,
+          status: input.status,
+          ...(input.note ? { note: input.note } : {}),
+        },
+      });
 
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });

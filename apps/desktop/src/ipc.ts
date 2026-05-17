@@ -22,6 +22,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
   RemoveWorktreeInput,
@@ -69,6 +70,7 @@ export const desktopIpc = {
   selectPlanningPlan: "pi-gui:select-planning-plan",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
+  reviewPlanningIdea: "pi-gui:review-planning-idea",
   confirmPlanningStage: "pi-gui:confirm-planning-stage",
   startPlanningResearch: "pi-gui:start-planning-research",
   proposePlanningResearch: "pi-gui:propose-planning-research",
@@ -273,6 +275,7 @@ export interface PiDesktopApi {
   selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
+  reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;
   proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState>;

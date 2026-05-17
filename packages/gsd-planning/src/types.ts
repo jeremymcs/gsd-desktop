@@ -124,6 +124,8 @@ export interface ShipSummaryRecord {
   readonly createdAt: string;
 }
 
+export type ParkedItemReviewStatus = "parked" | "kept" | "dismissed" | "promotion-ready";
+
 export interface ParkedItemRecord {
   readonly id: string;
   readonly sourceType: "answer";
@@ -133,6 +135,9 @@ export interface ParkedItemRecord {
   readonly sourcePrompt: string;
   readonly text: string;
   readonly rationale: string;
+  readonly reviewStatus: ParkedItemReviewStatus;
+  readonly reviewNote?: string;
+  readonly reviewedAt?: string;
   readonly createdAt: string;
 }
 
@@ -213,9 +218,15 @@ export type PlanEvent =
     }
   | {
       readonly type: "idea.parked";
-      readonly item: Omit<ParkedItemRecord, "id" | "createdAt"> & {
+      readonly item: Omit<ParkedItemRecord, "id" | "createdAt" | "reviewStatus" | "reviewNote" | "reviewedAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "idea.reviewed";
+      readonly itemId: string;
+      readonly status: ParkedItemReviewStatus;
+      readonly note?: string;
     };
 
 export interface PersistedPlanEvent {

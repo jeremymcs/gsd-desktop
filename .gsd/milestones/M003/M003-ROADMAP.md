@@ -17,7 +17,7 @@
 - [x] **S01: First-Class Idea Pool** `risk:medium` `depends:[M002]`
   > After this: clicking `Park` records a durable idea-pool item linked to the source answer and shows it in the Plan Builder outline.
 
-- [ ] **S02: Idea Review Actions** `risk:medium` `depends:[S01]`
+- [x] **S02: Idea Review Actions** `risk:medium` `depends:[S01]`
   > After this: parked ideas can be explicitly kept, dismissed, or prepared for promotion without changing the active plan.
 
 - [ ] **S03: Draft Change Proposal** `risk:high` `depends:[S02]`
@@ -47,3 +47,11 @@ Produces:
 
 Consumes:
   idea review UI -> explicit keep/dismiss/promote intent
+
+### S02 -> S03
+
+Produces:
+  reviewed parked item status -> stable source for draft change proposals
+
+Consumes:
+  draft proposal form -> impact notes before active plan mutation

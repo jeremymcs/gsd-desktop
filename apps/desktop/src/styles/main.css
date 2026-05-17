@@ -3222,6 +3222,17 @@
   white-space: pre-wrap;
 }
 
+.plan-memory__item .plan-memory__note {
+  color: #d0b779;
+  font-size: 12px;
+}
+
+.plan-idea-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .plan-memory__editor {
   display: grid;
   gap: 8px;

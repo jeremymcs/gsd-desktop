@@ -2116,6 +2116,7 @@ export default function App() {
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
+              onReviewIdea={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningIdea(input))}
               onConfirmStage={(input) => updateSnapshot(api, setSnapshot, () => api.confirmPlanningStage(input))}
               onStartResearch={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningResearch(input))}
               onProposeResearch={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningResearch(input))}

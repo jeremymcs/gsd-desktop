@@ -283,7 +283,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
   const taskVerifications = new Map<string, TaskVerificationRecord>();
   const shipSummaries: ShipSummaryRecord[] = [];
-  const parkedItems: ParkedItemRecord[] = [];
+  const parkedItems = new Map<string, ParkedItemRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -432,7 +432,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         });
         break;
       case "idea.parked":
-        parkedItems.push({
+        parkedItems.set(payload.item.id ?? event.id, {
           id: payload.item.id ?? event.id,
           sourceType: payload.item.sourceType,
           sourceAnswerId: payload.item.sourceAnswerId,
@@ -441,9 +441,22 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           sourcePrompt: payload.item.sourcePrompt,
           text: payload.item.text,
           rationale: payload.item.rationale,
+          reviewStatus: "parked",
           createdAt: event.createdAt,
         });
         break;
+      case "idea.reviewed": {
+        const current = parkedItems.get(payload.itemId);
+        if (current) {
+          parkedItems.set(payload.itemId, {
+            ...current,
+            reviewStatus: payload.status,
+            ...(payload.note ? { reviewNote: payload.note } : {}),
+            reviewedAt: event.createdAt,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -458,7 +471,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
-    parkedItems: parkedItems.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    parkedItems: [...parkedItems.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     events,
   };
 }
@@ -550,6 +563,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "task.verification-recorded":
     case "ship.summary-recorded":
     case "idea.parked":
+    case "idea.reviewed":
       return undefined;
   }
 }

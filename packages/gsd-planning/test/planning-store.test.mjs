@@ -92,9 +92,42 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withRequirement = store.appendEvent({
+    const withKeptIdea = store.appendEvent({
       planId: created.id,
       expectedRevision: withParkedItem.revision,
+      event: {
+        type: "idea.reviewed",
+        itemId: withParkedItem.parkedItems[0].id,
+        status: "kept",
+        note: "Keep this for a later review pass.",
+      },
+    });
+
+    const withPromotionReadyIdea = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withKeptIdea.revision,
+      event: {
+        type: "idea.reviewed",
+        itemId: withParkedItem.parkedItems[0].id,
+        status: "promotion-ready",
+        note: "Prepare this for a later change proposal.",
+      },
+    });
+
+    const withDismissedIdea = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withPromotionReadyIdea.revision,
+      event: {
+        type: "idea.reviewed",
+        itemId: withParkedItem.parkedItems[0].id,
+        status: "dismissed",
+        note: "Dismissed after review.",
+      },
+    });
+
+    const withRequirement = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withDismissedIdea.revision,
       event: {
         type: "requirement.upserted",
         requirement: {
@@ -226,7 +259,7 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withShipSummary.revision, 14);
+    assert.equal(withShipSummary.revision, 17);
     assert.equal(withShipSummary.activePhase, "ship");
     assert.equal(withShipSummary.activeStage, "task");
     assert.equal(withShipSummary.taskSessionLinks.length, 1);
@@ -241,13 +274,15 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
     assert.equal(withShipSummary.parkedItems.length, 1);
     assert.equal(withShipSummary.parkedItems[0]?.text, "Add a future automation review lane.");
+    assert.equal(withShipSummary.parkedItems[0]?.reviewStatus, "dismissed");
+    assert.equal(withShipSummary.parkedItems[0]?.reviewNote, "Dismissed after review.");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 14);
+    assert.equal(reopened.revision, 17);
     assert.equal(reopened.activePhase, "ship");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -274,7 +309,9 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.parkedItems.length, 1);
     assert.equal(reopened.parkedItems[0]?.sourceAnswerId, "parked-answer-1");
     assert.equal(reopened.parkedItems[0]?.text, "Add a future automation review lane.");
-    assert.equal(reopened.events.length, 14);
+    assert.equal(reopened.parkedItems[0]?.reviewStatus, "dismissed");
+    assert.equal(reopened.parkedItems[0]?.reviewNote, "Dismissed after review.");
+    assert.equal(reopened.events.length, 17);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

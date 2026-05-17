@@ -79,11 +79,22 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
-    await window.getByTestId("plan-answer-textarea").fill("Later automation follow-up");
-    await window.getByRole("button", { name: "Park" }).click();
+    for (const idea of ["Later automation follow-up", "Prepare integration change", "Drop onboarding banner"]) {
+      await window.getByTestId("plan-answer-textarea").fill(idea);
+      await window.getByRole("button", { name: "Park" }).click();
+      await expect(window.getByTestId("plan-idea-pool")).toContainText(idea);
+    }
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("");
-    await expect(window.getByTestId("plan-idea-pool")).toContainText("Later automation follow-up");
+    const keptIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Later automation follow-up" });
+    await keptIdea.getByRole("button", { name: "Keep" }).click();
+    await expect(keptIdea.getByTestId("plan-idea-status")).toHaveText("Kept");
+    const promotionIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" });
+    await promotionIdea.getByRole("button", { name: "Prepare" }).click();
+    await expect(promotionIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+    const dismissedIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" });
+    await dismissedIdea.getByRole("button", { name: "Dismiss" }).click();
+    await expect(dismissedIdea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
 
     for (const [index, [prompt, answer]] of discussAnswers.entries()) {
       await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
@@ -216,7 +227,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await expect(window.getByTestId("ship-verification-note")).toContainText("Acceptance matched the saved evidence.");
     await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
-    await expect(window.getByTestId("plan-idea-pool")).toContainText("Later automation follow-up");
+    await expect(
+      window.getByTestId("plan-idea-item").filter({ hasText: "Later automation follow-up" }).getByTestId("plan-idea-status"),
+    ).toHaveText("Kept");
+    await expect(
+      window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" }).getByTestId("plan-idea-status"),
+    ).toHaveText("Ready to promote");
+    await expect(
+      window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" }).getByTestId("plan-idea-status"),
+    ).toHaveText("Dismissed");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -225,7 +244,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
           entry.selectedPlan.activePhase === "ship" &&
-          entry.selectedPlan.parkedItems.some((item) => item.text === "Later automation follow-up") &&
+          entry.selectedPlan.parkedItems.some(
+            (item) => item.text === "Later automation follow-up" && item.reviewStatus === "kept",
+          ) &&
+          entry.selectedPlan.parkedItems.some(
+            (item) => item.text === "Prepare integration change" && item.reviewStatus === "promotion-ready",
+          ) &&
+          entry.selectedPlan.parkedItems.some(
+            (item) => item.text === "Drop onboarding banner" && item.reviewStatus === "dismissed",
+          ) &&
           entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
           entry.selectedPlan.taskExecutions.some(
             (task) =>

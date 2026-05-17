@@ -54,6 +54,7 @@ import {
   type RecordPlanningShipSummaryInput,
   type RecordPlanningTaskVerificationInput,
   type RegeneratePlanningProjectionsInput,
+  type ReviewPlanningIdeaInput,
   type ReviewPlanningPlanInput,
   type ReviewPlanningResearchInput,
   type RemoveWorktreeInput,
@@ -378,6 +379,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState> {
     return plans.revisePlanningAnswer(this, input);
+  }
+
+  async reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState> {
+    return plans.reviewPlanningIdea(this, input);
   }
 
   async confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState> {
