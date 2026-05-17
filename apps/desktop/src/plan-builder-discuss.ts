@@ -162,7 +162,9 @@ export function getLatestAnswersByQuestion(snapshot: PlanSnapshot | undefined): 
 }
 
 export function getLatestDiscussAnswers(snapshot: PlanSnapshot | undefined): readonly AnswerRecord[] {
-  return [...getLatestAnswersByQuestion(snapshot).values()].filter((answer) => isDiscussStage(answer.stage));
+  return [...getLatestAnswersByQuestion(snapshot).values()].filter(
+    (answer) => isDiscussStage(answer.stage) && answer.loadBearing,
+  );
 }
 
 export function getDiscussStageProgress(

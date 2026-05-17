@@ -7,6 +7,7 @@ import type {
   AppendPlanEventInput,
   CreatePlanInput,
   GeneratedOutputRecord,
+  ParkedItemRecord,
   PersistedPlanEvent,
   PlanEvent,
   PlanId,
@@ -282,6 +283,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
   const taskVerifications = new Map<string, TaskVerificationRecord>();
   const shipSummaries: ShipSummaryRecord[] = [];
+  const parkedItems: ParkedItemRecord[] = [];
 
   for (const event of events) {
     const payload = event.payload;
@@ -429,6 +431,19 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           createdAt: event.createdAt,
         });
         break;
+      case "idea.parked":
+        parkedItems.push({
+          id: payload.item.id ?? event.id,
+          sourceType: payload.item.sourceType,
+          sourceAnswerId: payload.item.sourceAnswerId,
+          sourceStage: payload.item.sourceStage,
+          sourceQuestionId: payload.item.sourceQuestionId,
+          sourcePrompt: payload.item.sourcePrompt,
+          text: payload.item.text,
+          rationale: payload.item.rationale,
+          createdAt: event.createdAt,
+        });
+        break;
     }
   }
 
@@ -443,6 +458,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    parkedItems: parkedItems.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     events,
   };
 }
@@ -533,6 +549,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "task.evidence-recorded":
     case "task.verification-recorded":
     case "ship.summary-recorded":
+    case "idea.parked":
       return undefined;
   }
 }

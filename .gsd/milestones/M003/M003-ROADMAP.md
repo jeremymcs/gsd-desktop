@@ -1,0 +1,49 @@
+# M003: Plan Change Control
+
+**Vision:** Users can change plans deliberately after initial planning by parking uncertain ideas, reviewing impact, and promoting approved changes without losing audit history.
+
+**Success Criteria:**
+
+- Parked ideas are first-class planning database records and survive restart.
+- Parked ideas are visible outside the active discussion memory.
+- Future injected changes can reference a source parked item.
+- Active accepted task identity is not mutated silently.
+- Generated Markdown remains a projection from database state.
+
+---
+
+## Slices
+
+- [x] **S01: First-Class Idea Pool** `risk:medium` `depends:[M002]`
+  > After this: clicking `Park` records a durable idea-pool item linked to the source answer and shows it in the Plan Builder outline.
+
+- [ ] **S02: Idea Review Actions** `risk:medium` `depends:[S01]`
+  > After this: parked ideas can be explicitly kept, dismissed, or prepared for promotion without changing the active plan.
+
+- [ ] **S03: Draft Change Proposal** `risk:high` `depends:[S02]`
+  > After this: a parked idea can seed a draft change proposal with impact notes before it enters the active plan.
+
+- [ ] **S04: Approved Injection** `risk:high` `depends:[S03]`
+  > After this: approved changes can add or modify plan structure while preserving original IDs and history.
+
+- [ ] **S05: Removal and Hidden State** `risk:high` `depends:[S04]`
+  > After this: deleted or removed items are hidden from active projections by append-only events instead of destructive edits.
+
+## Boundary Map
+
+### M002 -> S01
+
+Produces:
+  completed lifecycle state -> durable plan identity through SHIP
+  discussion answer events -> source context for parked work
+
+Consumes:
+  idea pool -> parked records linked to source answer metadata
+
+### S01 -> S02
+
+Produces:
+  parked item identity -> stable source for later review actions
+
+Consumes:
+  idea review UI -> explicit keep/dismiss/promote intent

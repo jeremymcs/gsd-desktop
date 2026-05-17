@@ -150,12 +150,14 @@ export async function recordPlanningAnswer(
 
   return store.withErrorHandling(async () => {
     return withPlanningStore(workspace.path, (planningStore) => {
+      const answerId = randomUUID();
       let snapshot = planningStore.appendEvent({
         planId: input.planId,
         expectedRevision: input.expectedRevision,
         event: {
           type: "answer.recorded",
           answer: {
+            id: answerId,
             stage,
             questionId: input.questionId,
             prompt: input.prompt,
@@ -165,6 +167,21 @@ export async function recordPlanningAnswer(
           },
         },
       });
+
+      if (!input.loadBearing) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "idea.parked",
+          item: {
+            sourceType: "answer",
+            sourceAnswerId: answerId,
+            sourceStage: stage,
+            sourceQuestionId: input.questionId,
+            sourcePrompt: input.prompt,
+            text: input.answer,
+            rationale: input.discretionRationale ?? "Parked for later review",
+          },
+        });
+      }
 
       if (input.projectPatch) {
         snapshot = appendEvent(planningStore, snapshot, {

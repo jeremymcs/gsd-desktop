@@ -3180,6 +3180,11 @@
   background: #15161a;
 }
 
+.plan-memory__item--parked {
+  border-color: rgba(215, 178, 105, 0.28);
+  background: rgba(215, 178, 105, 0.06);
+}
+
 .plan-memory__item-header {
   display: flex;
   align-items: center;
@@ -3195,6 +3200,16 @@
   font-weight: 690;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.plan-memory__item-header small {
+  flex: 0 0 auto;
+  border: 1px solid rgba(215, 178, 105, 0.32);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #d7b269;
+  font-size: 11px;
+  font-weight: 680;
 }
 
 .plan-memory__item p {

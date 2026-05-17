@@ -124,6 +124,18 @@ export interface ShipSummaryRecord {
   readonly createdAt: string;
 }
 
+export interface ParkedItemRecord {
+  readonly id: string;
+  readonly sourceType: "answer";
+  readonly sourceAnswerId: string;
+  readonly sourceStage: PlanStage;
+  readonly sourceQuestionId: string;
+  readonly sourcePrompt: string;
+  readonly text: string;
+  readonly rationale: string;
+  readonly createdAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -198,6 +210,12 @@ export type PlanEvent =
       readonly summary: Omit<ShipSummaryRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "idea.parked";
+      readonly item: Omit<ParkedItemRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -231,6 +249,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
+  readonly parkedItems: readonly ParkedItemRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

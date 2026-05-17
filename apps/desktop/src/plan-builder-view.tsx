@@ -185,8 +185,8 @@ export function PlanBuilderView({
   const planValidationIssues = useMemo(() => validatePlanProposal(planProposal), [planProposal]);
 
   useEffect(() => {
-    const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id)?.answer : "";
-    setAnswerDraft(existingAnswer ?? "");
+    const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id) : undefined;
+    setAnswerDraft(existingAnswer?.loadBearing ? existingAnswer.answer : "");
   }, [activeQuestion?.id, latestAnswersByQuestion, snapshot?.id]);
 
   useEffect(() => {
@@ -270,9 +270,15 @@ export function PlanBuilderView({
       loadBearing,
       ...(loadBearing ? {} : { discretionRationale: "Parked for later review" }),
       ...(loadBearing ? { projectPatch: buildProjectPatch(activeQuestion.id, answer) } : {}),
-    }).finally(() => {
-      setSubmitting(false);
-    });
+    })
+      .then(() => {
+        if (!loadBearing) {
+          setAnswerDraft("");
+        }
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
   };
 
   const confirmStage = () => {
@@ -1215,6 +1221,24 @@ export function PlanBuilderView({
                       ) : (
                         <p>{answer.answer}</p>
                       )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {snapshot?.parkedItems?.length ? (
+              <div className="plan-memory" data-testid="plan-idea-pool">
+                <div className="plan-memory__title">Idea pool</div>
+                {snapshot.parkedItems.map((item) => {
+                  const question = getDiscussQuestion(item.sourceQuestionId);
+                  return (
+                    <article className="plan-memory__item plan-memory__item--parked" key={item.id}>
+                      <div className="plan-memory__item-header">
+                        <span>{question?.label ?? item.sourceQuestionId}</span>
+                        <small>Parked</small>
+                      </div>
+                      <p>{item.text}</p>
                     </article>
                   );
                 })}
