@@ -624,8 +624,9 @@ test("parks later-phase idea from the Plan Builder composer", async () => {
     await createAcceptedPlanFromQuestionCards(window, "Composer later idea plan");
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
-    await expect(window.getByTestId("plan-composer-question")).toHaveText("Park a planning note or change request");
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("Complete every EXECUTE task with evidence before VERIFY");
     await window.getByTestId("plan-composer-textarea").fill("Consider a post-ship audit task.");
+    await expect(window.getByTestId("plan-composer-question")).toHaveText("Park a planning note or change request");
     await window.getByLabel("Park composer idea").click();
 
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");

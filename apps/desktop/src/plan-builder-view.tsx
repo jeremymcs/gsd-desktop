@@ -1233,7 +1233,9 @@ export function PlanBuilderView({
   const composerInputEnabled = Boolean(activeQuestion || composerCanRecordShipSummary || composerCanParkIdea);
   const composerQuestion = activeQuestion?.prompt ?? (composerCanRecordShipSummary
     ? "Final SHIP handoff summary"
-    : "Park a planning note or change request");
+    : composerHasDraft
+      ? "Park a planning note or change request"
+      : composerStatus);
   const composerPlaceholder = activeQuestion
     ? "Answer with the context future planning decisions should remember."
     : composerCanRecordShipSummary
@@ -1590,7 +1592,13 @@ export function PlanBuilderView({
                     {composerQuestion}
                   </div>
                   <textarea
-                    aria-label={activeQuestion ? "Answer current planning question" : "Write SHIP handoff summary"}
+                    aria-label={
+                      activeQuestion
+                        ? "Answer current planning question"
+                        : composerCanRecordShipSummary
+                          ? "Write SHIP handoff summary"
+                          : "Park planning note"
+                    }
                     data-testid="plan-composer-textarea"
                     onChange={(event) => setAnswerDraft(event.target.value)}
                     onKeyDown={submitComposerFromKeyboard}
@@ -1833,7 +1841,8 @@ export function PlanBuilderView({
                 <div className="plan-memory__title">Idea pool</div>
                 {snapshot.parkedItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
-                  const sourceLabel = question?.label ?? (item.sourceType === "composer" ? item.sourcePrompt : item.sourceQuestionId);
+                  const sourceLabel =
+                    question?.label ?? (item.sourceType === "composer" ? item.sourcePrompt : item.sourceQuestionId);
                   const proposal = changeProposalsBySource.get(item.id);
                   const isDraftingProposal = draftingIdeaId === item.id;
                   return (
