@@ -27,6 +27,9 @@
 - [x] **S04: Light/Dark Mode Consistency Fix** `risk:medium` `depends:[S03]`
   > After this: Plan Builder and workflow preference controls render cleanly in both light and dark modes, with readable contrast, stable controls, and no theme-specific regressions.
 
+- [ ] **S05: Discussion Memory Question Context** `risk:low` `depends:[S04]`
+  > After this: each Discussion memory entry shows the original question/prompt that produced the saved answer, so review and revision are grounded in the actual ask instead of only the answer label.
+
 ## Boundary Map
 
 ### M003 -> S01
@@ -72,3 +75,11 @@ Produces:
 
 Consumes:
   light/dark mode fix -> theme-safe planning controls and readable workflow surfaces
+
+### S04 -> S05
+
+Produces:
+  theme-safe planning memory surfaces -> stable visual baseline for richer memory cards
+
+Consumes:
+  discussion memory question context -> exact prompt text displayed with each saved answer and revision entry
