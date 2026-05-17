@@ -2455,7 +2455,17 @@
   color: #f1b49f;
 }
 
+.plan-execution-task__status--failed {
+  border-color: #71524b;
+  color: #f1b49f;
+}
+
 .plan-execution-task__status--done {
+  border-color: #3f6748;
+  color: #a9d8b1;
+}
+
+.plan-execution-task__status--passed {
   border-color: #3f6748;
   color: #a9d8b1;
 }
@@ -2538,6 +2548,10 @@
   gap: 8px;
   border-top: 1px solid #262a33;
   padding-top: 10px;
+}
+
+.plan-execution-task-editor--verify {
+  grid-template-columns: 150px minmax(0, 1fr) auto;
 }
 
 .plan-execution-task-editor__field {

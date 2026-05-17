@@ -51,6 +51,7 @@ import {
   type ProposePlanningResearchInput,
   type QueuedComposerMessage,
   type RecordPlanningAnswerInput,
+  type RecordPlanningTaskVerificationInput,
   type RegeneratePlanningProjectionsInput,
   type ReviewPlanningPlanInput,
   type ReviewPlanningResearchInput,
@@ -61,6 +62,7 @@ import {
   type StartPlanningExecutionInput,
   type StartPlanningPlanInput,
   type StartPlanningResearchInput,
+  type StartPlanningVerifyInput,
   type StartThreadInput,
   type TranscriptMessage,
   type UpdatePlanningTaskExecutionInput,
@@ -414,6 +416,14 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async updatePlanningTaskExecution(input: UpdatePlanningTaskExecutionInput): Promise<DesktopAppState> {
     return plans.updatePlanningTaskExecution(this, input);
+  }
+
+  async startPlanningVerify(input: StartPlanningVerifyInput): Promise<DesktopAppState> {
+    return plans.startPlanningVerify(this, input);
+  }
+
+  async recordPlanningTaskVerification(input: RecordPlanningTaskVerificationInput): Promise<DesktopAppState> {
+    return plans.recordPlanningTaskVerification(this, input);
   }
 
   async regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState> {

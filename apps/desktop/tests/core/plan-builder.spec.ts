@@ -171,6 +171,17 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("task-status-pill")).toContainText("Done");
     await expect(window.getByTestId("task-note")).toContainText("Slice implemented and checked.");
     await expect(window.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("start-verify-button")).toBeEnabled();
+    await window.getByTestId("start-verify-button").click();
+    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect(window.getByTestId("verify-task")).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("verify-task")).toContainText("Linked session created and reopened from EXECUTE.");
+    await window.getByTestId("task-verification-status-select").selectOption("passed");
+    await window.getByTestId("task-verification-note-textarea").fill("Acceptance matched the saved evidence.");
+    await window.getByTestId("record-task-verification-button").click();
+    await expect(window.getByTestId("task-verification-status")).toContainText("Passed");
+    await expect(window.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await expect(window.getByTestId("verify-ready-to-ship")).toBeVisible();
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -187,11 +198,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
-    await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
-    await expect(window.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
-    await expect(window.getByTestId("task-status-pill")).toContainText("Done");
-    await expect(window.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect(window.getByTestId("verify-task")).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("task-verification-status")).toContainText("Passed");
+    await expect(window.getByTestId("verify-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await expect(window.getByTestId("verify-ready-to-ship")).toBeVisible();
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -199,13 +211,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
-          entry.selectedPlan.activePhase === "execute" &&
+          entry.selectedPlan.activePhase === "verify" &&
           entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
           entry.selectedPlan.taskExecutions.some(
             (task) =>
               task.taskId === "T1" &&
               task.status === "done" &&
               task.evidence.some((evidence) => evidence.text === "Linked session created and reopened from EXECUTE."),
+          ) &&
+          entry.selectedPlan.taskVerifications.some(
+            (task) =>
+              task.taskId === "T1" &&
+              task.status === "passed" &&
+              task.note === "Acceptance matched the saved evidence.",
           ) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>

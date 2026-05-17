@@ -20,6 +20,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
@@ -28,6 +29,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningVerifyInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
@@ -691,6 +693,89 @@ export async function updatePlanningTaskExecution(
   });
 }
 
+export async function startPlanningVerify(
+  store: AppStoreInternals,
+  input: StartPlanningVerifyInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      assertReadyForVerify(snapshot);
+
+      if (snapshot.activePhase === "verify") {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+      if (snapshot.activePhase !== "execute") {
+        throw new Error("EXECUTE must be active before VERIFY can start");
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "phase.updated",
+          phase: "verify",
+          stage: "task",
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function recordPlanningTaskVerification(
+  store: AppStoreInternals,
+  input: RecordPlanningTaskVerificationInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      const acceptedTask = assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      assertTaskReadyForVerification(snapshot, input.taskId);
+      if (snapshot.activePhase !== "verify") {
+        throw new Error("VERIFY must be active before recording task verification");
+      }
+
+      const note = input.note.trim();
+      if (input.status === "failed" && !note) {
+        throw new Error("Failed verification needs a note");
+      }
+
+      const updated = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "task.verification-recorded",
+          verification: {
+            taskId: input.taskId,
+            taskPath: input.taskPath,
+            acceptance: acceptedTask.acceptance.trim(),
+            status: input.status,
+            note,
+          },
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, updated);
+    });
+  });
+}
+
 export async function regeneratePlanningProjectionsForPlan(
   store: AppStoreInternals,
   input: RegeneratePlanningProjectionsInput,
@@ -803,19 +888,49 @@ function assertAcceptedPlan(snapshot: PlanSnapshot): void {
   }
 }
 
-function assertAcceptedPlanTask(snapshot: PlanSnapshot, taskId: string, taskPath: string): void {
+function assertAcceptedPlanTask(
+  snapshot: PlanSnapshot,
+  taskId: string,
+  taskPath: string,
+): { readonly taskId: string; readonly taskPath: string; readonly acceptance: string } {
+  const task = getAcceptedPlanTasks(snapshot).find((entry) => entry.taskId === taskId && entry.taskPath === taskPath);
+  if (!task) {
+    throw new Error(`Task ${taskId} is not part of the accepted PLAN`);
+  }
+  return task;
+}
+
+function assertReadyForVerify(snapshot: PlanSnapshot): void {
+  for (const task of getAcceptedPlanTasks(snapshot)) {
+    assertTaskReadyForVerification(snapshot, task.taskId);
+  }
+}
+
+function assertTaskReadyForVerification(snapshot: PlanSnapshot, taskId: string): void {
+  const execution = snapshot.taskExecutions.find((entry) => entry.taskId === taskId);
+  if (execution?.status !== "done" || execution.evidence.length === 0) {
+    throw new Error(`VERIFY blocked: ${taskId} needs done status and evidence`);
+  }
+}
+
+function getAcceptedPlanTasks(
+  snapshot: PlanSnapshot,
+): readonly { readonly taskId: string; readonly taskPath: string; readonly acceptance: string }[] {
   const acceptedPlan = snapshot.generatedOutputs.find(
     (output) => output.stage === "roadmap" && output.status === "accepted",
   );
   const proposal = acceptedPlan ? parsePlanProposal(acceptedPlan.content) : undefined;
-  const hasTask = proposal?.milestones.some((milestone) =>
-    milestone.slices.some((slice) =>
-      slice.tasks.some((task) => task.id === taskId && `${milestone.id}/${slice.id}/${task.id}` === taskPath),
-    ),
-  );
-  if (!hasTask) {
-    throw new Error(`Task ${taskId} is not part of the accepted PLAN`);
-  }
+  return proposal
+    ? proposal.milestones.flatMap((milestone) =>
+        milestone.slices.flatMap((slice) =>
+          slice.tasks.map((task) => ({
+            taskId: task.id,
+            taskPath: `${milestone.id}/${slice.id}/${task.id}`,
+            acceptance: task.acceptance,
+          })),
+        ),
+      )
+    : [];
 }
 
 function buildTaskSessionTitle(input: LinkPlanningTaskSessionInput): string {

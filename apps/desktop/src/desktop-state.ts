@@ -6,6 +6,7 @@ import type {
   PlanStage,
   ProjectSummary,
   TaskExecutionStatus,
+  TaskVerificationStatus,
 } from "@pi-gui/gsd-planning";
 export type SessionStatus = "idle" | "running" | "failed";
 export type { SessionRole, TranscriptMessage } from "./timeline-types";
@@ -304,6 +305,22 @@ export interface UpdatePlanningTaskExecutionInput {
   readonly note: string;
   readonly blocker: string;
   readonly evidence: string;
+}
+
+export interface StartPlanningVerifyInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
+export interface RecordPlanningTaskVerificationInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly status: TaskVerificationStatus;
+  readonly note: string;
 }
 
 export interface ProposePlanningPlanInput {

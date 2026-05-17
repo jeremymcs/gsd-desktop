@@ -2130,6 +2130,10 @@ export default function App() {
               onUpdateTaskExecution={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.updatePlanningTaskExecution(input))
               }
+              onStartVerify={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningVerify(input))}
+              onRecordTaskVerification={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.recordPlanningTaskVerification(input))
+              }
               onOpenTaskSession={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
               onRegenerateProjections={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))

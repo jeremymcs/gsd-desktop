@@ -22,7 +22,7 @@
 - [x] **S03: Task Status and Evidence Capture** `risk:high` `depends:[S02]`
   > After this: task progress, blockers, and evidence can be persisted as append-only events and shown in the queue.
 
-- [ ] **S04: VERIFY Gate** `risk:high` `depends:[S03]`
+- [x] **S04: VERIFY Gate** `risk:high` `depends:[S03]`
   > After this: completed tasks can be checked against acceptance criteria before the plan advances.
 
 - [ ] **S05: SHIP Gate** `risk:medium` `depends:[S04]`
@@ -66,3 +66,12 @@ Produces:
 
 Consumes:
   verify gate -> completed tasks with evidence before advancing to VERIFY
+
+### S04 -> S05
+
+Produces:
+  task verification state -> latest pass/fail result and note for each accepted task
+  verify gate readiness -> all accepted tasks passed against acceptance criteria
+
+Consumes:
+  ship gate -> verified task set and evidence summary before final handoff

@@ -19,6 +19,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
@@ -29,6 +30,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningVerifyInput,
   StartThreadInput,
   UpdatePlanningTaskExecutionInput,
   WorkspaceSessionTarget,
@@ -75,6 +77,8 @@ export const desktopIpc = {
   startPlanningExecution: "pi-gui:start-planning-execution",
   linkPlanningTaskSession: "pi-gui:link-planning-task-session",
   updatePlanningTaskExecution: "pi-gui:update-planning-task-execution",
+  startPlanningVerify: "pi-gui:start-planning-verify",
+  recordPlanningTaskVerification: "pi-gui:record-planning-task-verification",
   regeneratePlanningProjections: "pi-gui:regenerate-planning-projections",
   syncCurrentWorkspace: "pi-gui:sync-current-workspace",
   selectSession: "pi-gui:select-session",
@@ -275,6 +279,8 @@ export interface PiDesktopApi {
   startPlanningExecution(input: StartPlanningExecutionInput): Promise<DesktopAppState>;
   linkPlanningTaskSession(input: LinkPlanningTaskSessionInput): Promise<DesktopAppState>;
   updatePlanningTaskExecution(input: UpdatePlanningTaskExecutionInput): Promise<DesktopAppState>;
+  startPlanningVerify(input: StartPlanningVerifyInput): Promise<DesktopAppState>;
+  recordPlanningTaskVerification(input: RecordPlanningTaskVerificationInput): Promise<DesktopAppState>;
   regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState>;
   syncCurrentWorkspace(): Promise<DesktopAppState>;
   selectSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;

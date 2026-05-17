@@ -106,6 +106,18 @@ export interface TaskExecutionRecord {
   readonly updatedAt: string;
 }
 
+export type TaskVerificationStatus = "passed" | "failed";
+
+export interface TaskVerificationRecord {
+  readonly id: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly acceptance: string;
+  readonly status: TaskVerificationStatus;
+  readonly note: string;
+  readonly createdAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -168,6 +180,12 @@ export type PlanEvent =
       readonly evidence: Omit<TaskEvidenceRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "task.verification-recorded";
+      readonly verification: Omit<TaskVerificationRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -199,6 +217,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly generatedOutputs: readonly GeneratedOutputRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly taskExecutions: readonly TaskExecutionRecord[];
+  readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

@@ -8,6 +8,8 @@ import type {
   TaskExecutionRecord,
   TaskExecutionStatus,
   TaskSessionLinkRecord,
+  TaskVerificationRecord,
+  TaskVerificationStatus,
 } from "@pi-gui/gsd-planning";
 import type {
   ConfirmPlanningStageInput,
@@ -22,6 +24,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
@@ -30,6 +33,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningVerifyInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
   WorkspaceRecord,
@@ -85,6 +89,8 @@ interface PlanBuilderViewProps {
   readonly onStartExecution: (input: StartPlanningExecutionInput) => Promise<DesktopAppState>;
   readonly onLinkTaskSession: (input: LinkPlanningTaskSessionInput) => Promise<DesktopAppState>;
   readonly onUpdateTaskExecution: (input: UpdatePlanningTaskExecutionInput) => Promise<DesktopAppState>;
+  readonly onStartVerify: (input: StartPlanningVerifyInput) => Promise<DesktopAppState>;
+  readonly onRecordTaskVerification: (input: RecordPlanningTaskVerificationInput) => Promise<DesktopAppState>;
   readonly onOpenTaskSession: (target: WorkspaceSessionTarget) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
@@ -109,6 +115,8 @@ export function PlanBuilderView({
   onStartExecution,
   onLinkTaskSession,
   onUpdateTaskExecution,
+  onStartVerify,
+  onRecordTaskVerification,
   onOpenTaskSession,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
@@ -160,6 +168,7 @@ export function PlanBuilderView({
   const acceptedPlanProposal = useMemo(() => parseLatestAcceptedPlanProposal(acceptedPlanOutputs), [acceptedPlanOutputs]);
   const roadmapStage = snapshot?.stages.find((stage) => stage.stage === "roadmap");
   const executeStarted = snapshot?.activePhase === "execute";
+  const verifyStarted = snapshot?.activePhase === "verify";
   const planStarted = Boolean(snapshot && (snapshot.activePhase === "plan" || roadmapStage || planOutputs.length > 0));
   const planDraft = useMemo(
     () => buildPlanProposalDraft(snapshot, latestAnswers, acceptedResearchOutputs),
@@ -480,6 +489,38 @@ export function PlanBuilderView({
     });
   };
 
+  const startVerify = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onStartVerify({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const recordTaskVerification = (task: PlanningTaskDraft, taskPath: string, draft: TaskVerificationDraft) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onRecordTaskVerification({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      taskId: task.id,
+      taskPath,
+      status: draft.status,
+      note: draft.note,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const updateMilestone = (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => {
     setPlanProposal((current) => ({
       ...current,
@@ -676,7 +717,9 @@ export function PlanBuilderView({
   ] as const;
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
-    : executeStarted
+    : verifyStarted
+      ? "VERIFY gate is active; check completed tasks against acceptance"
+      : executeStarted
       ? "EXECUTE queue is active; create or open linked task sessions"
     : planStarted
       ? "Structured plan proposals are validated before approval"
@@ -851,6 +894,14 @@ export function PlanBuilderView({
                   Start plan
                 </button>
               </div>
+            ) : allDiscussConfirmed && verifyStarted ? (
+              <PlanVerifyGate
+                acceptedPlanProposal={acceptedPlanProposal}
+                submitting={submitting}
+                taskExecutions={snapshot.taskExecutions ?? []}
+                taskVerifications={snapshot.taskVerifications ?? []}
+                onRecordTaskVerification={recordTaskVerification}
+              />
             ) : allDiscussConfirmed && executeStarted ? (
               <PlanExecutionQueue
                 acceptedPlanProposal={acceptedPlanProposal}
@@ -859,6 +910,7 @@ export function PlanBuilderView({
                 taskExecutions={snapshot.taskExecutions ?? []}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
                 onLinkTaskSession={linkTaskSession}
+                onStartVerify={startVerify}
                 onUpdateTaskExecution={updateTaskExecution}
                 onOpenTaskSession={openTaskSession}
                 onRegenerateProjections={regenerateProjections}
@@ -1051,6 +1103,10 @@ export function PlanBuilderView({
               <div className={`plan-stage-list__item ${executeStarted ? "plan-stage-list__item--active" : ""}`}>
                 <span>Execute</span>
                 <small>{formatExecuteStatus(executeStarted, acceptedPlanOutputs.length)}</small>
+              </div>
+              <div className={`plan-stage-list__item ${verifyStarted ? "plan-stage-list__item--active" : ""}`}>
+                <span>Verify</span>
+                <small>{formatVerifyStatus(verifyStarted, snapshot?.taskVerifications?.length ?? 0)}</small>
               </div>
             </div>
 
@@ -1436,6 +1492,17 @@ interface TaskExecutionDraft {
   readonly evidence: string;
 }
 
+interface TaskVerificationDraft {
+  readonly status: TaskVerificationStatus;
+  readonly note: string;
+}
+
+interface PlanTaskEntry {
+  readonly task: PlanningTaskDraft;
+  readonly taskPath: string;
+  readonly acceptance: string;
+}
+
 function PlanExecutionQueue({
   acceptedPlanProposal,
   projectionSummary,
@@ -1443,6 +1510,7 @@ function PlanExecutionQueue({
   taskExecutions,
   taskSessionLinks,
   onLinkTaskSession,
+  onStartVerify,
   onUpdateTaskExecution,
   onOpenTaskSession,
   onRegenerateProjections,
@@ -1453,6 +1521,7 @@ function PlanExecutionQueue({
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
+  readonly onStartVerify: () => void;
   readonly onUpdateTaskExecution: (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => void;
   readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
   readonly onRegenerateProjections: () => void;
@@ -1467,6 +1536,16 @@ function PlanExecutionQueue({
     () => new Map(taskExecutions.map((execution) => [execution.taskId, execution])),
     [taskExecutions],
   );
+  const planTasks = useMemo(
+    () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
+    [acceptedPlanProposal],
+  );
+  const verifyReady =
+    planTasks.length > 0 &&
+    planTasks.every(({ task }) => {
+      const execution = taskExecutionMap.get(task.id);
+      return execution?.status === "done" && execution.evidence.length > 0;
+    });
 
   const getTaskDraft = (taskId: string, execution: TaskExecutionRecord | undefined): TaskExecutionDraft =>
     taskDrafts[taskId] ?? {
@@ -1533,6 +1612,15 @@ function PlanExecutionQueue({
           type="button"
         >
           Regenerate projections
+        </button>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="start-verify-button"
+          disabled={submitting || !verifyReady}
+          onClick={onStartVerify}
+          type="button"
+        >
+          Start verify
         </button>
       </div>
 
@@ -1692,6 +1780,158 @@ function PlanExecutionQueue({
   );
 }
 
+function PlanVerifyGate({
+  acceptedPlanProposal,
+  submitting,
+  taskExecutions,
+  taskVerifications,
+  onRecordTaskVerification,
+}: {
+  readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly submitting: boolean;
+  readonly taskExecutions: readonly TaskExecutionRecord[];
+  readonly taskVerifications: readonly TaskVerificationRecord[];
+  readonly onRecordTaskVerification: (
+    task: PlanningTaskDraft,
+    taskPath: string,
+    draft: TaskVerificationDraft,
+  ) => void;
+}) {
+  const [verificationDrafts, setVerificationDrafts] = useState<Record<string, TaskVerificationDraft>>({});
+  const planTasks = useMemo(
+    () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
+    [acceptedPlanProposal],
+  );
+  const taskExecutionMap = useMemo(
+    () => new Map(taskExecutions.map((execution) => [execution.taskId, execution])),
+    [taskExecutions],
+  );
+  const taskVerificationMap = useMemo(
+    () => new Map(taskVerifications.map((verification) => [verification.taskId, verification])),
+    [taskVerifications],
+  );
+  const passedCount = planTasks.filter(({ task }) => taskVerificationMap.get(task.id)?.status === "passed").length;
+  const allPassed = planTasks.length > 0 && passedCount === planTasks.length;
+
+  const getDraft = (taskId: string, verification: TaskVerificationRecord | undefined): TaskVerificationDraft =>
+    verificationDrafts[taskId] ?? {
+      status: verification?.status ?? "passed",
+      note: verification?.note ?? "",
+    };
+
+  const updateDraft = (taskId: string, patch: Partial<TaskVerificationDraft>) => {
+    const verification = taskVerificationMap.get(taskId);
+    setVerificationDrafts((current) => ({
+      ...current,
+      [taskId]: {
+        ...(current[taskId] ?? {
+          status: verification?.status ?? "passed",
+          note: verification?.note ?? "",
+        }),
+        ...patch,
+      },
+    }));
+  };
+
+  const submitDraft = (entry: PlanTaskEntry, verification: TaskVerificationRecord | undefined) => {
+    const draft = getDraft(entry.task.id, verification);
+    onRecordTaskVerification(entry.task, entry.taskPath, draft);
+  };
+
+  return (
+    <div className="plan-execution" data-testid="plan-verify-panel">
+      <div className="plan-depth-card plan-depth-card--complete">
+        <div className="plan-depth-card__eyebrow">VERIFY · ACTIVE</div>
+        <h2>Verification gate</h2>
+        <p>
+          {acceptedPlanProposal
+            ? `${passedCount}/${planTasks.length} task${planTasks.length === 1 ? "" : "s"} passed against acceptance.`
+            : "Accepted plan content could not be loaded."}
+        </p>
+      </div>
+
+      {allPassed ? (
+        <div className="plan-projection-card" data-testid="verify-ready-to-ship">
+          <div>
+            <strong>VERIFY complete</strong>
+            <span>All task acceptance checks passed. SHIP remains the next explicit gate.</span>
+          </div>
+        </div>
+      ) : null}
+
+      {acceptedPlanProposal ? (
+        <div className="plan-execution-list">
+          {planTasks.map((entry) => {
+            const execution = taskExecutionMap.get(entry.task.id);
+            const verification = taskVerificationMap.get(entry.task.id);
+            const draft = getDraft(entry.task.id, verification);
+            const saveBlocked = submitting || (draft.status === "failed" && !draft.note.trim());
+            return (
+              <article className="plan-execution-task" key={entry.taskPath} data-testid="verify-task">
+                <div className="plan-execution-task__header">
+                  <span>{entry.task.id}</span>
+                  <strong>{entry.task.title}</strong>
+                  <span
+                    className={`plan-execution-task__status plan-execution-task__status--${verification?.status ?? "pending"}`}
+                    data-testid="task-verification-status"
+                  >
+                    {formatTaskVerificationStatus(verification?.status)}
+                  </span>
+                </div>
+                <p>{entry.acceptance}</p>
+                {execution?.evidence.length ? (
+                  <div className="plan-execution-evidence" data-testid="verify-evidence-list">
+                    {execution.evidence.map((evidence) => (
+                      <span key={evidence.id}>{evidence.text}</span>
+                    ))}
+                  </div>
+                ) : null}
+                {verification?.note ? (
+                  <p className="plan-execution-task__note" data-testid="task-verification-note">
+                    Verification: {verification.note}
+                  </p>
+                ) : null}
+                <div className="plan-execution-task-editor plan-execution-task-editor--verify">
+                  <label className="plan-execution-task-editor__field">
+                    <span>Result</span>
+                    <select
+                      data-testid="task-verification-status-select"
+                      onChange={(event) =>
+                        updateDraft(entry.task.id, { status: event.target.value as TaskVerificationStatus })
+                      }
+                      value={draft.status}
+                    >
+                      <option value="passed">Passed</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </label>
+                  <label className="plan-execution-task-editor__field">
+                    <span>Verification note</span>
+                    <textarea
+                      data-testid="task-verification-note-textarea"
+                      onChange={(event) => updateDraft(entry.task.id, { note: event.target.value })}
+                      value={draft.note}
+                    />
+                  </label>
+                  <button
+                    className="plan-action-button plan-action-button--compact"
+                    data-testid="record-task-verification-button"
+                    disabled={saveBlocked}
+                    onClick={() => submitDraft(entry, verification)}
+                    type="button"
+                  >
+                    Save verification
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ValidationPanel({
   issues,
 }: {
@@ -1838,6 +2078,18 @@ function emptyPlanProposal(): PlanningPlanProposalDraft {
   };
 }
 
+function getPlanTaskEntries(proposal: PlanningPlanProposalDraft): readonly PlanTaskEntry[] {
+  return proposal.milestones.flatMap((milestone) =>
+    milestone.slices.flatMap((slice) =>
+      slice.tasks.map((task) => ({
+        task,
+        taskPath: `${milestone.id}/${slice.id}/${task.id}`,
+        acceptance: task.acceptance,
+      })),
+    ),
+  );
+}
+
 function formatOutputStatus(status: GeneratedOutputRecord["status"]): string {
   switch (status) {
     case "draft":
@@ -1898,6 +2150,13 @@ function formatExecuteStatus(started: boolean, acceptedPlanCount: number): strin
   return acceptedPlanCount > 0 ? "Ready" : "Queued";
 }
 
+function formatVerifyStatus(started: boolean, verificationCount: number): string {
+  if (started) {
+    return verificationCount > 0 ? `${verificationCount} checked` : "Active";
+  }
+  return "Queued";
+}
+
 function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
   switch (status) {
     case "not-started":
@@ -1908,6 +2167,17 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
       return "Blocked";
     case "done":
       return "Done";
+  }
+}
+
+function formatTaskVerificationStatus(status: TaskVerificationStatus | undefined): string {
+  switch (status) {
+    case "passed":
+      return "Passed";
+    case "failed":
+      return "Failed";
+    case undefined:
+      return "Pending";
   }
 }
 

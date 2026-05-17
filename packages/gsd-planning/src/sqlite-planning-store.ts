@@ -23,6 +23,7 @@ import type {
   TaskEvidenceRecord,
   TaskExecutionRecord,
   TaskSessionLinkRecord,
+  TaskVerificationRecord,
 } from "./types.js";
 
 const SCHEMA_VERSION = 1;
@@ -278,6 +279,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const generatedOutputs = new Map<string, GeneratedOutputRecord>();
   const taskSessionLinks = new Map<string, TaskSessionLinkRecord>();
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
+  const taskVerifications = new Map<string, TaskVerificationRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -407,6 +409,17 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         current.updatedAt = event.createdAt;
         break;
       }
+      case "task.verification-recorded":
+        taskVerifications.set(payload.verification.taskId, {
+          id: payload.verification.id ?? event.id,
+          taskId: payload.verification.taskId,
+          taskPath: payload.verification.taskPath,
+          acceptance: payload.verification.acceptance,
+          status: payload.verification.status,
+          note: payload.verification.note,
+          createdAt: event.createdAt,
+        });
+        break;
     }
   }
 
@@ -419,6 +432,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     generatedOutputs: [...generatedOutputs.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     taskSessionLinks: [...taskSessionLinks.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
+    taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     events,
   };
 }
@@ -507,6 +521,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "task.session-linked":
     case "task.status-updated":
     case "task.evidence-recorded":
+    case "task.verification-recorded":
       return undefined;
   }
 }

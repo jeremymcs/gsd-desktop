@@ -118,9 +118,24 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withTaskEvidence = store.appendEvent({
+    const withTaskDone = store.appendEvent({
       planId: created.id,
       expectedRevision: withTaskStatus.revision,
+      event: {
+        type: "task.status-updated",
+        task: {
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          status: "done",
+          note: "Implementation completed.",
+          blocker: "",
+        },
+      },
+    });
+
+    const withTaskEvidence = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withTaskDone.revision,
       event: {
         type: "task.evidence-recorded",
         evidence: {
@@ -131,23 +146,50 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withTaskEvidence.revision, 7);
-    assert.equal(withTaskEvidence.activePhase, "execute");
-    assert.equal(withTaskEvidence.activeStage, "task");
-    assert.equal(withTaskEvidence.taskSessionLinks.length, 1);
-    assert.equal(withTaskEvidence.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
-    assert.equal(withTaskEvidence.taskExecutions.length, 1);
-    assert.equal(withTaskEvidence.taskExecutions[0]?.status, "blocked");
-    assert.equal(withTaskEvidence.taskExecutions[0]?.blocker, "Waiting on schema review.");
-    assert.equal(withTaskEvidence.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
+    const withVerifyPhase = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withTaskEvidence.revision,
+      event: {
+        type: "phase.updated",
+        phase: "verify",
+        stage: "task",
+      },
+    });
+
+    const withVerification = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withVerifyPhase.revision,
+      event: {
+        type: "task.verification-recorded",
+        verification: {
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          acceptance: "Persist every answer",
+          status: "passed",
+          note: "Acceptance matched the recorded evidence.",
+        },
+      },
+    });
+
+    assert.equal(withVerification.revision, 10);
+    assert.equal(withVerification.activePhase, "verify");
+    assert.equal(withVerification.activeStage, "task");
+    assert.equal(withVerification.taskSessionLinks.length, 1);
+    assert.equal(withVerification.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
+    assert.equal(withVerification.taskExecutions.length, 1);
+    assert.equal(withVerification.taskExecutions[0]?.status, "done");
+    assert.equal(withVerification.taskExecutions[0]?.blocker, "");
+    assert.equal(withVerification.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
+    assert.equal(withVerification.taskVerifications.length, 1);
+    assert.equal(withVerification.taskVerifications[0]?.status, "passed");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 7);
-    assert.equal(reopened.activePhase, "execute");
+    assert.equal(reopened.revision, 10);
+    assert.equal(reopened.activePhase, "verify");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
     assert.deepEqual(reopened.project.antiGoals, ["Generic form wizard"]);
@@ -161,10 +203,13 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskSessionLinks[0]?.sessionId, "session-1");
     assert.equal(reopened.taskExecutions.length, 1);
     assert.equal(reopened.taskExecutions[0]?.taskPath, "M1/S1/T1");
-    assert.equal(reopened.taskExecutions[0]?.status, "blocked");
-    assert.equal(reopened.taskExecutions[0]?.note, "Implementation started.");
+    assert.equal(reopened.taskExecutions[0]?.status, "done");
+    assert.equal(reopened.taskExecutions[0]?.note, "Implementation completed.");
     assert.equal(reopened.taskExecutions[0]?.evidence.length, 1);
-    assert.equal(reopened.events.length, 7);
+    assert.equal(reopened.taskVerifications.length, 1);
+    assert.equal(reopened.taskVerifications[0]?.acceptance, "Persist every answer");
+    assert.equal(reopened.taskVerifications[0]?.note, "Acceptance matched the recorded evidence.");
+    assert.equal(reopened.events.length, 10);
     assert.equal(store.listPlans().length, 1);
 
     store.close();
