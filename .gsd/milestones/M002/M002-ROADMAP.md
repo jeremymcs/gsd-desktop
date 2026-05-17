@@ -19,7 +19,7 @@
 - [x] **S02: Task Session Linking** `risk:high` `depends:[S01]`
   > After this: each execution task can launch or link a normal desktop session while preserving task identity in planning state.
 
-- [ ] **S03: Task Status and Evidence Capture** `risk:high` `depends:[S02]`
+- [x] **S03: Task Status and Evidence Capture** `risk:high` `depends:[S02]`
   > After this: task progress, blockers, and evidence can be persisted as append-only events and shown in the queue.
 
 - [ ] **S04: VERIFY Gate** `risk:high` `depends:[S03]`
@@ -57,3 +57,12 @@ Produces:
 
 Consumes:
   task evidence model -> status, blockers, and verification artifacts tied back to task identity
+
+### S03 -> S04
+
+Produces:
+  task execution state -> latest status, blocker, note, and append-only evidence
+  execution queue evidence -> visible proof attached to accepted task identity
+
+Consumes:
+  verify gate -> completed tasks with evidence before advancing to VERIFY

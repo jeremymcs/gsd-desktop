@@ -86,6 +86,26 @@ export interface TaskSessionLinkRecord {
   readonly createdAt: string;
 }
 
+export type TaskExecutionStatus = "not-started" | "in-progress" | "blocked" | "done";
+
+export interface TaskEvidenceRecord {
+  readonly id: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly text: string;
+  readonly createdAt: string;
+}
+
+export interface TaskExecutionRecord {
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly status: TaskExecutionStatus;
+  readonly note: string;
+  readonly blocker: string;
+  readonly evidence: readonly TaskEvidenceRecord[];
+  readonly updatedAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -138,6 +158,16 @@ export type PlanEvent =
       readonly link: Omit<TaskSessionLinkRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "task.status-updated";
+      readonly task: Omit<TaskExecutionRecord, "evidence" | "updatedAt">;
+    }
+  | {
+      readonly type: "task.evidence-recorded";
+      readonly evidence: Omit<TaskEvidenceRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -168,6 +198,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly stages: readonly StageStateRecord[];
   readonly generatedOutputs: readonly GeneratedOutputRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
+  readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

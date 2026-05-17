@@ -158,6 +158,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await window.getByTestId("task-status-select").selectOption("blocked");
+    await window.getByTestId("task-note-textarea").fill("Implementation started in the linked session.");
+    await window.getByTestId("task-blocker-textarea").fill("Waiting on schema review.");
+    await window.getByTestId("update-task-execution-button").click();
+    await expect(window.getByTestId("task-status-pill")).toContainText("Blocked");
+    await expect(window.getByTestId("task-blocker")).toContainText("Waiting on schema review.");
+    await window.getByTestId("task-status-select").selectOption("done");
+    await window.getByTestId("task-note-textarea").fill("Slice implemented and checked.");
+    await window.getByTestId("task-evidence-textarea").fill("Linked session created and reopened from EXECUTE.");
+    await window.getByTestId("update-task-execution-button").click();
+    await expect(window.getByTestId("task-status-pill")).toContainText("Done");
+    await expect(window.getByTestId("task-note")).toContainText("Slice implemented and checked.");
+    await expect(window.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -177,6 +190,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
     await expect(window.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
+    await expect(window.getByTestId("task-status-pill")).toContainText("Done");
+    await expect(window.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -186,6 +201,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
           entry.selectedPlan?.name === "Launch plan" &&
           entry.selectedPlan.activePhase === "execute" &&
           entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
+          entry.selectedPlan.taskExecutions.some(
+            (task) =>
+              task.taskId === "T1" &&
+              task.status === "done" &&
+              task.evidence.some((evidence) => evidence.text === "Linked session created and reopened from EXECUTE."),
+          ) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>
               output.stage === "research" &&

@@ -2127,6 +2127,9 @@ export default function App() {
               onLinkTaskSession={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.linkPlanningTaskSession(input))
               }
+              onUpdateTaskExecution={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.updatePlanningTaskExecution(input))
+              }
               onOpenTaskSession={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
               onRegenerateProjections={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))

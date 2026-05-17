@@ -103,18 +103,50 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withTaskSession.revision, 5);
-    assert.equal(withTaskSession.activePhase, "execute");
-    assert.equal(withTaskSession.activeStage, "task");
-    assert.equal(withTaskSession.taskSessionLinks.length, 1);
-    assert.equal(withTaskSession.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
+    const withTaskStatus = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withTaskSession.revision,
+      event: {
+        type: "task.status-updated",
+        task: {
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          status: "blocked",
+          note: "Implementation started.",
+          blocker: "Waiting on schema review.",
+        },
+      },
+    });
+
+    const withTaskEvidence = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withTaskStatus.revision,
+      event: {
+        type: "task.evidence-recorded",
+        evidence: {
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          text: "Linked execution session was created and reopened.",
+        },
+      },
+    });
+
+    assert.equal(withTaskEvidence.revision, 7);
+    assert.equal(withTaskEvidence.activePhase, "execute");
+    assert.equal(withTaskEvidence.activeStage, "task");
+    assert.equal(withTaskEvidence.taskSessionLinks.length, 1);
+    assert.equal(withTaskEvidence.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
+    assert.equal(withTaskEvidence.taskExecutions.length, 1);
+    assert.equal(withTaskEvidence.taskExecutions[0]?.status, "blocked");
+    assert.equal(withTaskEvidence.taskExecutions[0]?.blocker, "Waiting on schema review.");
+    assert.equal(withTaskEvidence.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 5);
+    assert.equal(reopened.revision, 7);
     assert.equal(reopened.activePhase, "execute");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -127,7 +159,12 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskSessionLinks.length, 1);
     assert.equal(reopened.taskSessionLinks[0]?.taskId, "T1");
     assert.equal(reopened.taskSessionLinks[0]?.sessionId, "session-1");
-    assert.equal(reopened.events.length, 5);
+    assert.equal(reopened.taskExecutions.length, 1);
+    assert.equal(reopened.taskExecutions[0]?.taskPath, "M1/S1/T1");
+    assert.equal(reopened.taskExecutions[0]?.status, "blocked");
+    assert.equal(reopened.taskExecutions[0]?.note, "Implementation started.");
+    assert.equal(reopened.taskExecutions[0]?.evidence.length, 1);
+    assert.equal(reopened.events.length, 7);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

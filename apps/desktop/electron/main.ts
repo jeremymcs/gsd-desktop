@@ -50,6 +50,7 @@ import type {
   StartPlanningPlanInput,
   StartPlanningResearchInput,
   StartThreadInput,
+  UpdatePlanningTaskExecutionInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
 import type { SessionDriverEvent } from "@pi-gui/session-driver";
@@ -569,6 +570,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.linkPlanningTaskSession, (_event, input: LinkPlanningTaskSessionInput) =>
     store.linkPlanningTaskSession(input),
+  );
+  ipcMain.handle(desktopIpc.updatePlanningTaskExecution, (_event, input: UpdatePlanningTaskExecutionInput) =>
+    store.updatePlanningTaskExecution(input),
   );
   ipcMain.handle(desktopIpc.regeneratePlanningProjections, (_event, input: RegeneratePlanningProjectionsInput) =>
     store.regeneratePlanningProjections(input),

@@ -20,6 +20,8 @@ import type {
   RequirementRecord,
   StageStateRecord,
   StageStatus,
+  TaskEvidenceRecord,
+  TaskExecutionRecord,
   TaskSessionLinkRecord,
 } from "./types.js";
 
@@ -275,6 +277,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const stages = new Map<PlanStage, MutableStageStateRecord>();
   const generatedOutputs = new Map<string, GeneratedOutputRecord>();
   const taskSessionLinks = new Map<string, TaskSessionLinkRecord>();
+  const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -374,6 +377,36 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           createdAt: event.createdAt,
         });
         break;
+      case "task.status-updated": {
+        const current = ensureTaskExecution(taskExecutions, payload.task.taskId, payload.task.taskPath, event.createdAt);
+        current.taskPath = payload.task.taskPath;
+        current.status = payload.task.status;
+        current.note = payload.task.note;
+        current.blocker = payload.task.blocker;
+        current.updatedAt = event.createdAt;
+        break;
+      }
+      case "task.evidence-recorded": {
+        const current = ensureTaskExecution(
+          taskExecutions,
+          payload.evidence.taskId,
+          payload.evidence.taskPath,
+          event.createdAt,
+        );
+        current.taskPath = payload.evidence.taskPath;
+        current.evidence = [
+          ...current.evidence,
+          {
+            id: payload.evidence.id ?? event.id,
+            taskId: payload.evidence.taskId,
+            taskPath: payload.evidence.taskPath,
+            text: payload.evidence.text,
+            createdAt: event.createdAt,
+          },
+        ];
+        current.updatedAt = event.createdAt;
+        break;
+      }
     }
   }
 
@@ -385,6 +418,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     stages: [...stages.values()].sort((left, right) => left.stage.localeCompare(right.stage)),
     generatedOutputs: [...generatedOutputs.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     taskSessionLinks: [...taskSessionLinks.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     events,
   };
 }
@@ -399,6 +433,29 @@ function ensureStage(stages: Map<PlanStage, MutableStageStateRecord>, stage: Pla
     status: "not-started",
   };
   stages.set(stage, created);
+  return created;
+}
+
+function ensureTaskExecution(
+  taskExecutions: Map<string, MutableTaskExecutionRecord>,
+  taskId: string,
+  taskPath: string,
+  updatedAt: string,
+): MutableTaskExecutionRecord {
+  const existing = taskExecutions.get(taskId);
+  if (existing) {
+    return existing;
+  }
+  const created: MutableTaskExecutionRecord = {
+    taskId,
+    taskPath,
+    status: "not-started",
+    note: "",
+    blocker: "",
+    evidence: [],
+    updatedAt,
+  };
+  taskExecutions.set(taskId, created);
   return created;
 }
 
@@ -448,6 +505,8 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "generated-output.reviewed":
     case "answer.revised":
     case "task.session-linked":
+    case "task.status-updated":
+    case "task.evidence-recorded":
       return undefined;
   }
 }
@@ -509,4 +568,8 @@ type MutableProjectSummary = {
 
 type MutableStageStateRecord = {
   -readonly [Key in keyof StageStateRecord]: StageStateRecord[Key];
+};
+
+type MutableTaskExecutionRecord = {
+  -readonly [Key in keyof TaskExecutionRecord]: Key extends "evidence" ? TaskEvidenceRecord[] : TaskExecutionRecord[Key];
 };

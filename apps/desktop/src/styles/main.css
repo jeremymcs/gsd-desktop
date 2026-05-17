@@ -2434,6 +2434,32 @@
   white-space: nowrap;
 }
 
+.plan-execution-task__status {
+  margin-left: auto;
+  border: 1px solid #363b45;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #111216;
+  color: #c4c9d3;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.plan-execution-task__status--in-progress {
+  border-color: #5b6f9a;
+  color: #b8c9f2;
+}
+
+.plan-execution-task__status--blocked {
+  border-color: #71524b;
+  color: #f1b49f;
+}
+
+.plan-execution-task__status--done {
+  border-color: #3f6748;
+  color: #a9d8b1;
+}
+
 .plan-execution-slice__header small {
   margin-left: auto;
   color: #8f96a3;
@@ -2480,8 +2506,78 @@
   white-space: nowrap;
 }
 
+.plan-execution-task__note,
+.plan-execution-task__blocker {
+  border-left: 2px solid #343945;
+  padding-left: 8px;
+}
+
+.plan-execution-task__blocker {
+  color: #f1b49f;
+}
+
+.plan-execution-evidence {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-execution-evidence span {
+  border: 1px solid #263629;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #121a14;
+  color: #a9d8b1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.plan-execution-task-editor {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  border-top: 1px solid #262a33;
+  padding-top: 10px;
+}
+
+.plan-execution-task-editor__field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: #9aa1ad;
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.plan-execution-task-editor__field select,
+.plan-execution-task-editor__field textarea {
+  width: 100%;
+  border: 1px solid #30343d;
+  border-radius: 7px;
+  background: #101114;
+  color: #f4f4f5;
+  font: inherit;
+  font-size: 12px;
+}
+
+.plan-execution-task-editor__field select {
+  height: 32px;
+  padding: 0 8px;
+}
+
+.plan-execution-task-editor__field textarea {
+  min-height: 48px;
+  resize: vertical;
+  padding: 8px;
+}
+
 @media (max-width: 900px) {
   .plan-execution-task__footer {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .plan-execution-task-editor {
     grid-template-columns: 1fr;
     align-items: stretch;
   }

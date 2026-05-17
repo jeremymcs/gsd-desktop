@@ -63,6 +63,7 @@ import {
   type StartPlanningResearchInput,
   type StartThreadInput,
   type TranscriptMessage,
+  type UpdatePlanningTaskExecutionInput,
   type WorkspaceSessionTarget,
 } from "../src/desktop-state";
 import {
@@ -409,6 +410,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async linkPlanningTaskSession(input: LinkPlanningTaskSessionInput): Promise<DesktopAppState> {
     return plans.linkPlanningTaskSession(this, input);
+  }
+
+  async updatePlanningTaskExecution(input: UpdatePlanningTaskExecutionInput): Promise<DesktopAppState> {
+    return plans.updatePlanningTaskExecution(this, input);
   }
 
   async regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState> {

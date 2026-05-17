@@ -5,6 +5,8 @@ import type {
   PlanSnapshot,
   PlanStage,
   StageStatus,
+  TaskExecutionRecord,
+  TaskExecutionStatus,
   TaskSessionLinkRecord,
 } from "@pi-gui/gsd-planning";
 import type {
@@ -28,6 +30,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
   WorkspaceRecord,
   WorkspaceSessionTarget,
@@ -81,6 +84,7 @@ interface PlanBuilderViewProps {
   readonly onReviewPlan: (input: ReviewPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onStartExecution: (input: StartPlanningExecutionInput) => Promise<DesktopAppState>;
   readonly onLinkTaskSession: (input: LinkPlanningTaskSessionInput) => Promise<DesktopAppState>;
+  readonly onUpdateTaskExecution: (input: UpdatePlanningTaskExecutionInput) => Promise<DesktopAppState>;
   readonly onOpenTaskSession: (target: WorkspaceSessionTarget) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
@@ -104,6 +108,7 @@ export function PlanBuilderView({
   onReviewPlan,
   onStartExecution,
   onLinkTaskSession,
+  onUpdateTaskExecution,
   onOpenTaskSession,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
@@ -450,6 +455,26 @@ export function PlanBuilderView({
     void onOpenTaskSession({
       workspaceId: link.workspaceId,
       sessionId: link.sessionId,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const updateTaskExecution = (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdateTaskExecution({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      taskId: task.id,
+      taskPath,
+      status: draft.status,
+      note: draft.note,
+      blocker: draft.status === "blocked" ? draft.blocker : "",
+      evidence: draft.evidence,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -831,8 +856,10 @@ export function PlanBuilderView({
                 acceptedPlanProposal={acceptedPlanProposal}
                 projectionSummary={planningState?.projectionSummary}
                 submitting={submitting}
+                taskExecutions={snapshot.taskExecutions ?? []}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
                 onLinkTaskSession={linkTaskSession}
+                onUpdateTaskExecution={updateTaskExecution}
                 onOpenTaskSession={openTaskSession}
                 onRegenerateProjections={regenerateProjections}
               />
@@ -1402,28 +1429,81 @@ function PlanProposalEditor({
   );
 }
 
+interface TaskExecutionDraft {
+  readonly status: TaskExecutionStatus;
+  readonly note: string;
+  readonly blocker: string;
+  readonly evidence: string;
+}
+
 function PlanExecutionQueue({
   acceptedPlanProposal,
   projectionSummary,
   submitting,
+  taskExecutions,
   taskSessionLinks,
   onLinkTaskSession,
+  onUpdateTaskExecution,
   onOpenTaskSession,
   onRegenerateProjections,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly submitting: boolean;
+  readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
+  readonly onUpdateTaskExecution: (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => void;
   readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
   readonly onRegenerateProjections: () => void;
 }) {
+  const [taskDrafts, setTaskDrafts] = useState<Record<string, TaskExecutionDraft>>({});
   const taskCount = acceptedPlanProposal?.milestones.reduce(
     (total, milestone) => total + milestone.slices.reduce((sliceTotal, slice) => sliceTotal + slice.tasks.length, 0),
     0,
   ) ?? 0;
   const taskLinks = useMemo(() => new Map(taskSessionLinks.map((link) => [link.taskId, link])), [taskSessionLinks]);
+  const taskExecutionMap = useMemo(
+    () => new Map(taskExecutions.map((execution) => [execution.taskId, execution])),
+    [taskExecutions],
+  );
+
+  const getTaskDraft = (taskId: string, execution: TaskExecutionRecord | undefined): TaskExecutionDraft =>
+    taskDrafts[taskId] ?? {
+      status: execution?.status ?? "not-started",
+      note: execution?.note ?? "",
+      blocker: execution?.blocker ?? "",
+      evidence: "",
+    };
+
+  const updateTaskDraft = (taskId: string, patch: Partial<TaskExecutionDraft>) => {
+    const execution = taskExecutionMap.get(taskId);
+    setTaskDrafts((current) => ({
+      ...current,
+      [taskId]: {
+        ...(current[taskId] ?? {
+          status: execution?.status ?? "not-started",
+          note: execution?.note ?? "",
+          blocker: execution?.blocker ?? "",
+          evidence: "",
+        }),
+        ...patch,
+      },
+    }));
+  };
+
+  const submitTaskDraft = (task: PlanningTaskDraft, taskPath: string, execution: TaskExecutionRecord | undefined) => {
+    const draft = getTaskDraft(task.id, execution);
+    onUpdateTaskExecution(task, taskPath, draft);
+    setTaskDrafts((current) => ({
+      ...current,
+      [task.id]: {
+        ...draft,
+        blocker: draft.status === "blocked" ? draft.blocker : "",
+        evidence: "",
+      },
+    }));
+  };
 
   return (
     <div className="plan-execution" data-testid="plan-execution-panel">
@@ -1477,13 +1557,44 @@ function PlanExecutionQueue({
                     {slice.tasks.map((task) => {
                       const taskPath = `${milestone.id}/${slice.id}/${task.id}`;
                       const linkedSession = taskLinks.get(task.id);
+                      const taskExecution = taskExecutionMap.get(task.id);
+                      const taskDraft = getTaskDraft(task.id, taskExecution);
+                      const taskSaveBlocked =
+                        submitting ||
+                        (taskDraft.status === "blocked" && !taskDraft.blocker.trim()) ||
+                        (taskDraft.status === "done" &&
+                          !taskDraft.evidence.trim() &&
+                          !(taskExecution?.evidence.length ?? 0));
                       return (
                         <article className="plan-execution-task" key={task.id} data-testid="execution-task">
                           <div className="plan-execution-task__header">
                             <span>{task.id}</span>
                             <strong>{task.title}</strong>
+                            <span
+                              className={`plan-execution-task__status plan-execution-task__status--${taskExecution?.status ?? "not-started"}`}
+                              data-testid="task-status-pill"
+                            >
+                              {formatTaskExecutionStatus(taskExecution?.status ?? "not-started")}
+                            </span>
                           </div>
                           <p>{task.acceptance}</p>
+                          {taskExecution?.note ? (
+                            <p className="plan-execution-task__note" data-testid="task-note">
+                              Note: {taskExecution.note}
+                            </p>
+                          ) : null}
+                          {taskExecution?.blocker ? (
+                            <p className="plan-execution-task__blocker" data-testid="task-blocker">
+                              Blocker: {taskExecution.blocker}
+                            </p>
+                          ) : null}
+                          {taskExecution?.evidence.length ? (
+                            <div className="plan-execution-evidence" data-testid="task-evidence-list">
+                              {taskExecution.evidence.map((evidence) => (
+                                <span key={evidence.id}>{evidence.text}</span>
+                              ))}
+                            </div>
+                          ) : null}
                           <div className="plan-execution-task__footer">
                             <small>
                               {task.dependencies.length > 0 ? `Depends on ${task.dependencies.join(", ")}` : "Ready"}
@@ -1514,6 +1625,58 @@ function PlanExecutionQueue({
                                 Create session
                               </button>
                             )}
+                          </div>
+                          <div className="plan-execution-task-editor">
+                            <label className="plan-execution-task-editor__field">
+                              <span>Status</span>
+                              <select
+                                data-testid="task-status-select"
+                                onChange={(event) =>
+                                  updateTaskDraft(task.id, { status: event.target.value as TaskExecutionStatus })
+                                }
+                                value={taskDraft.status}
+                              >
+                                <option value="not-started">Not started</option>
+                                <option value="in-progress">In progress</option>
+                                <option value="blocked">Blocked</option>
+                                <option value="done">Done</option>
+                              </select>
+                            </label>
+                            <label className="plan-execution-task-editor__field">
+                              <span>Note</span>
+                              <textarea
+                                data-testid="task-note-textarea"
+                                onChange={(event) => updateTaskDraft(task.id, { note: event.target.value })}
+                                value={taskDraft.note}
+                              />
+                            </label>
+                            {taskDraft.status === "blocked" ? (
+                              <label className="plan-execution-task-editor__field">
+                                <span>Blocker</span>
+                                <textarea
+                                  data-testid="task-blocker-textarea"
+                                  onChange={(event) => updateTaskDraft(task.id, { blocker: event.target.value })}
+                                  value={taskDraft.blocker}
+                                />
+                              </label>
+                            ) : null}
+                            <label className="plan-execution-task-editor__field">
+                              <span>Evidence</span>
+                              <textarea
+                                data-testid="task-evidence-textarea"
+                                onChange={(event) => updateTaskDraft(task.id, { evidence: event.target.value })}
+                                value={taskDraft.evidence}
+                              />
+                            </label>
+                            <button
+                              className="plan-action-button plan-action-button--compact"
+                              data-testid="update-task-execution-button"
+                              disabled={taskSaveBlocked}
+                              onClick={() => submitTaskDraft(task, taskPath, taskExecution)}
+                              type="button"
+                            >
+                              Save task state
+                            </button>
                           </div>
                         </article>
                       );
@@ -1733,6 +1896,19 @@ function formatExecuteStatus(started: boolean, acceptedPlanCount: number): strin
     return "Active";
   }
   return acceptedPlanCount > 0 ? "Ready" : "Queued";
+}
+
+function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
+  switch (status) {
+    case "not-started":
+      return "Not started";
+    case "in-progress":
+      return "In progress";
+    case "blocked":
+      return "Blocked";
+    case "done":
+      return "Done";
+  }
 }
 
 function stageLabel(stage: PlanStage): string {

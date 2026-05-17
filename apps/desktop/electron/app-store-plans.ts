@@ -28,6 +28,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
 import {
@@ -623,6 +624,67 @@ export async function linkPlanningTaskSession(
           },
         },
       });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningTaskExecution(
+  store: AppStoreInternals,
+  input: UpdatePlanningTaskExecutionInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      if (snapshot.activePhase !== "execute") {
+        throw new Error("EXECUTE must be active before updating a task");
+      }
+
+      const note = input.note.trim();
+      const blocker = input.status === "blocked" ? input.blocker.trim() : "";
+      const evidence = input.evidence.trim();
+      const currentTask = snapshot.taskExecutions.find((entry) => entry.taskId === input.taskId);
+      if (input.status === "blocked" && !blocker) {
+        throw new Error("Blocked tasks need a blocker");
+      }
+      if (input.status === "done" && !evidence && !currentTask?.evidence.length) {
+        throw new Error("Evidence is required before marking a task done");
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "task.status-updated",
+          task: {
+            taskId: input.taskId,
+            taskPath: input.taskPath,
+            status: input.status,
+            note,
+            blocker,
+          },
+        },
+      });
+
+      if (evidence) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "task.evidence-recorded",
+          evidence: {
+            taskId: input.taskId,
+            taskPath: input.taskPath,
+            text: evidence,
+          },
+        });
+      }
 
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });

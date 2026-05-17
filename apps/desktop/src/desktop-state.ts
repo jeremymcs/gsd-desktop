@@ -1,6 +1,12 @@
 import type { HostUiRequest, SessionConfig } from "@pi-gui/session-driver";
 import type { ModelSettingsSnapshot, RuntimeCommandRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
-import type { PlanListEntry, PlanSnapshot, PlanStage, ProjectSummary } from "@pi-gui/gsd-planning";
+import type {
+  PlanListEntry,
+  PlanSnapshot,
+  PlanStage,
+  ProjectSummary,
+  TaskExecutionStatus,
+} from "@pi-gui/gsd-planning";
 export type SessionStatus = "idle" | "running" | "failed";
 export type { SessionRole, TranscriptMessage } from "./timeline-types";
 import type { TranscriptMessage } from "./timeline-types";
@@ -286,6 +292,18 @@ export interface LinkPlanningTaskSessionInput {
   readonly taskId: string;
   readonly taskPath: string;
   readonly taskTitle: string;
+}
+
+export interface UpdatePlanningTaskExecutionInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly status: TaskExecutionStatus;
+  readonly note: string;
+  readonly blocker: string;
+  readonly evidence: string;
 }
 
 export interface ProposePlanningPlanInput {
