@@ -491,6 +491,60 @@ test("starts PLAN from the Plan Builder composer handoff", async () => {
   }
 });
 
+test("starts EXECUTE from the Plan Builder composer handoff", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-start-execute");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer execute handoff plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await completeDiscussFromQuestionCard(window);
+    await window.getByRole("button", { name: "Start research" }).click();
+    await window.getByTestId("research-title-input").fill("Composer execute research");
+    await window.getByTestId("research-content-textarea").fill("Research accepted before composer EXECUTE handoff.");
+    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
+    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
+    await window.getByRole("button", { name: "Stage plan" }).click();
+    await window
+      .getByTestId("plan-output-proposed")
+      .locator(".plan-research-output")
+      .filter({ hasText: "Proposed" })
+      .getByRole("button", { name: "Accept plan" })
+      .click();
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
+    await expect(window.getByText("Start EXECUTE when the accepted plan is ready for task work")).toBeVisible();
+    await window.getByLabel("Advance composer to EXECUTE").click();
+
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer execute handoff plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        activeStage: plan?.activeStage ?? "",
+      };
+    }).toEqual({
+      activePhase: "execute",
+      activeStage: "task",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-park");

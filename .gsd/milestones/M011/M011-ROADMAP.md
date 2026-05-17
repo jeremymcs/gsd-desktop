@@ -19,7 +19,7 @@
 - [x] **S02: Composer PLAN Handoff** `risk:medium` `depends:[S01]`
   > After this: a user can start PLAN from the bottom composer after accepting research.
 
-- [ ] **S03: Composer EXECUTE Handoff** `risk:medium` `depends:[S02]`
+- [x] **S03: Composer EXECUTE Handoff** `risk:medium` `depends:[S02]`
   > After this: a user can start EXECUTE from the bottom composer after accepting a valid plan.
 
 ## Boundary Map

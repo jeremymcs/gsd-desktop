@@ -1100,6 +1100,8 @@ export function PlanBuilderView({
       ? "VERIFY gate is active; check completed tasks against acceptance"
       : executeStarted
       ? "EXECUTE queue is active; create or open linked task sessions"
+    : acceptedPlanOutputs.length > 0
+      ? "Start EXECUTE when the accepted plan is ready for task work"
     : planStarted
       ? "Structured plan proposals are validated before approval"
     : acceptedResearchOutputs.length > 0
@@ -1124,6 +1126,12 @@ export function PlanBuilderView({
             disabled: submitting,
             run: startPlan,
           }
+        : planStarted && acceptedPlanOutputs.length > 0 && !executeStarted && !verifyStarted && !shipStarted
+          ? {
+              ariaLabel: "Advance composer to EXECUTE",
+              disabled: submitting,
+              run: startExecution,
+            }
         : undefined
     : undefined;
   const composerSubmitDisabled = activeQuestion ? answerActionDisabled : !composerPhaseAction || composerPhaseAction.disabled;
