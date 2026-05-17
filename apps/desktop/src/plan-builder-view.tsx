@@ -283,6 +283,7 @@ export function PlanBuilderView({
     [snapshot],
   );
   const modelOptions = useMemo(() => buildModelOptions(runtime), [runtime]);
+  const answerActionDisabled = !activeQuestion || !answerDraft.trim() || submitting;
 
   useEffect(() => {
     const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id) : undefined;
@@ -1427,10 +1428,21 @@ export function PlanBuilderView({
                 <span>{composerStatus}</span>
               )}
             </div>
+            {activeQuestion ? (
+              <button
+                className="plan-composer__park"
+                type="button"
+                disabled={answerActionDisabled}
+                aria-label="Park composer draft"
+                onClick={() => recordAnswer(false)}
+              >
+                Park
+              </button>
+            ) : null}
             <button
               className="plan-composer__send"
               type="submit"
-              disabled={!activeQuestion || !answerDraft.trim() || submitting}
+              disabled={answerActionDisabled}
               aria-label="Save answer from composer"
             >
               <ArrowUpIcon />

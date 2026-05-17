@@ -280,6 +280,55 @@ test("saves the active DISCUSS answer from the Plan Builder composer", async () 
   }
 });
 
+test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-park");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer park plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-composer-textarea").fill("Revisit naming after research");
+    await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("Revisit naming after research");
+    await window.getByRole("button", { name: "Park composer draft" }).click();
+
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("");
+    await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
+    await expect(window.getByTestId("plan-idea-pool")).toContainText("Revisit naming after research");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer park plan",
+      )?.selectedPlan;
+      const answer = plan?.answers.find((entry) => entry.questionId === "project_title");
+      const item = plan?.parkedItems.find((entry) => entry.sourceQuestionId === "project_title");
+      return {
+        answer: answer?.answer ?? "",
+        loadBearing: answer?.loadBearing ?? true,
+        parkedText: item?.text ?? "",
+        reviewStatus: item?.reviewStatus ?? "",
+      };
+    }).toEqual({
+      answer: "Revisit naming after research",
+      loadBearing: false,
+      parkedText: "Revisit naming after research",
+      reviewStatus: "parked",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("labels weak requirements answers with requirement contract context", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-requirement-guidance");

@@ -16,7 +16,7 @@
 - [x] **S01: Composer Answer Submit** `risk:medium` `depends:[M008]`
   > After this: a user can type the active DISCUSS answer in the bottom composer and submit it as a load-bearing answer.
 
-- [ ] **S02: Composer Park Action** `risk:medium` `depends:[S01]`
+- [x] **S02: Composer Park Action** `risk:medium` `depends:[S01]`
   > After this: a user can park the composer draft without advancing the active load-bearing question.
 
 - [ ] **S03: Composer Persistence Coverage** `risk:medium` `depends:[S01,S02]`

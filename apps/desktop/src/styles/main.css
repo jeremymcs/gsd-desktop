@@ -3339,7 +3339,20 @@
   color: #111214;
 }
 
-.plan-composer__send:disabled {
+.plan-composer__park {
+  height: 46px;
+  flex: 0 0 auto;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #2d303a;
+  background: #1f2127;
+  color: #d9dce3;
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.plan-composer__send:disabled,
+.plan-composer__park:disabled {
   cursor: default;
   opacity: 0.52;
 }
@@ -3842,6 +3855,7 @@
 }
 
 .canvas--plans .plan-secondary-button,
+.canvas--plans .plan-composer__park,
 .canvas--plans .plan-inline-button,
 .canvas--plans .plan-execution-task__status {
   border-color: var(--plan-input-border);
