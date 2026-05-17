@@ -13,6 +13,7 @@ import {
 const discussAnswers = [
   ["What should we call this project?", "Launch Control"],
   ["What are we building, and what outcome should it create?", "A UI-driven project planner that turns discussion into execution-ready work."],
+  ["Is this project simple or complex?", "complex - database-backed planning, projections, and execution lifecycle state."],
   ["Who is it for, and what pain are they bringing?", "Builders who need the workflow remembered across every planning turn."],
   ["What must feel clearly better when this ships?", "Starting a project feels guided, durable, and ready for clean execution."],
   ["What should this not become?", "A static markdown questionnaire\nA brittle one-shot prompt"],
@@ -289,11 +290,11 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       await window.getByTestId("plan-answer-textarea").fill(answer);
       await window.getByRole("button", { name: "Save answer" }).click();
 
-      if (index === 5) {
+      if (index === 6) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await window.getByRole("button", { name: "Confirm Project" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
-      } else if (index === 9) {
+      } else if (index === 10) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await window.getByRole("button", { name: "Confirm Requirements" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / milestone");
@@ -388,6 +389,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const projectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(projectProjection).toContain("pi-gui-plan-builder-generated");
     expect(projectProjection).toContain("# Project: Launch Control Revised");
+    expect(projectProjection).toContain("**Complexity:** complex");
+    expect(projectProjection).toContain(
+      "**Why:** complex - database-backed planning, projections, and execution lifecycle state.",
+    );
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
     const sliceProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "S1-PLAN.md"), "utf8");

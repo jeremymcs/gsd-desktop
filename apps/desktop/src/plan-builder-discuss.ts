@@ -39,6 +39,14 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     loadBearing: true,
   },
   {
+    id: "project_shape",
+    stage: "project",
+    label: "Shape",
+    prompt: "Is this project simple or complex?",
+    helper: "Start with simple or complex. Default to complex when integrations, roles, brownfield code, or broad scope are unclear.",
+    loadBearing: true,
+  },
+  {
     id: "project_users",
     stage: "project",
     label: "Users",
@@ -223,6 +231,8 @@ export function buildProjectPatch(questionId: string, answer: string): Partial<P
       return { title: firstLine(value) };
     case "project_vision":
       return { vision: value };
+    case "project_shape":
+      return { shape: parseProjectShape(value) };
     case "project_users":
       return { users: value };
     case "project_core_value":
@@ -246,4 +256,12 @@ function parseList(value: string): readonly string[] {
     .map((line) => line.replace(/^[-*]\s+/, "").trim())
     .filter(Boolean);
   return parsed.length > 0 ? parsed : [value];
+}
+
+function parseProjectShape(value: string): ProjectSummary["shape"] {
+  const complexity = /^simple\b/i.test(value.trim()) ? "simple" : "complex";
+  return {
+    complexity,
+    rationale: firstLine(value),
+  };
 }
