@@ -536,6 +536,53 @@ test("rejects stale writes with a revision conflict", async () => {
   }
 });
 
+test("parks composer-origin ideas without synthetic answers or phase changes", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Composer Parking" });
+    const executing = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "phase.updated",
+        phase: "execute",
+        stage: "task",
+      },
+    });
+
+    const withParkedIdea = store.appendEvent({
+      planId: created.id,
+      expectedRevision: executing.revision,
+      event: {
+        type: "idea.parked",
+        item: {
+          sourceType: "composer",
+          sourceStage: "task",
+          sourceQuestionId: "composer_execute",
+          sourcePrompt: "Composer note captured during EXECUTE",
+          text: "Review a late integration concern.",
+          rationale: "Parked from the Plan Builder composer",
+        },
+      },
+    });
+
+    assert.equal(withParkedIdea.activePhase, "execute");
+    assert.equal(withParkedIdea.activeStage, "task");
+    assert.equal(withParkedIdea.answers.length, 0);
+    assert.equal(withParkedIdea.parkedItems.length, 1);
+    assert.equal(withParkedIdea.parkedItems[0]?.sourceType, "composer");
+    assert.equal(withParkedIdea.parkedItems[0]?.sourceAnswerId, undefined);
+    assert.equal(withParkedIdea.parkedItems[0]?.sourceStage, "task");
+    assert.equal(withParkedIdea.parkedItems[0]?.text, "Review a late integration concern.");
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 async function makeWorkspace() {
   return await mkdtemp(join(tmpdir(), "pi-gsd-planning-"));
 }

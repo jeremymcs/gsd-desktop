@@ -35,6 +35,7 @@ import type {
   HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
   NotificationPreferences,
+  ParkPlanningIdeaInput,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
@@ -173,6 +174,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.updatePlanningWorkflowPreferences, input) as Promise<DesktopAppState>,
   recordPlanningAnswer: (input: RecordPlanningAnswerInput) =>
     ipcRenderer.invoke(desktopIpc.recordPlanningAnswer, input) as Promise<DesktopAppState>,
+  parkPlanningIdea: (input: ParkPlanningIdeaInput) =>
+    ipcRenderer.invoke(desktopIpc.parkPlanningIdea, input) as Promise<DesktopAppState>,
   revisePlanningAnswer: (input: RevisePlanningAnswerInput) =>
     ipcRenderer.invoke(desktopIpc.revisePlanningAnswer, input) as Promise<DesktopAppState>,
   upsertPlanningRequirements: (input: UpsertPlanningRequirementsInput) =>

@@ -224,6 +224,17 @@ export interface RecordPlanningAnswerInput {
   readonly projectPatch?: Partial<ProjectSummary>;
 }
 
+export interface ParkPlanningIdeaInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly sourceStage: PlanStage;
+  readonly sourceQuestionId: string;
+  readonly sourcePrompt: string;
+  readonly text: string;
+  readonly rationale?: string;
+}
+
 export interface RevisePlanningAnswerInput {
   readonly workspaceId: string;
   readonly planId: string;

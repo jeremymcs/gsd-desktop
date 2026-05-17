@@ -151,10 +151,12 @@ export interface WorkflowPreferencesRecord {
 
 export type ParkedItemReviewStatus = "parked" | "kept" | "dismissed" | "promotion-ready";
 
+export type ParkedItemSourceType = "answer" | "composer";
+
 export interface ParkedItemRecord {
   readonly id: string;
-  readonly sourceType: "answer";
-  readonly sourceAnswerId: string;
+  readonly sourceType: ParkedItemSourceType;
+  readonly sourceAnswerId?: string;
   readonly sourceStage: PlanStage;
   readonly sourceQuestionId: string;
   readonly sourcePrompt: string;

@@ -52,6 +52,7 @@ import {
   type HidePlanningTaskInput,
   type LinkPlanningTaskSessionInput,
   type NotificationPreferences,
+  type ParkPlanningIdeaInput,
   type ProposePlanningPlanInput,
   type ProposePlanningResearchInput,
   type QueuedComposerMessage,
@@ -392,6 +393,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState> {
     return plans.recordPlanningAnswer(this, input);
+  }
+
+  async parkPlanningIdea(input: ParkPlanningIdeaInput): Promise<DesktopAppState> {
+    return plans.parkPlanningIdea(this, input);
   }
 
   async revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState> {

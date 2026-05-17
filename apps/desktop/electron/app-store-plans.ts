@@ -25,6 +25,7 @@ import type {
   DraftPlanningChangeProposalInput,
   HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
+  ParkPlanningIdeaInput,
   PlanningPlanProposalDraft,
   PlanningTaskDraft,
   PlanningProjectionSummary,
@@ -262,6 +263,44 @@ export async function recordPlanningAnswer(
       }
 
       snapshot = advanceDiscussStageAfterAnswer(planningStore, snapshot, stage);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function parkPlanningIdea(
+  store: AppStoreInternals,
+  input: ParkPlanningIdeaInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const text = input.text.trim();
+  if (!text) {
+    return store.withError("Parked ideas need text");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "idea.parked",
+          item: {
+            sourceType: "composer",
+            sourceStage: input.sourceStage,
+            sourceQuestionId: input.sourceQuestionId.trim() || "composer_note",
+            sourcePrompt: input.sourcePrompt.trim() || "Composer note",
+            text,
+            rationale: input.rationale?.trim() || "Parked from the Plan Builder composer",
+          },
+        },
+      });
+
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });

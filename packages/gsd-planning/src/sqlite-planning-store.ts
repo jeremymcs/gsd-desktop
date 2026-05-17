@@ -461,7 +461,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         parkedItems.set(payload.item.id ?? event.id, {
           id: payload.item.id ?? event.id,
           sourceType: payload.item.sourceType,
-          sourceAnswerId: payload.item.sourceAnswerId,
+          ...(payload.item.sourceAnswerId ? { sourceAnswerId: payload.item.sourceAnswerId } : {}),
           sourceStage: payload.item.sourceStage,
           sourceQuestionId: payload.item.sourceQuestionId,
           sourcePrompt: payload.item.sourcePrompt,

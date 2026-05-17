@@ -21,6 +21,7 @@ import type {
   LinkPlanningTaskSessionInput,
   ModelSettingsScopeMode,
   NotificationPreferences,
+  ParkPlanningIdeaInput,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
@@ -79,6 +80,7 @@ export const desktopIpc = {
   applyPlanningWorkflowPreferences: "pi-gui:apply-planning-workflow-preferences",
   updatePlanningWorkflowPreferences: "pi-gui:update-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
+  parkPlanningIdea: "pi-gui:park-planning-idea",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
   upsertPlanningRequirements: "pi-gui:upsert-planning-requirements",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
@@ -292,6 +294,7 @@ export interface PiDesktopApi {
   applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
+  parkPlanningIdea(input: ParkPlanningIdeaInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
   upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
