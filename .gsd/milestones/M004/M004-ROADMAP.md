@@ -24,6 +24,9 @@
 - [x] **S03: Preference and Phase Model Change Control** `risk:high` `depends:[S01,S02]`
   > After this: users can set global phase model defaults in Settings and project-specific phase overrides in Plan Builder, with project overrides persisted through append-only events and reflected in generated preference projections.
 
+- [ ] **S04: Light/Dark Mode Consistency Fix** `risk:medium` `depends:[S03]`
+  > After this: Plan Builder and workflow preference controls render cleanly in both light and dark modes, with readable contrast, stable controls, and no theme-specific regressions.
+
 ## Boundary Map
 
 ### M003 -> S01
@@ -61,3 +64,11 @@ Produces:
 
 Consumes:
   phase model controls -> model pickers and persisted preferences scoped to each phase
+
+### S03 -> S04
+
+Produces:
+  phase model controls -> new Settings and Plan Builder controls that must behave in both themes
+
+Consumes:
+  light/dark mode fix -> theme-safe planning controls and readable workflow surfaces
