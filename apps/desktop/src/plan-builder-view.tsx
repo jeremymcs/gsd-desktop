@@ -9,6 +9,7 @@ import type {
   PlanPhase,
   PlanSnapshot,
   PlanStage,
+  RequirementRecord,
   ShipSummaryRecord,
   StageStatus,
   TaskExecutionRecord,
@@ -41,6 +42,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  UpsertPlanningRequirementsInput,
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
@@ -66,6 +68,7 @@ import {
   splitDependencies,
   validatePlanProposal,
 } from "./plan-builder-plan";
+import { buildRequirementDrafts } from "./plan-builder-requirements";
 import {
   buildProjectPatch,
   discussStageOrder,
@@ -109,6 +112,7 @@ interface PlanBuilderViewProps {
   readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
+  readonly onUpsertRequirements: (input: UpsertPlanningRequirementsInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
@@ -146,6 +150,7 @@ export function PlanBuilderView({
   onUpdateWorkflowPreferences,
   onRecordAnswer,
   onReviseAnswer,
+  onUpsertRequirements,
   onReviewIdea,
   onDraftChangeProposal,
   onApproveChangeProposal,
@@ -194,6 +199,9 @@ export function PlanBuilderView({
   );
   const latestAnswers = useMemo(() => getLatestDiscussAnswers(snapshot), [snapshot]);
   const latestAnswersByQuestion = useMemo(() => getLatestAnswersByQuestion(snapshot), [snapshot]);
+  const requirementDrafts = useMemo(() => buildRequirementDrafts(snapshot), [snapshot]);
+  const savedRequirements = snapshot?.requirements ?? [];
+  const requirementRows = savedRequirements.length > 0 ? savedRequirements : requirementDrafts;
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
   const researchOutputs = useMemo(
@@ -404,6 +412,21 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const saveRequirementsContract = () => {
+    if (!snapshot || requirementDrafts.length === 0 || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpsertRequirements({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      requirements: requirementDrafts,
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const reviewIdea = (itemId: string, status: ParkedItemReviewStatus) => {
@@ -1459,6 +1482,16 @@ export function PlanBuilderView({
               </div>
             ) : null}
 
+            {requirementRows.length > 0 ? (
+              <RequirementsContractCard
+                draftCount={requirementDrafts.length}
+                requirements={requirementRows}
+                saved={savedRequirements.length > 0}
+                submitting={submitting}
+                onSave={saveRequirementsContract}
+              />
+            ) : null}
+
             {snapshot?.parkedItems?.length ? (
               <div className="plan-memory" data-testid="plan-idea-pool">
                 <div className="plan-memory__title">Idea pool</div>
@@ -1590,6 +1623,58 @@ export function PlanBuilderView({
         </aside>
       </div>
     </section>
+  );
+}
+
+function RequirementsContractCard({
+  draftCount,
+  requirements,
+  saved,
+  submitting,
+  onSave,
+}: {
+  readonly draftCount: number;
+  readonly requirements: readonly RequirementRecord[];
+  readonly saved: boolean;
+  readonly submitting: boolean;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="plan-memory" data-testid="requirements-contract">
+      <div className="plan-requirements-contract__header">
+        <div>
+          <div className="plan-memory__title">Requirements contract</div>
+          <p>{saved ? "Requirements contract saved" : "Drafted from requirements answers"}</p>
+        </div>
+        <button
+          className="plan-inline-button"
+          data-testid="save-requirements-contract-button"
+          disabled={draftCount === 0 || submitting}
+          onClick={onSave}
+          type="button"
+        >
+          {saved ? "Update" : "Save"}
+        </button>
+      </div>
+      {requirements.map((requirement) => (
+        <article className="plan-memory__item plan-requirement-row" data-testid="requirement-row" key={requirement.id}>
+          <div className="plan-memory__item-header">
+            <span>
+              {requirement.id}: {requirement.title}
+            </span>
+            <small>{formatRequirementValidationStatus(requirement.validationStatus)}</small>
+          </div>
+          <div className="plan-requirement-row__meta">
+            <span>{formatRequirementClass(requirement.class)}</span>
+            <span>{formatRequirementStatus(requirement.status)}</span>
+            <span>{formatRequirementSource(requirement.source)}</span>
+            <span>{requirement.owner}</span>
+          </div>
+          <p>{requirement.description}</p>
+          <p className="plan-memory__note">{requirement.why}</p>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -3311,6 +3396,60 @@ function formatOutputStatus(status: GeneratedOutputRecord["status"]): string {
       return "Accepted";
     case "rejected":
       return "Rejected";
+  }
+}
+
+function formatRequirementClass(value: RequirementRecord["class"]): string {
+  switch (value) {
+    case "functional":
+      return "Functional";
+    case "quality":
+      return "Quality";
+    case "constraint":
+      return "Constraint";
+    case "integration":
+      return "Integration";
+    case "operational":
+      return "Operational";
+  }
+}
+
+function formatRequirementStatus(value: RequirementRecord["status"]): string {
+  switch (value) {
+    case "active":
+      return "Active";
+    case "validated":
+      return "Validated";
+    case "deferred":
+      return "Deferred";
+    case "out-of-scope":
+      return "Out of scope";
+  }
+}
+
+function formatRequirementSource(value: RequirementRecord["source"]): string {
+  switch (value) {
+    case "user":
+      return "User";
+    case "inferred":
+      return "Inferred";
+    case "research":
+      return "Research";
+    case "execution":
+      return "Execution";
+  }
+}
+
+function formatRequirementValidationStatus(value: RequirementRecord["validationStatus"]): string {
+  switch (value) {
+    case "unvalidated":
+      return "Unvalidated";
+    case "covered":
+      return "Covered";
+    case "partial":
+      return "Partial";
+    case "missing":
+      return "Missing";
   }
 }
 

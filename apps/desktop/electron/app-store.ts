@@ -76,6 +76,7 @@ import {
   type SetGlobalPlanningPhaseModelsInput,
   type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
+  type UpsertPlanningRequirementsInput,
   type WorkspaceSessionTarget,
 } from "../src/desktop-state";
 import {
@@ -395,6 +396,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState> {
     return plans.revisePlanningAnswer(this, input);
+  }
+
+  async upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState> {
+    return plans.upsertPlanningRequirements(this, input);
   }
 
   async reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState> {

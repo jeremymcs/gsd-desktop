@@ -8,6 +8,7 @@ import {
   type PlanListEntry,
   type PlanSnapshot,
   type PlanningStore,
+  type RequirementRecord,
   type WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
 import { normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
@@ -45,6 +46,7 @@ import type {
   StartPlanningVerifyInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningRequirementsInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
 import {
@@ -292,6 +294,57 @@ export async function revisePlanningAnswer(
         snapshot = appendEvent(planningStore, snapshot, {
           type: "project.updated",
           project: input.projectPatch,
+        });
+      }
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function upsertPlanningRequirements(
+  store: AppStoreInternals,
+  input: UpsertPlanningRequirementsInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const [firstRequirement, ...remainingRequirements] = input.requirements.map(normalizeRequirement);
+  if (!firstRequirement) {
+    return store.withError("At least one requirement is required");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const previousPosition = {
+        phase: current.activePhase,
+        stage: current.activeStage,
+      };
+      let snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "requirement.upserted",
+          requirement: firstRequirement,
+        },
+      });
+
+      for (const requirement of remainingRequirements) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "requirement.upserted",
+          requirement,
+        });
+      }
+
+      if (snapshot.activePhase !== previousPosition.phase || snapshot.activeStage !== previousPosition.stage) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "phase.updated",
+          phase: previousPosition.phase,
+          stage: previousPosition.stage,
         });
       }
 
@@ -1416,6 +1469,60 @@ function defaultWorkflowPreferences(): Omit<WorkflowPreferencesRecord, "captured
       phaseOverrides: {},
     },
   };
+}
+
+const requirementClasses = new Set<RequirementRecord["class"]>([
+  "functional",
+  "quality",
+  "constraint",
+  "integration",
+  "operational",
+]);
+const requirementStatuses = new Set<RequirementRecord["status"]>([
+  "active",
+  "validated",
+  "deferred",
+  "out-of-scope",
+]);
+const requirementSources = new Set<RequirementRecord["source"]>(["user", "inferred", "research", "execution"]);
+const requirementValidationStatuses = new Set<RequirementRecord["validationStatus"]>([
+  "unvalidated",
+  "covered",
+  "partial",
+  "missing",
+]);
+
+function normalizeRequirement(requirement: RequirementRecord): RequirementRecord {
+  const id = requirement.id.trim() as RequirementRecord["id"];
+  const title = requirement.title.trim();
+  const description = requirement.description.trim();
+  const why = requirement.why.trim();
+  const owner = requirement.owner.trim();
+  const notes = requirement.notes?.trim();
+  if (!id.startsWith("R") || !title || !description || !why || !owner) {
+    throw new Error("Requirements need an R-prefixed id, title, description, why, and owner");
+  }
+  if (
+    !requirementClasses.has(requirement.class) ||
+    !requirementStatuses.has(requirement.status) ||
+    !requirementSources.has(requirement.source) ||
+    !requirementValidationStatuses.has(requirement.validationStatus)
+  ) {
+    throw new Error("Requirement class, status, source, and validation status must be recognized values");
+  }
+
+  const normalized: RequirementRecord = {
+    id,
+    title,
+    class: requirement.class,
+    status: requirement.status,
+    description,
+    why,
+    source: requirement.source,
+    owner,
+    validationStatus: requirement.validationStatus,
+  };
+  return notes ? { ...normalized, notes } : normalized;
 }
 
 function normalizeWorkflowPreferences(

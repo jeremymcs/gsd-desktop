@@ -2133,6 +2133,9 @@ export default function App() {
               }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
+              onUpsertRequirements={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.upsertPlanningRequirements(input))
+              }
               onReviewIdea={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningIdea(input))}
               onDraftChangeProposal={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.draftPlanningChangeProposal(input))

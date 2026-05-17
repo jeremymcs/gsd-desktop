@@ -299,6 +299,25 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
       } else if (prompt === requirementsDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+        await expect(window.getByTestId("requirements-contract")).toContainText("Drafted from requirements answers");
+        await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");
+        await expect(window.getByTestId("requirements-contract")).toContainText("Quality bar");
+        await window.getByTestId("save-requirements-contract-button").click();
+        await expect(window.getByTestId("requirements-contract")).toContainText("Requirements contract saved");
+        await expect(window.getByTestId("requirement-row")).toHaveCount(4);
+        await expect.poll(async () => {
+          const state = await getDesktopState(window);
+          const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
+            ?.selectedPlan;
+          return plan?.requirements.some(
+            (requirement) =>
+              requirement.id === "R001" &&
+              requirement.class === "functional" &&
+              requirement.status === "active" &&
+              requirement.owner === "M1/none yet" &&
+              requirement.validationStatus === "unvalidated",
+          );
+        }).toBe(true);
         await window.getByRole("button", { name: "Confirm Requirements" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / milestone");
       }
@@ -339,6 +358,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByTestId("projection-summary")).toContainText("Projections");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
+    await access(join(workspacePath, ".gsd", "REQUIREMENTS.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
     const modificationProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Primary task acceptance update" });
     await expect(modificationProposal.getByTestId("plan-modification-form")).toBeVisible();
@@ -396,6 +416,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(projectProjection).toContain(
       "**Why:** complex - database-backed planning, projections, and execution lifecycle state.",
     );
+    const requirementsProjection = await readFile(join(workspacePath, ".gsd", "REQUIREMENTS.md"), "utf8");
+    expect(requirementsProjection).toContain("### R001: First useful version capabilities");
+    expect(requirementsProjection).toContain("Create a plan, ask focused questions, save answers, and resume after restart.");
+    expect(requirementsProjection).toContain("### R002: Quality bar");
+    expect(requirementsProjection).toContain("| R001 | M1/none yet | user | unvalidated |");
+    expect(requirementsProjection).toContain("Active: 4");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
     const sliceProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "S1-PLAN.md"), "utf8");
@@ -479,6 +505,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect(window.getByTestId("requirements-contract")).toContainText("Requirements contract saved");
+    await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
     await expect(window.getByTestId("plan-ship-panel")).not.toContainText("Review integration impact");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
@@ -522,6 +550,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
             entry.selectedPlan.workflowPreferences?.branchModel === "single" &&
             entry.selectedPlan.workflowPreferences?.models.executorClass === "balanced" &&
             entry.selectedPlan.workflowPreferences?.models.phaseOverrides?.execute?.modelId === "gpt-4o" &&
+            entry.selectedPlan.requirements.some(
+              (requirement) =>
+                requirement.id === "R001" &&
+                requirement.description ===
+                  "Create a plan, ask focused questions, save answers, and resume after restart.",
+            ) &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Later automation follow-up" && item.reviewStatus === "kept",
           ) &&

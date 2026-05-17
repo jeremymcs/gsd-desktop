@@ -43,6 +43,7 @@ import type {
   SetGlobalPlanningPhaseModelsInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningRequirementsInput,
   WorkspaceSessionTarget,
 } from "./desktop-state";
 
@@ -79,6 +80,7 @@ export const desktopIpc = {
   updatePlanningWorkflowPreferences: "pi-gui:update-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
+  upsertPlanningRequirements: "pi-gui:upsert-planning-requirements",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
   approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
@@ -291,6 +293,7 @@ export interface PiDesktopApi {
   updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
+  upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;

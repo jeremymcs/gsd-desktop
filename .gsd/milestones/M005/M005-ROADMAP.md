@@ -16,7 +16,7 @@
 - [x] **S01: Project Shape Capture** `risk:low` `depends:[M004]`
   > After this: the DISCUSS wizard asks whether the project is simple or complex, saves the answer to project state, and generated `PROJECT.md` contains the classified Project Shape.
 
-- [ ] **S02: Requirements Contract Review** `risk:high` `depends:[S01]`
+- [x] **S02: Requirements Contract Review** `risk:high` `depends:[S01]`
   > After this: requirements-stage answers can be reviewed as explicit capability contract rows with class, status, owner, source, and validation state before PLAN.
 
 - [ ] **S03: Prompt Source Framing** `risk:medium` `depends:[S01]`
