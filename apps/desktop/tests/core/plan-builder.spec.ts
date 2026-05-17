@@ -243,6 +243,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(researchDecision.decision).toBe("skip");
     expect(researchDecision.source).toBe("workflow-preferences");
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-answer-textarea").fill("not sure");
+    await expect(window.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
+    await expect(window.getByTestId("adaptive-follow-up-question")).toHaveText(
+      "What name would you recognize in a file, branch, or task list next week?",
+    );
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
+        ?.selectedPlan;
+      return plan?.answers.some((answer) => answer.answer.includes("What name would you recognize")) ?? false;
+    }).toBe(false);
+    await window.getByTestId("plan-answer-textarea").fill("");
+    await expect(window.getByTestId("adaptive-follow-up")).toHaveCount(0);
     for (const idea of [
       "Later automation follow-up",
       "Prepare integration change",

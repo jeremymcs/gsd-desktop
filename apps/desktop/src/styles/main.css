@@ -2976,6 +2976,41 @@
   flex-wrap: wrap;
 }
 
+.plan-follow-up {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid rgba(132, 188, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(132, 188, 255, 0.06);
+}
+
+.plan-follow-up--compact {
+  padding: 9px 10px;
+}
+
+.plan-follow-up span {
+  color: #84bcff;
+  font-size: 11px;
+  font-weight: 740;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.plan-follow-up p {
+  margin: 0;
+  color: #d9dce3;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.plan-follow-up small {
+  color: #8f96a3;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .plan-action-button,
 .plan-secondary-button,
 .plan-inline-button {
@@ -3730,6 +3765,23 @@
 .canvas--plans .plan-stage-list__item--active {
   border-color: var(--plan-success-border);
   background: var(--plan-success-bg);
+}
+
+.canvas--plans .plan-follow-up {
+  border-color: var(--plan-info-border);
+  background: var(--plan-info-bg);
+}
+
+.canvas--plans .plan-follow-up span {
+  color: var(--plan-accent);
+}
+
+.canvas--plans .plan-follow-up p {
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-follow-up small {
+  color: var(--plan-muted-text);
 }
 
 .canvas--plans .plan-projection-card span,

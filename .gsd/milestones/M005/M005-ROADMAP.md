@@ -22,7 +22,7 @@
 - [x] **S03: Prompt Source Framing** `risk:medium` `depends:[S01]`
   > After this: workflow guidance can identify which GSD prompt family is shaping the current phase, so users understand why the wizard is asking a given question.
 
-- [ ] **S04: Adaptive Follow-Up Drafting** `risk:high` `depends:[S02,S03]`
+- [x] **S04: Adaptive Follow-Up Drafting** `risk:high` `depends:[S02,S03]`
   > After this: Plan Builder can suggest a focused follow-up question when answers are vague, while still saving only explicit user responses as canonical state.
 
 ## Boundary Map

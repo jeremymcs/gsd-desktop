@@ -62,6 +62,11 @@ import type {
 import { buildModelOptions, type ComposerModelOption } from "./composer-commands";
 import { ArrowUpIcon, PlanIcon } from "./icons";
 import {
+  buildAdaptiveFollowUpForAnswer,
+  buildAdaptiveFollowUpForDraft,
+  type AdaptiveFollowUp,
+} from "./plan-builder-follow-ups";
+import {
   buildPlanProposalDraft,
   nextPlanId,
   parsePlanProposal,
@@ -207,6 +212,10 @@ export function PlanBuilderView({
   const requirementDrafts = useMemo(() => buildRequirementDrafts(snapshot), [snapshot]);
   const savedRequirements = snapshot?.requirements ?? [];
   const requirementRows = savedRequirements.length > 0 ? savedRequirements : requirementDrafts;
+  const activeFollowUp = useMemo(
+    () => buildAdaptiveFollowUpForDraft(activeQuestion, answerDraft),
+    [activeQuestion, answerDraft],
+  );
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
   const researchOutputs = useMemo(
@@ -1267,6 +1276,7 @@ export function PlanBuilderView({
                   placeholder="Answer with the context future planning decisions should remember."
                   value={answerDraft}
                 />
+                {activeFollowUp ? <AdaptiveFollowUpCard followUp={activeFollowUp} /> : null}
                 <div className="plan-question-card__actions">
                   <button
                     className="plan-action-button"
@@ -1430,6 +1440,7 @@ export function PlanBuilderView({
                   const question = getDiscussQuestion(answer.questionId);
                   const prompt = answer.prompt || question?.prompt;
                   const isEditing = editingAnswerId === answer.id;
+                  const followUp = buildAdaptiveFollowUpForAnswer(answer);
                   return (
                     <article className="plan-memory__item" key={answer.id}>
                       <div className="plan-memory__item-header">
@@ -1481,6 +1492,7 @@ export function PlanBuilderView({
                       ) : (
                         <p>{answer.answer}</p>
                       )}
+                      {followUp ? <AdaptiveFollowUpCard followUp={followUp} compact /> : null}
                     </article>
                   );
                 })}
@@ -1628,6 +1640,25 @@ export function PlanBuilderView({
         </aside>
       </div>
     </section>
+  );
+}
+
+function AdaptiveFollowUpCard({
+  compact = false,
+  followUp,
+}: {
+  readonly compact?: boolean;
+  readonly followUp: AdaptiveFollowUp;
+}) {
+  return (
+    <div
+      className={`plan-follow-up ${compact ? "plan-follow-up--compact" : ""}`}
+      data-testid="adaptive-follow-up"
+    >
+      <span>Suggested follow-up</span>
+      <p data-testid="adaptive-follow-up-question">{followUp.question}</p>
+      <small>{followUp.rationale}</small>
+    </div>
   );
 }
 
