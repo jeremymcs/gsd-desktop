@@ -1102,6 +1102,8 @@ export function PlanBuilderView({
       ? "EXECUTE queue is active; create or open linked task sessions"
     : planStarted
       ? "Structured plan proposals are validated before approval"
+    : acceptedResearchOutputs.length > 0
+      ? "Start PLAN when you are ready to structure the roadmap"
     : researchStarted
       ? "Reviewable research is persisted in the planning database"
       : allDiscussConfirmed
@@ -1109,6 +1111,21 @@ export function PlanBuilderView({
         : snapshot
           ? "DISCUSS memory is persisted in the planning database"
           : "Start with the project outcome, constraints, and users";
+  const composerPhaseAction = !activeQuestion && snapshot && allDiscussConfirmed && !researchStarted
+    ? {
+        ariaLabel: "Advance composer to RESEARCH",
+        disabled: submitting || (researchReadinessRequiresOverride && !researchReadinessAcknowledged),
+        run: startResearch,
+      }
+    : undefined;
+  const composerSubmitDisabled = activeQuestion ? answerActionDisabled : !composerPhaseAction || composerPhaseAction.disabled;
+  const submitComposerAction = () => {
+    if (activeQuestion) {
+      recordAnswer(true);
+      return;
+    }
+    composerPhaseAction?.run();
+  };
   const workflowGuidance = buildWorkflowGuidance({
     activeQuestion,
     acceptedResearchCount: acceptedResearchOutputs.length,
@@ -1428,7 +1445,7 @@ export function PlanBuilderView({
             aria-label="Plan prompt composer"
             onSubmit={(event) => {
               event.preventDefault();
-              recordAnswer(true);
+              submitComposerAction();
             }}
           >
             <div className={`plan-composer__field ${activeQuestion ? "plan-composer__field--active" : ""}`}>
@@ -1465,8 +1482,8 @@ export function PlanBuilderView({
             <button
               className="plan-composer__send"
               type="submit"
-              disabled={answerActionDisabled}
-              aria-label="Submit composer answer"
+              disabled={composerSubmitDisabled}
+              aria-label={activeQuestion ? "Submit composer answer" : (composerPhaseAction?.ariaLabel ?? "Plan composer action")}
             >
               <ArrowUpIcon />
             </button>

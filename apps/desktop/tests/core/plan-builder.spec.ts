@@ -1,7 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { join } from "node:path";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   getDesktopState,
   launchDesktop,
@@ -30,6 +30,26 @@ const discussAnswers = [
 
 const projectDepthGatePrompt = "What constraints should shape every decision?";
 const requirementsDepthGatePrompt = "How should we know the requirements are complete enough to plan?";
+
+async function completeDiscussFromQuestionCard(window: Page): Promise<void> {
+  for (const [prompt, answer] of discussAnswers) {
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+    await window.getByTestId("plan-answer-textarea").fill(answer);
+    await window.getByTestId("plan-question-card").getByRole("button", { name: "Save answer" }).click();
+
+    if (prompt === projectDepthGatePrompt) {
+      await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+      await window.getByRole("button", { name: "Confirm Project" }).click();
+    } else if (prompt === requirementsDepthGatePrompt) {
+      await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+      await window.getByRole("button", { name: "Confirm Requirements" }).click();
+    }
+  }
+
+  await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+  await window.getByRole("button", { name: "Confirm Milestone" }).click();
+  await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+}
 
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
@@ -380,6 +400,45 @@ test("submits the active DISCUSS answer from the Plan Builder composer keyboard 
     }).toEqual({
       answer: "Keyboard Shortcut Plan",
       loadBearing: true,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("starts RESEARCH from the Plan Builder composer handoff", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-start-research");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer research handoff plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await completeDiscussFromQuestionCard(window);
+    await expect(window.getByText("Start research when you are ready to stage findings")).toBeVisible();
+    await window.getByLabel("Advance composer to RESEARCH").click();
+
+    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer research handoff plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        activeStage: plan?.activeStage ?? "",
+      };
+    }).toEqual({
+      activePhase: "research",
+      activeStage: "research",
     });
   } finally {
     await harness.close();
