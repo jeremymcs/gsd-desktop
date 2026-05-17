@@ -79,7 +79,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
-    for (const idea of ["Later automation follow-up", "Prepare integration change", "Drop onboarding banner"]) {
+    for (const idea of [
+      "Later automation follow-up",
+      "Prepare integration change",
+      "Tighten primary task acceptance",
+      "Drop onboarding banner",
+    ]) {
       await window.getByTestId("plan-answer-textarea").fill(idea);
       await window.getByRole("button", { name: "Park" }).click();
       await expect(window.getByTestId("plan-idea-pool")).toContainText(idea);
@@ -104,6 +109,20 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await promotionIdea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
+    const modificationIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Tighten primary task acceptance" });
+    await modificationIdea.getByRole("button", { name: "Prepare" }).click();
+    await expect(modificationIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+    await modificationIdea.getByRole("button", { name: "Draft change" }).click();
+    await expect(modificationIdea.getByTestId("plan-change-draft-form")).toBeVisible();
+    await modificationIdea.getByTestId("plan-change-title-input").fill("Primary task acceptance update");
+    await modificationIdea
+      .getByTestId("plan-change-summary-textarea")
+      .fill("Tighten the primary task acceptance before execution starts.");
+    await modificationIdea
+      .getByTestId("plan-change-impact-textarea")
+      .fill("Impact: acceptance must include generated projections and change-control persistence.");
+    await modificationIdea.getByRole("button", { name: "Save draft" }).click();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Primary task acceptance update");
     const dismissedIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" });
     await dismissedIdea.getByRole("button", { name: "Dismiss" }).click();
     await expect(dismissedIdea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
@@ -154,6 +173,16 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("projection-summary")).toContainText("Projections");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
+    const modificationProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Primary task acceptance update" });
+    await expect(modificationProposal.getByTestId("plan-modification-form")).toBeVisible();
+    await modificationProposal.getByTestId("plan-modification-task-select").selectOption("M1/S1/T1");
+    await modificationProposal
+      .getByTestId("plan-modification-task-acceptance-textarea")
+      .fill("No lost answers, projection state, and change-control persistence are verified.");
+    await modificationProposal.getByRole("button", { name: "Approve modification" }).click();
+    await expect(modificationProposal.getByTestId("plan-change-proposal-status")).toHaveText("Approved");
+    await expect(modificationProposal).toContainText("Modified M1/S1/T1");
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Modified task - M1/S1/T1");
     const changeProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Integration change draft" });
     await expect(changeProposal.getByTestId("plan-injection-form")).toBeVisible();
     await changeProposal.getByTestId("plan-injection-task-id-input").fill("T2");
@@ -198,6 +227,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
     const sliceProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "S1-PLAN.md"), "utf8");
     expect(sliceProjection).not.toContain("Review integration impact");
+    const primaryTaskProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "tasks", "T1-PLAN.md"), "utf8");
+    expect(primaryTaskProjection).toContain("No lost answers, projection state, and change-control persistence are verified.");
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
@@ -235,6 +266,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("start-verify-button").click();
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
     const primaryVerifyTask = window.getByTestId("verify-task").filter({ hasText: "Implement and verify the slice" });
+    await expect(primaryVerifyTask).toContainText("No lost answers, projection state, and change-control persistence are verified.");
     await expect(primaryVerifyTask).toContainText("Linked session created and reopened from EXECUTE.");
     await expect(window.getByTestId("plan-verify-panel")).not.toContainText("Review integration impact");
     await primaryVerifyTask.getByTestId("task-verification-status-select").selectOption("passed");
@@ -282,6 +314,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Injected as M1/S1/T2");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Hidden from active plan");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Primary task acceptance update");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Modified M1/S1/T1");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" }).getByTestId("plan-idea-status"),
@@ -300,6 +334,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Prepare integration change" && item.reviewStatus === "promotion-ready",
           ) &&
+          entry.selectedPlan.parkedItems.some(
+            (item) => item.text === "Tighten primary task acceptance" && item.reviewStatus === "promotion-ready",
+          ) &&
           entry.selectedPlan.changeProposals.some(
             (proposal) =>
               proposal.title === "Integration change draft" &&
@@ -307,11 +344,24 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               proposal.impactNotes.includes("review roadmap boundaries") &&
               proposal.injectedTaskPath === "M1/S1/T2",
           ) &&
+          entry.selectedPlan.changeProposals.some(
+            (proposal) =>
+              proposal.title === "Primary task acceptance update" &&
+              proposal.status === "approved" &&
+              proposal.modifiedTaskPath === "M1/S1/T1",
+          ) &&
           entry.selectedPlan.approvedInjections.some(
             (injection) =>
               injection.taskId === "T2" &&
               injection.taskPath === "M1/S1/T2" &&
               injection.title === "Review integration impact",
+          ) &&
+          entry.selectedPlan.approvedModifications.some(
+            (modification) =>
+              modification.taskPath === "M1/S1/T1" &&
+              modification.previousAcceptance === "No lost answers, clear stage state, and revision-safe writes." &&
+              modification.acceptance ===
+                "No lost answers, projection state, and change-control persistence are verified.",
           ) &&
           entry.selectedPlan.hiddenPlanItems.some(
             (item) =>
@@ -357,6 +407,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               output.status === "accepted" &&
               output.title === "Approved change - Integration change draft" &&
               output.content.includes("Review integration impact"),
+          ) &&
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "roadmap" &&
+              output.status === "accepted" &&
+              output.title === "Modified task - M1/S1/T1" &&
+              output.content.includes("change-control persistence are verified"),
           ) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>

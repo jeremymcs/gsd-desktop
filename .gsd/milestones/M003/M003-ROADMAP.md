@@ -29,6 +29,9 @@
 - [x] **S05: Removal and Hidden State** `risk:high` `depends:[S04]`
   > After this: deleted or removed items are hidden from active projections by append-only events instead of destructive edits.
 
+- [x] **S06: Approved Modification** `risk:high` `depends:[S04]`
+  > After this: approved changes can modify an active task through a new accepted roadmap output without mutating prior history.
+
 ## Boundary Map
 
 ### M002 -> S01
@@ -72,3 +75,12 @@ Produces:
 
 Consumes:
   removal and hidden-state controls -> append-only events that hide active items without destructive deletion
+
+### S04 -> S06
+
+Produces:
+  draft change proposal -> impact-reviewed source for active task modifications
+  accepted task identity -> stable task path preserved through title, acceptance, and dependency changes
+
+Consumes:
+  approved modification controls -> append-only events and a new accepted roadmap output for changed task details

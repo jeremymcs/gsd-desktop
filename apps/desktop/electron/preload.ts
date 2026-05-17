@@ -22,6 +22,7 @@ import type { RuntimeSettingsSnapshot } from "@pi-gui/session-driver/runtime-typ
 import type {
   AppView,
   ApprovePlanningChangeProposalInput,
+  ApprovePlanningTaskModificationInput,
   ComposerAttachment,
   ComposerImageAttachment,
   ConfirmPlanningStageInput,
@@ -172,6 +173,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.draftPlanningChangeProposal, input) as Promise<DesktopAppState>,
   approvePlanningChangeProposal: (input: ApprovePlanningChangeProposalInput) =>
     ipcRenderer.invoke(desktopIpc.approvePlanningChangeProposal, input) as Promise<DesktopAppState>,
+  approvePlanningTaskModification: (input: ApprovePlanningTaskModificationInput) =>
+    ipcRenderer.invoke(desktopIpc.approvePlanningTaskModification, input) as Promise<DesktopAppState>,
   hidePlanningTask: (input: HidePlanningTaskInput) =>
     ipcRenderer.invoke(desktopIpc.hidePlanningTask, input) as Promise<DesktopAppState>,
   confirmPlanningStage: (input: ConfirmPlanningStageInput) =>

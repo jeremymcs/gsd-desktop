@@ -2123,6 +2123,9 @@ export default function App() {
               onApproveChangeProposal={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.approvePlanningChangeProposal(input))
               }
+              onApproveTaskModification={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.approvePlanningTaskModification(input))
+              }
               onHidePlanningTask={(input) => updateSnapshot(api, setSnapshot, () => api.hidePlanningTask(input))}
               onConfirmStage={(input) => updateSnapshot(api, setSnapshot, () => api.confirmPlanningStage(input))}
               onStartResearch={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningResearch(input))}

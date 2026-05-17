@@ -36,6 +36,7 @@ import type {
 import {
   type AppView,
   type ApprovePlanningChangeProposalInput,
+  type ApprovePlanningTaskModificationInput,
   type ComposerAttachment,
   type ComposerDraftSyncSource,
   type ConfirmPlanningStageInput,
@@ -394,6 +395,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState> {
     return plans.approvePlanningChangeProposal(this, input);
+  }
+
+  async approvePlanningTaskModification(input: ApprovePlanningTaskModificationInput): Promise<DesktopAppState> {
+    return plans.approvePlanningTaskModification(this, input);
   }
 
   async hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState> {

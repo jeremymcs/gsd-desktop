@@ -6,6 +6,7 @@ import type {
   AnswerRecord,
   AppendPlanEventInput,
   ApprovedPlanInjectionRecord,
+  ApprovedPlanModificationRecord,
   ChangeProposalRecord,
   CreatePlanInput,
   GeneratedOutputRecord,
@@ -289,6 +290,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const parkedItems = new Map<string, ParkedItemRecord>();
   const changeProposals = new Map<string, ChangeProposalRecord>();
   const approvedInjections = new Map<string, ApprovedPlanInjectionRecord>();
+  const approvedModifications = new Map<string, ApprovedPlanModificationRecord>();
   const hiddenPlanItems = new Map<string, HiddenPlanItemRecord>();
 
   for (const event of events) {
@@ -508,6 +510,39 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "change.proposal-modification-approved": {
+        const current = changeProposals.get(payload.proposalId);
+        const modificationId = payload.modification.id ?? event.id;
+        const modification = {
+          id: modificationId,
+          changeProposalId: payload.modification.changeProposalId,
+          sourceParkedItemId: payload.modification.sourceParkedItemId,
+          acceptedOutputId: payload.modification.acceptedOutputId,
+          targetMilestoneId: payload.modification.targetMilestoneId,
+          targetSliceId: payload.modification.targetSliceId,
+          taskId: payload.modification.taskId,
+          taskPath: payload.modification.taskPath,
+          previousTitle: payload.modification.previousTitle,
+          title: payload.modification.title,
+          previousAcceptance: payload.modification.previousAcceptance,
+          acceptance: payload.modification.acceptance,
+          previousDependencies: payload.modification.previousDependencies,
+          dependencies: payload.modification.dependencies,
+          createdAt: event.createdAt,
+        };
+        approvedModifications.set(modificationId, modification);
+        if (current) {
+          changeProposals.set(payload.proposalId, {
+            ...current,
+            status: "approved",
+            approvedAt: event.createdAt,
+            modifiedTaskPath: modification.taskPath,
+            acceptedOutputId: modification.acceptedOutputId,
+            updatedAt: event.createdAt,
+          });
+        }
+        break;
+      }
       case "plan.item-hidden": {
         const itemId = payload.item.id ?? event.id;
         hiddenPlanItems.set(itemId, {
@@ -540,6 +575,9 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
       left.createdAt.localeCompare(right.createdAt),
     ),
     approvedInjections: [...approvedInjections.values()].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    ),
+    approvedModifications: [...approvedModifications.values()].sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt),
     ),
     hiddenPlanItems: [...hiddenPlanItems.values()].sort((left, right) =>
@@ -639,6 +677,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "idea.reviewed":
     case "change.proposal-drafted":
     case "change.proposal-approved":
+    case "change.proposal-modification-approved":
     case "plan.item-hidden":
       return undefined;
   }

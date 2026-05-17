@@ -16,8 +16,9 @@ import type {
   TaskVerificationStatus,
 } from "@pi-gui/gsd-planning";
 import type {
-  ConfirmPlanningStageInput,
   ApprovePlanningChangeProposalInput,
+  ApprovePlanningTaskModificationInput,
+  ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
   DraftPlanningChangeProposalInput,
@@ -92,6 +93,7 @@ interface PlanBuilderViewProps {
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
+  readonly onApproveTaskModification: (input: ApprovePlanningTaskModificationInput) => Promise<DesktopAppState>;
   readonly onHidePlanningTask: (input: HidePlanningTaskInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
@@ -124,6 +126,7 @@ export function PlanBuilderView({
   onReviewIdea,
   onDraftChangeProposal,
   onApproveChangeProposal,
+  onApproveTaskModification,
   onHidePlanningTask,
   onConfirmStage,
   onStartResearch,
@@ -425,6 +428,25 @@ export function PlanBuilderView({
       targetMilestoneId: draft.targetMilestoneId,
       targetSliceId: draft.targetSliceId,
       taskId: draft.taskId,
+      taskTitle: draft.taskTitle,
+      taskAcceptance: draft.taskAcceptance,
+      dependencies: splitDependencies(draft.dependencies),
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const approveTaskModification = (proposal: ChangeProposalRecord, draft: PlanTaskModificationDraft) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onApproveTaskModification({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      proposalId: proposal.id,
+      taskPath: draft.taskPath,
       taskTitle: draft.taskTitle,
       taskAcceptance: draft.taskAcceptance,
       dependencies: splitDependencies(draft.dependencies),
@@ -1474,6 +1496,7 @@ export function PlanBuilderView({
                     proposal={proposal}
                     submitting={submitting}
                     onApprove={approveChangeProposal}
+                    onApproveModification={approveTaskModification}
                     onHideTask={hidePlanningTask}
                   />
                 ))}
@@ -1824,6 +1847,13 @@ interface PlanInjectionApprovalDraft {
   readonly dependencies: string;
 }
 
+interface PlanTaskModificationDraft {
+  readonly taskPath: string;
+  readonly taskTitle: string;
+  readonly taskAcceptance: string;
+  readonly dependencies: string;
+}
+
 interface PlanSliceTarget {
   readonly id: string;
   readonly label: string;
@@ -2137,8 +2167,17 @@ function PlanVerifyGate({
     [taskExecutions],
   );
   const taskVerificationMap = useMemo(
-    () => new Map(taskVerifications.map((verification) => [verification.taskId, verification])),
-    [taskVerifications],
+    () => {
+      const acceptanceByTaskId = new Map(planTasks.map((entry) => [entry.task.id, entry.acceptance]));
+      const verificationMap = new Map<string, TaskVerificationRecord>();
+      for (const verification of taskVerifications) {
+        if (acceptanceByTaskId.get(verification.taskId) === verification.acceptance) {
+          verificationMap.set(verification.taskId, verification);
+        }
+      }
+      return verificationMap;
+    },
+    [planTasks, taskVerifications],
   );
   const passedCount = planTasks.filter(({ task }) => taskVerificationMap.get(task.id)?.status === "passed").length;
   const allPassed = planTasks.length > 0 && passedCount === planTasks.length;
@@ -2295,8 +2334,17 @@ function PlanShipGate({
     [taskExecutions],
   );
   const taskVerificationMap = useMemo(
-    () => new Map(taskVerifications.map((verification) => [verification.taskId, verification])),
-    [taskVerifications],
+    () => {
+      const acceptanceByTaskId = new Map(planTasks.map((entry) => [entry.task.id, entry.acceptance]));
+      const verificationMap = new Map<string, TaskVerificationRecord>();
+      for (const verification of taskVerifications) {
+        if (acceptanceByTaskId.get(verification.taskId) === verification.acceptance) {
+          verificationMap.set(verification.taskId, verification);
+        }
+      }
+      return verificationMap;
+    },
+    [planTasks, taskVerifications],
   );
   const latestSummary = shipSummaries[shipSummaries.length - 1];
   const defaultSummary = useMemo(
@@ -2507,32 +2555,49 @@ function ChangeProposalCard({
   proposal,
   submitting,
   onApprove,
+  onApproveModification,
   onHideTask,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly proposal: ChangeProposalRecord;
   readonly submitting: boolean;
   readonly onApprove: (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => void;
+  readonly onApproveModification: (proposal: ChangeProposalRecord, draft: PlanTaskModificationDraft) => void;
   readonly onHideTask: (taskPath: string, reason: string) => void;
 }) {
   const targets = useMemo(() => getPlanSliceTargets(acceptedPlanProposal), [acceptedPlanProposal]);
-  const activeTaskPaths = useMemo(
-    () => new Set(acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal).map((entry) => entry.taskPath) : []),
+  const taskEntries = useMemo(
+    () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
     [acceptedPlanProposal],
   );
+  const activeTaskPaths = useMemo(
+    () => new Set(taskEntries.map((entry) => entry.taskPath)),
+    [taskEntries],
+  );
   const defaultTargetId = targets[0]?.id ?? "";
+  const defaultModificationTaskPath = taskEntries[0]?.taskPath ?? "";
   const defaultTaskId = useMemo(
     () =>
       acceptedPlanProposal
-        ? nextPlanId("T", getPlanTaskEntries(acceptedPlanProposal).map((entry) => entry.task.id))
+        ? nextPlanId("T", taskEntries.map((entry) => entry.task.id))
         : "",
-    [acceptedPlanProposal],
+    [acceptedPlanProposal, taskEntries],
   );
   const [targetId, setTargetId] = useState(defaultTargetId);
   const [taskId, setTaskId] = useState(defaultTaskId);
   const [taskTitle, setTaskTitle] = useState(proposal.title);
   const [taskAcceptance, setTaskAcceptance] = useState(buildDefaultInjectionAcceptance(proposal));
   const [dependencies, setDependencies] = useState("");
+  const [modificationTaskPath, setModificationTaskPath] = useState(defaultModificationTaskPath);
+  const selectedModificationTask =
+    taskEntries.find((entry) => entry.taskPath === modificationTaskPath) ?? taskEntries[0];
+  const [modifiedTaskTitle, setModifiedTaskTitle] = useState(selectedModificationTask?.task.title ?? proposal.title);
+  const [modifiedTaskAcceptance, setModifiedTaskAcceptance] = useState(
+    selectedModificationTask?.task.acceptance ?? buildDefaultInjectionAcceptance(proposal),
+  );
+  const [modifiedDependencies, setModifiedDependencies] = useState(
+    selectedModificationTask?.task.dependencies.join(", ") ?? "",
+  );
   const [hideReason, setHideReason] = useState("No longer needed in the active plan.");
   const selectedTarget = targets.find((target) => target.id === targetId) ?? targets[0];
   const injectedTaskActive = proposal.injectedTaskPath ? activeTaskPaths.has(proposal.injectedTaskPath) : false;
@@ -2543,6 +2608,12 @@ function ChangeProposalCard({
     Boolean(taskTitle.trim()) &&
     Boolean(taskAcceptance.trim()) &&
     !submitting;
+  const canApproveModification =
+    proposal.status === "draft" &&
+    Boolean(selectedModificationTask) &&
+    Boolean(modifiedTaskTitle.trim()) &&
+    Boolean(modifiedTaskAcceptance.trim()) &&
+    !submitting;
 
   useEffect(() => {
     setTargetId(defaultTargetId);
@@ -2550,8 +2621,29 @@ function ChangeProposalCard({
     setTaskTitle(proposal.title);
     setTaskAcceptance(buildDefaultInjectionAcceptance(proposal));
     setDependencies("");
+    setModificationTaskPath(defaultModificationTaskPath);
     setHideReason("No longer needed in the active plan.");
-  }, [defaultTargetId, defaultTaskId, proposal.id, proposal.impactNotes, proposal.summary, proposal.title]);
+  }, [
+    defaultModificationTaskPath,
+    defaultTargetId,
+    defaultTaskId,
+    proposal.id,
+    proposal.impactNotes,
+    proposal.summary,
+    proposal.title,
+  ]);
+
+  useEffect(() => {
+    if (!selectedModificationTask) {
+      setModifiedTaskTitle(proposal.title);
+      setModifiedTaskAcceptance(buildDefaultInjectionAcceptance(proposal));
+      setModifiedDependencies("");
+      return;
+    }
+    setModifiedTaskTitle(selectedModificationTask.task.title);
+    setModifiedTaskAcceptance(selectedModificationTask.task.acceptance);
+    setModifiedDependencies(selectedModificationTask.task.dependencies.join(", "));
+  }, [proposal.impactNotes, proposal.summary, proposal.title, selectedModificationTask?.taskPath]);
 
   const submitApproval = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -2577,6 +2669,19 @@ function ChangeProposalCard({
     onHideTask(proposal.injectedTaskPath, reason);
   };
 
+  const submitModification = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedModificationTask || !canApproveModification) {
+      return;
+    }
+    onApproveModification(proposal, {
+      taskPath: selectedModificationTask.taskPath,
+      taskTitle: modifiedTaskTitle.trim(),
+      taskAcceptance: modifiedTaskAcceptance.trim(),
+      dependencies: modifiedDependencies,
+    });
+  };
+
   return (
     <article className="plan-memory__item plan-memory__item--proposal" data-testid="plan-change-proposal">
       <div className="plan-memory__item-header">
@@ -2587,6 +2692,9 @@ function ChangeProposalCard({
       <p className="plan-memory__note">{proposal.impactNotes}</p>
       {proposal.injectedTaskPath ? (
         <p className="plan-memory__note">Injected as {proposal.injectedTaskPath}</p>
+      ) : null}
+      {proposal.modifiedTaskPath ? (
+        <p className="plan-memory__note">Modified {proposal.modifiedTaskPath}</p>
       ) : null}
       {proposal.status === "approved" && proposal.injectedTaskPath && !injectedTaskActive ? (
         <p className="plan-memory__note" data-testid="plan-hidden-task-note">
@@ -2648,6 +2756,58 @@ function ChangeProposalCard({
           <div className="plan-memory__editor-actions">
             <button className="plan-action-button plan-action-button--compact" disabled={!canApprove} type="submit">
               Approve injection
+            </button>
+          </div>
+        </form>
+      ) : null}
+      {proposal.status === "draft" && acceptedPlanProposal ? (
+        <form className="plan-change-draft" data-testid="plan-modification-form" onSubmit={submitModification}>
+          <label>
+            <span>Modify task</span>
+            <select
+              data-testid="plan-modification-task-select"
+              onChange={(event) => setModificationTaskPath(event.target.value)}
+              value={modificationTaskPath}
+            >
+              {taskEntries.map((entry) => (
+                <option key={entry.taskPath} value={entry.taskPath}>
+                  {entry.taskPath} · {entry.task.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Task title</span>
+            <input
+              data-testid="plan-modification-task-title-input"
+              onChange={(event) => setModifiedTaskTitle(event.target.value)}
+              value={modifiedTaskTitle}
+            />
+          </label>
+          <label>
+            <span>Acceptance</span>
+            <textarea
+              data-testid="plan-modification-task-acceptance-textarea"
+              onChange={(event) => setModifiedTaskAcceptance(event.target.value)}
+              value={modifiedTaskAcceptance}
+            />
+          </label>
+          <label>
+            <span>Dependencies</span>
+            <input
+              data-testid="plan-modification-task-dependencies-input"
+              onChange={(event) => setModifiedDependencies(event.target.value)}
+              placeholder="T1, T2"
+              value={modifiedDependencies}
+            />
+          </label>
+          <div className="plan-memory__editor-actions">
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              disabled={!canApproveModification}
+              type="submit"
+            >
+              Approve modification
             </button>
           </div>
         </form>

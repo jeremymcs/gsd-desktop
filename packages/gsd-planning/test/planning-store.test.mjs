@@ -92,9 +92,27 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withKeptIdea = store.appendEvent({
+    const withModificationParkedItem = store.appendEvent({
       planId: created.id,
       expectedRevision: withParkedItem.revision,
+      event: {
+        type: "idea.parked",
+        item: {
+          id: "parked-item-modification",
+          sourceType: "answer",
+          sourceAnswerId: "parked-answer-1",
+          sourceStage: "project",
+          sourceQuestionId: "vision",
+          sourcePrompt: "What do you want to build?",
+          text: "Tighten primary task acceptance.",
+          rationale: "Parked for later task modification",
+        },
+      },
+    });
+
+    const withKeptIdea = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withModificationParkedItem.revision,
       event: {
         type: "idea.reviewed",
         itemId: withParkedItem.parkedItems[0].id,
@@ -114,6 +132,7 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
+    const modificationSourceId = "parked-item-modification";
     const withChangeProposal = store.appendEvent({
       planId: created.id,
       expectedRevision: withPromotionReadyIdea.revision,
@@ -129,9 +148,28 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withApprovedProposal = store.appendEvent({
+    const withModificationChangeProposal = store.appendEvent({
       planId: created.id,
       expectedRevision: withChangeProposal.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          sourceType: "parked-item",
+          sourceParkedItemId: modificationSourceId,
+          title: "Primary task acceptance update",
+          summary: "Tighten the primary task acceptance before execution.",
+          impactNotes: "Need to re-check verification evidence after acceptance changes.",
+        },
+      },
+    });
+    const modificationProposal = withModificationChangeProposal.changeProposals.find(
+      (proposal) => proposal.title === "Primary task acceptance update",
+    );
+    assert.ok(modificationProposal);
+
+    const withApprovedProposal = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withModificationChangeProposal.revision,
       event: {
         type: "change.proposal-approved",
         proposalId: withChangeProposal.changeProposals[0].id,
@@ -150,9 +188,33 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withHiddenTask = store.appendEvent({
+    const withApprovedModification = store.appendEvent({
       planId: created.id,
       expectedRevision: withApprovedProposal.revision,
+      event: {
+        type: "change.proposal-modification-approved",
+        proposalId: modificationProposal.id,
+        modification: {
+          changeProposalId: modificationProposal.id,
+          sourceParkedItemId: modificationSourceId,
+          acceptedOutputId: "roadmap-output-2",
+          targetMilestoneId: "M1",
+          targetSliceId: "S1",
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          previousTitle: "Persist every answer",
+          title: "Persist every planning answer",
+          previousAcceptance: "Persist every answer",
+          acceptance: "Persist every answer and projection state",
+          previousDependencies: [],
+          dependencies: [],
+        },
+      },
+    });
+
+    const withHiddenTask = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withApprovedModification.revision,
       event: {
         type: "plan.item-hidden",
         item: {
@@ -160,7 +222,7 @@ test("creates a repo-local planning database and replays event-backed plan state
           targetId: "T2",
           targetPath: "M1/S1/T2",
           reason: "No longer needed in the active plan.",
-          acceptedOutputId: "roadmap-output-2",
+          acceptedOutputId: "roadmap-output-3",
         },
       },
     });
@@ -310,7 +372,7 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withShipSummary.revision, 20);
+    assert.equal(withShipSummary.revision, 23);
     assert.equal(withShipSummary.activePhase, "ship");
     assert.equal(withShipSummary.activeStage, "task");
     assert.equal(withShipSummary.taskSessionLinks.length, 1);
@@ -323,16 +385,19 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.taskVerifications[0]?.status, "passed");
     assert.equal(withShipSummary.shipSummaries.length, 1);
     assert.equal(withShipSummary.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
-    assert.equal(withShipSummary.parkedItems.length, 1);
+    assert.equal(withShipSummary.parkedItems.length, 2);
     assert.equal(withShipSummary.parkedItems[0]?.text, "Add a future automation review lane.");
     assert.equal(withShipSummary.parkedItems[0]?.reviewStatus, "dismissed");
     assert.equal(withShipSummary.parkedItems[0]?.reviewNote, "Dismissed after review.");
-    assert.equal(withShipSummary.changeProposals.length, 1);
+    assert.equal(withShipSummary.changeProposals.length, 2);
     assert.equal(withShipSummary.changeProposals[0]?.title, "Automation review lane");
     assert.equal(withShipSummary.changeProposals[0]?.status, "approved");
     assert.equal(withShipSummary.changeProposals[0]?.injectedTaskPath, "M1/S1/T2");
     assert.equal(withShipSummary.approvedInjections.length, 1);
     assert.equal(withShipSummary.approvedInjections[0]?.taskPath, "M1/S1/T2");
+    assert.equal(withShipSummary.approvedModifications.length, 1);
+    assert.equal(withShipSummary.approvedModifications[0]?.taskPath, "M1/S1/T1");
+    assert.equal(withShipSummary.approvedModifications[0]?.acceptance, "Persist every answer and projection state");
     assert.equal(withShipSummary.hiddenPlanItems.length, 1);
     assert.equal(withShipSummary.hiddenPlanItems[0]?.targetPath, "M1/S1/T2");
     store.close();
@@ -341,7 +406,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 20);
+    assert.equal(reopened.revision, 23);
     assert.equal(reopened.activePhase, "ship");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -365,12 +430,12 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskVerifications[0]?.note, "Acceptance matched the recorded evidence.");
     assert.equal(reopened.shipSummaries.length, 1);
     assert.equal(reopened.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
-    assert.equal(reopened.parkedItems.length, 1);
+    assert.equal(reopened.parkedItems.length, 2);
     assert.equal(reopened.parkedItems[0]?.sourceAnswerId, "parked-answer-1");
     assert.equal(reopened.parkedItems[0]?.text, "Add a future automation review lane.");
     assert.equal(reopened.parkedItems[0]?.reviewStatus, "dismissed");
     assert.equal(reopened.parkedItems[0]?.reviewNote, "Dismissed after review.");
-    assert.equal(reopened.changeProposals.length, 1);
+    assert.equal(reopened.changeProposals.length, 2);
     assert.equal(reopened.changeProposals[0]?.sourceParkedItemId, reopened.parkedItems[0]?.id);
     assert.equal(reopened.changeProposals[0]?.impactNotes, "Need to assess milestone, slice, and verification impact before approval.");
     assert.equal(reopened.changeProposals[0]?.status, "approved");
@@ -378,11 +443,18 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.approvedInjections.length, 1);
     assert.equal(reopened.approvedInjections[0]?.changeProposalId, reopened.changeProposals[0]?.id);
     assert.deepEqual(reopened.approvedInjections[0]?.dependencies, ["T1"]);
+    assert.equal(reopened.approvedModifications.length, 1);
+    assert.equal(reopened.approvedModifications[0]?.changeProposalId, modificationProposal.id);
+    assert.equal(reopened.approvedModifications[0]?.previousTitle, "Persist every answer");
+    assert.equal(reopened.approvedModifications[0]?.title, "Persist every planning answer");
+    assert.equal(reopened.approvedModifications[0]?.previousAcceptance, "Persist every answer");
+    assert.equal(reopened.approvedModifications[0]?.acceptance, "Persist every answer and projection state");
+    assert.equal(reopened.changeProposals[1]?.modifiedTaskPath, "M1/S1/T1");
     assert.equal(reopened.hiddenPlanItems.length, 1);
     assert.equal(reopened.hiddenPlanItems[0]?.targetId, "T2");
     assert.equal(reopened.hiddenPlanItems[0]?.reason, "No longer needed in the active plan.");
-    assert.equal(reopened.hiddenPlanItems[0]?.acceptedOutputId, "roadmap-output-2");
-    assert.equal(reopened.events.length, 20);
+    assert.equal(reopened.hiddenPlanItems[0]?.acceptedOutputId, "roadmap-output-3");
+    assert.equal(reopened.events.length, 23);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

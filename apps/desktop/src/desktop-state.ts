@@ -242,6 +242,17 @@ export interface ApprovePlanningChangeProposalInput {
   readonly dependencies: readonly string[];
 }
 
+export interface ApprovePlanningTaskModificationInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly proposalId: string;
+  readonly taskPath: string;
+  readonly taskTitle: string;
+  readonly taskAcceptance: string;
+  readonly dependencies: readonly string[];
+}
+
 export interface HidePlanningTaskInput {
   readonly workspaceId: string;
   readonly planId: string;

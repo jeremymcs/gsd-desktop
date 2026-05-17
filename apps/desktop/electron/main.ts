@@ -33,6 +33,7 @@ import type {
   ComposerFileAttachment,
   ComposerImageAttachment,
   ApprovePlanningChangeProposalInput,
+  ApprovePlanningTaskModificationInput,
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   CreateSessionInput,
@@ -560,6 +561,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.approvePlanningChangeProposal, (_event, input: ApprovePlanningChangeProposalInput) =>
     store.approvePlanningChangeProposal(input),
+  );
+  ipcMain.handle(desktopIpc.approvePlanningTaskModification, (_event, input: ApprovePlanningTaskModificationInput) =>
+    store.approvePlanningTaskModification(input),
   );
   ipcMain.handle(desktopIpc.hidePlanningTask, (_event, input: HidePlanningTaskInput) =>
     store.hidePlanningTask(input),

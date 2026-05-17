@@ -7,6 +7,7 @@ import type {
 import type {
   AppView,
   ApprovePlanningChangeProposalInput,
+  ApprovePlanningTaskModificationInput,
   ComposerAttachment,
   ComposerImageAttachment,
   ConfirmPlanningStageInput,
@@ -76,6 +77,7 @@ export const desktopIpc = {
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
   approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
+  approvePlanningTaskModification: "pi-gui:approve-planning-task-modification",
   hidePlanningTask: "pi-gui:hide-planning-task",
   confirmPlanningStage: "pi-gui:confirm-planning-stage",
   startPlanningResearch: "pi-gui:start-planning-research",
@@ -284,6 +286,7 @@ export interface PiDesktopApi {
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;
+  approvePlanningTaskModification(input: ApprovePlanningTaskModificationInput): Promise<DesktopAppState>;
   hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState>;
   confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;

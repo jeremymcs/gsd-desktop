@@ -153,6 +153,7 @@ export interface ChangeProposalRecord {
   readonly status: ChangeProposalStatus;
   readonly approvedAt?: string;
   readonly injectedTaskPath?: string;
+  readonly modifiedTaskPath?: string;
   readonly acceptedOutputId?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -169,6 +170,24 @@ export interface ApprovedPlanInjectionRecord {
   readonly taskPath: string;
   readonly title: string;
   readonly acceptance: string;
+  readonly dependencies: readonly string[];
+  readonly createdAt: string;
+}
+
+export interface ApprovedPlanModificationRecord {
+  readonly id: string;
+  readonly changeProposalId: string;
+  readonly sourceParkedItemId: string;
+  readonly acceptedOutputId: string;
+  readonly targetMilestoneId: string;
+  readonly targetSliceId: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly previousTitle: string;
+  readonly title: string;
+  readonly previousAcceptance: string;
+  readonly acceptance: string;
+  readonly previousDependencies: readonly string[];
   readonly dependencies: readonly string[];
   readonly createdAt: string;
 }
@@ -288,6 +307,13 @@ export type PlanEvent =
       };
     }
   | {
+      readonly type: "change.proposal-modification-approved";
+      readonly proposalId: string;
+      readonly modification: Omit<ApprovedPlanModificationRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
       readonly type: "plan.item-hidden";
       readonly item: Omit<HiddenPlanItemRecord, "id" | "createdAt"> & {
         readonly id?: string;
@@ -328,6 +354,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];
   readonly approvedInjections: readonly ApprovedPlanInjectionRecord[];
+  readonly approvedModifications: readonly ApprovedPlanModificationRecord[];
   readonly hiddenPlanItems: readonly HiddenPlanItemRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
