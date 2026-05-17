@@ -3376,6 +3376,51 @@
   opacity: 0.52;
 }
 
+.plan-composer-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 14px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--plan-accent-border, rgba(215, 178, 105, 0.28));
+  border-radius: 8px;
+  background: var(--plan-accent-bg, rgba(215, 178, 105, 0.06));
+}
+
+.plan-composer-review__eyebrow {
+  color: var(--plan-accent, #d7b269);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.plan-composer-review p {
+  max-height: 42px;
+  margin: 2px 0 0;
+  overflow: auto;
+  color: var(--plan-muted-text, #a3a8b3);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.plan-composer-review small {
+  border: 1px solid var(--plan-accent-border, rgba(215, 178, 105, 0.32));
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--plan-accent, #d7b269);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.plan-composer-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .plan-side {
   min-height: 0;
   display: grid;

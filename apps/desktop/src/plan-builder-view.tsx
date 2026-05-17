@@ -206,6 +206,7 @@ export function PlanBuilderView({
   const [planProposal, setPlanProposal] = useState<PlanningPlanProposalDraft>(() => emptyPlanProposal());
   const [seededPlanProposalPlanId, setSeededPlanProposalPlanId] = useState("");
   const [draftingIdeaId, setDraftingIdeaId] = useState("");
+  const [composerReviewItemId, setComposerReviewItemId] = useState("");
   const [changeProposalTitleDraft, setChangeProposalTitleDraft] = useState("");
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
@@ -313,6 +314,9 @@ export function PlanBuilderView({
     () => new Map((snapshot?.changeProposals ?? []).map((proposal) => [proposal.sourceParkedItemId, proposal])),
     [snapshot],
   );
+  const composerReviewItem = snapshot?.parkedItems.find(
+    (item) => item.id === composerReviewItemId && item.sourceType === "composer",
+  );
   const modelOptions = useMemo(() => buildModelOptions(runtime), [runtime]);
   const answerActionDisabled = !activeQuestion || !answerDraft.trim() || submitting;
 
@@ -329,6 +333,7 @@ export function PlanBuilderView({
     setEditingAnswerId("");
     setRevisionDraft("");
     setDraftingIdeaId("");
+    setComposerReviewItemId("");
     setChangeProposalTitleDraft("");
     setChangeProposalSummaryDraft("");
     setChangeProposalImpactDraft("");
@@ -477,7 +482,12 @@ export function PlanBuilderView({
       text,
       rationale: `Parked during ${phaseLabel}`,
     })
-      .then(() => {
+      .then((nextState) => {
+        const parkedItems = nextState.planningByWorkspace[workspace.id]?.selectedPlan?.parkedItems ?? [];
+        const parkedItem = [...parkedItems]
+          .reverse()
+          .find((item) => item.sourceType === "composer" && item.text === text);
+        setComposerReviewItemId(parkedItem?.id ?? "");
         setAnswerDraft("");
         requestAnimationFrame(() => {
           composerTextareaRef.current?.focus();
@@ -1576,6 +1586,44 @@ export function PlanBuilderView({
               </div>
             ) : null}
           </div>
+
+          {composerReviewItem ? (
+            <div className="plan-composer-review" data-testid="plan-composer-parked-review">
+              <div>
+                <div className="plan-composer-review__eyebrow">Parked idea</div>
+                <p>{composerReviewItem.text}</p>
+              </div>
+              <small data-testid="plan-composer-parked-review-status">
+                {formatIdeaReviewStatus(composerReviewItem.reviewStatus)}
+              </small>
+              <div className="plan-composer-review__actions">
+                <button
+                  className="plan-inline-button"
+                  disabled={submitting || composerReviewItem.reviewStatus === "kept"}
+                  onClick={() => reviewIdea(composerReviewItem.id, "kept")}
+                  type="button"
+                >
+                  Keep
+                </button>
+                <button
+                  className="plan-inline-button"
+                  disabled={submitting || composerReviewItem.reviewStatus === "promotion-ready"}
+                  onClick={() => reviewIdea(composerReviewItem.id, "promotion-ready")}
+                  type="button"
+                >
+                  Prepare
+                </button>
+                <button
+                  className="plan-inline-button"
+                  disabled={submitting || composerReviewItem.reviewStatus === "dismissed"}
+                  onClick={() => reviewIdea(composerReviewItem.id, "dismissed")}
+                  type="button"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <form
             className="plan-composer"

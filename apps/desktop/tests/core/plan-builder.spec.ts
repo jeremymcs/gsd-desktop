@@ -672,6 +672,69 @@ test("parks later-phase idea from the Plan Builder composer", async () => {
   }
 });
 
+test("reviews newly parked later-phase idea from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-later-idea-review");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+  const ideaText = "Promote retry budget into execution work.";
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromQuestionCards(window, "Composer later idea review plan");
+    await window.getByTestId("start-execution-button").click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await window.getByTestId("plan-composer-textarea").fill(ideaText);
+    await window.getByLabel("Park composer idea").click();
+
+    const review = window.getByTestId("plan-composer-parked-review");
+    await expect(review).toContainText(ideaText);
+    await expect(review.getByTestId("plan-composer-parked-review-status")).toHaveText("Parked");
+    await review.getByRole("button", { name: "Prepare" }).click();
+    await expect(review.getByTestId("plan-composer-parked-review-status")).toHaveText("Ready to promote");
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer later idea review plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        reviewStatus: plan?.parkedItems.find((item) => item.text === ideaText)?.reviewStatus ?? "",
+      };
+    }).toEqual({
+      activePhase: "execute",
+      reviewStatus: "promotion-ready",
+    });
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer later idea review plan");
+    await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
+    await expect(
+      window.getByTestId("plan-idea-item").filter({ hasText: ideaText }).getByTestId("plan-idea-status"),
+    ).toHaveText("Ready to promote");
+  } finally {
+    await harness.close();
+  }
+});
+
 test("starts VERIFY from the Plan Builder composer handoff", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-start-verify");
