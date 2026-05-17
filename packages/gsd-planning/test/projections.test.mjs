@@ -44,7 +44,10 @@ test("renders the planning-phase projection file set with generated ownership he
     }
 
     assert.match(files.find((file) => file.path === ".gsd/REQUIREMENTS.md")?.content ?? "", /### R001: Persist every answer/);
+    assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Phase Sequence/);
+    assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /P01: Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
+    assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /### Key Links/);
 
     store.close();
@@ -300,10 +303,19 @@ function makeProjectionInput(snapshot, options = {}) {
         revisable: "No",
       },
     ],
+    phases: [
+      {
+        id: "P01",
+        title: "Foundation",
+        goal: "Build the planning engine foundation.",
+        status: "active",
+      },
+    ],
     milestones: [
       {
         id: "M001",
         title: "Database-Backed Plan Builder",
+        phaseId: "P01",
         vision: "Users can create a named project plan from the desktop app.",
         successCriteria: ["Projection files are generated.", "Legacy files are protected."],
         status: "active",

@@ -3,6 +3,7 @@ import type {
   GeneratedOutputRecord,
   GeneratePlanningProjectionsInput,
   MilestoneProjection,
+  PhaseProjection,
   PlanSnapshot,
   SliceProjection,
   StateProjection,
@@ -33,6 +34,7 @@ export function buildPlanningProjectionInput(
   const acceptedResearch = snapshot.generatedOutputs.filter(
     (output) => output.stage === "research" && output.status === "accepted",
   );
+  const phases = proposal.phases.map(toPhaseProjection);
   const milestones = proposal.milestones.map((milestone, index) =>
     toMilestoneProjection(milestone, index, proposal, acceptedResearch),
   );
@@ -41,6 +43,7 @@ export function buildPlanningProjectionInput(
     plan: snapshot,
     generatedAt,
     decisions: buildDecisions(snapshot, acceptedPlan, acceptedResearch, milestones),
+    phases,
     state: buildState(snapshot, milestones),
     milestones,
   };
@@ -50,6 +53,14 @@ function findAcceptedPlanOutput(snapshot: PlanSnapshot): GeneratedOutputRecord |
   return [...snapshot.generatedOutputs]
     .filter((output) => output.stage === "roadmap" && output.status === "accepted")
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+}
+
+function toPhaseProjection(phase: PlanningPlanProposalDraft["phases"][number]): PhaseProjection {
+  return {
+    id: fallbackText(phase.id, "P1"),
+    title: fallbackText(phase.title, "Untitled phase"),
+    goal: fallbackText(phase.goal, "Deliver the phase goal."),
+  };
 }
 
 function toMilestoneProjection(
@@ -64,6 +75,7 @@ function toMilestoneProjection(
   return {
     id: fallbackId(milestone.id, "M", index),
     title: fallbackText(milestone.title, `Milestone ${index + 1}`),
+    phaseId: fallbackText(milestone.phase, "P1"),
     vision: fallbackText(milestone.outcome, "Deliver the milestone outcome."),
     successCriteria:
       successCriteria.length > 0 ? successCriteria : [fallbackText(milestone.outcome, "Milestone is complete.")],
@@ -198,6 +210,7 @@ function buildDecisions(
 }
 
 function renderMilestoneContext(milestone: PlanningMilestoneDraft, proposal: PlanningPlanProposalDraft): string {
+  const phase = proposal.phases.find((entry) => entry.id === milestone.phase);
   return [
     `# ${fallbackText(milestone.id, "Milestone")}: ${fallbackText(milestone.title, "Untitled milestone")} - Context`,
     "",
@@ -207,11 +220,25 @@ function renderMilestoneContext(milestone: PlanningMilestoneDraft, proposal: Pla
     "",
     "## Phase",
     "",
-    fallbackText(milestone.phase, "PLAN"),
+    renderMilestonePhaseContext(milestone, phase),
     "",
     "## Deferred Ideas",
     "",
     fallbackText(proposal.ideaPool, "None recorded."),
+  ].join("\n");
+}
+
+function renderMilestonePhaseContext(
+  milestone: PlanningMilestoneDraft,
+  phase: PlanningPlanProposalDraft["phases"][number] | undefined,
+): string {
+  if (!phase) {
+    return fallbackText(milestone.phase, "Unassigned");
+  }
+  return [
+    `${fallbackText(phase.id, "P1")}: ${fallbackText(phase.title, "Untitled phase")}`,
+    "",
+    fallbackText(phase.goal, "Deliver the phase goal."),
   ].join("\n");
 }
 

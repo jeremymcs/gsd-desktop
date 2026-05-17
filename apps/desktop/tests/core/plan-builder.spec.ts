@@ -651,6 +651,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(requirementsProjection).toContain("Active: 4");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
+    expect(roadmapProjection).toContain("**Phase:** P2 - Hardening");
+    expect(projectProjection).toContain("## Phase Sequence");
+    expect(projectProjection).toContain("P2: Hardening");
+    const milestoneContextProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-CONTEXT.md"), "utf8");
+    expect(milestoneContextProjection).toContain("P2: Hardening");
+    expect(milestoneContextProjection).toContain("Stabilize projections and lifecycle gates.");
     const sliceProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "S1-PLAN.md"), "utf8");
     expect(sliceProjection).not.toContain("Review integration impact");
     const primaryTaskProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "tasks", "T1-PLAN.md"), "utf8");
@@ -858,7 +864,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
             (output) =>
               output.stage === "roadmap" &&
               output.status === "accepted" &&
-              output.title === "Plan proposal",
+              output.title === "Plan proposal" &&
+              output.content.includes("\"phases\"") &&
+              output.content.includes("Hardening"),
           ) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>

@@ -20,7 +20,7 @@
 - [x] **S02: Phase Editor and Assignment UI** `risk:medium` `depends:[S01]`
   > After this: users can add, edit, delete, and assign phases from the PLAN editor instead of typing an unvalidated milestone phase.
 
-- [ ] **S03: Phase-Aware Projections and Restart Coverage** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Phase-Aware Projections and Restart Coverage** `risk:medium` `depends:[S01,S02]`
   > After this: generated Markdown exposes phase sequencing, and Electron tests prove accepted phases survive projection regeneration and restart.
 
 ## Boundary Map

@@ -31,7 +31,15 @@ export interface GeneratePlanningProjectionsInput {
   readonly generatedAt?: string;
   readonly decisions?: readonly DecisionProjection[];
   readonly state?: StateProjection;
+  readonly phases?: readonly PhaseProjection[];
   readonly milestones?: readonly MilestoneProjection[];
+}
+
+export interface PhaseProjection {
+  readonly id: string;
+  readonly title: string;
+  readonly goal: string;
+  readonly status?: "pending" | "active" | "done";
 }
 
 export interface DecisionProjection {
@@ -60,6 +68,7 @@ export interface StateProjection {
 export interface MilestoneProjection {
   readonly id: string;
   readonly title: string;
+  readonly phaseId?: string;
   readonly vision: string;
   readonly successCriteria: readonly string[];
   readonly status?: "pending" | "active" | "done";
@@ -107,11 +116,12 @@ export interface TaskProjection {
 export function generatePlanningProjections(input: GeneratePlanningProjectionsInput): readonly ProjectionFile[] {
   const header = renderGeneratedHeader(input);
   const milestones = input.milestones ?? [];
+  const phases = input.phases ?? derivePhasesFromMilestones(milestones);
   const files: ProjectionFile[] = [
     {
       kind: "project",
       path: ".gsd/PROJECT.md",
-      content: withHeader(header, renderProject(input.plan, milestones)),
+      content: withHeader(header, renderProject(input.plan, phases, milestones)),
     },
     {
       kind: "requirements",
@@ -144,7 +154,7 @@ export function generatePlanningProjections(input: GeneratePlanningProjectionsIn
     files.push({
       kind: "milestone-roadmap",
       path: `.gsd/milestones/${milestone.id}/${milestone.id}-ROADMAP.md`,
-      content: withHeader(header, renderMilestoneRoadmap(milestone)),
+      content: withHeader(header, renderMilestoneRoadmap(milestone, phases)),
     });
 
     for (const slice of milestone.slices) {
@@ -194,7 +204,11 @@ function withHeader(header: string, body: string): string {
   return `${header}\n\n${body.trimEnd()}\n`;
 }
 
-function renderProject(plan: PlanSnapshot, milestones: readonly MilestoneProjection[]): string {
+function renderProject(
+  plan: PlanSnapshot,
+  phases: readonly PhaseProjection[],
+  milestones: readonly MilestoneProjection[],
+): string {
   const project = plan.project;
   return [
     `# Project: ${project.title ?? plan.name}`,
@@ -233,6 +247,10 @@ function renderProject(plan: PlanSnapshot, milestones: readonly MilestoneProject
     milestones.length > 0
       ? milestones.map((milestone) => `- **${milestone.id}: ${milestone.title}** — ${milestone.vision}`).join("\n")
       : "- No milestones projected yet.",
+    "",
+    "## Phase Sequence",
+    "",
+    renderPhaseSequence(phases),
   ].join("\n");
 }
 
@@ -347,9 +365,14 @@ function renderDecisions(decisions: readonly DecisionProjection[]): string {
   return lines.join("\n");
 }
 
-function renderMilestoneRoadmap(milestone: MilestoneProjection): string {
+function renderMilestoneRoadmap(
+  milestone: MilestoneProjection,
+  phases: readonly PhaseProjection[],
+): string {
   return [
     `# ${milestone.id}: ${milestone.title}`,
+    "",
+    `**Phase:** ${formatPhaseReference(milestone.phaseId, phases)}`,
     "",
     `**Vision:** ${milestone.vision}`,
     "",
@@ -366,6 +389,38 @@ function renderMilestoneRoadmap(milestone: MilestoneProjection): string {
     "",
     milestone.boundaryMap.map(renderBoundaryEntry).join("\n\n") || "_No boundaries planned._",
   ].join("\n");
+}
+
+function renderPhaseSequence(phases: readonly PhaseProjection[]): string {
+  return phases.length > 0
+    ? phases.map((phase) => `- **${phase.id}: ${phase.title}** - ${phase.goal}`).join("\n")
+    : "- No phases projected yet.";
+}
+
+function formatPhaseReference(phaseId: string | undefined, phases: readonly PhaseProjection[]): string {
+  if (!phaseId) {
+    return "Unassigned";
+  }
+  const phase = phases.find((entry) => entry.id === phaseId);
+  return phase ? `${phase.id} - ${phase.title}` : phaseId;
+}
+
+function derivePhasesFromMilestones(milestones: readonly MilestoneProjection[]): readonly PhaseProjection[] {
+  const phases: PhaseProjection[] = [];
+  const seen = new Set<string>();
+  for (const milestone of milestones) {
+    const phaseId = milestone.phaseId?.trim();
+    if (!phaseId || seen.has(phaseId)) {
+      continue;
+    }
+    seen.add(phaseId);
+    phases.push({
+      id: phaseId,
+      title: phaseId,
+      goal: `Group milestones assigned to ${phaseId}.`,
+    });
+  }
+  return phases;
 }
 
 function renderSliceLine(slice: SliceProjection): string {
@@ -523,4 +578,3 @@ function formatPhase(phase: PlanPhase | string): string {
 function escapeTableCell(value: string): string {
   return value.replace(/\|/g, "\\|");
 }
-
