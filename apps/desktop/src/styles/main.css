@@ -2434,8 +2434,7 @@
   white-space: nowrap;
 }
 
-.plan-execution-slice__header small,
-.plan-execution-task small {
+.plan-execution-slice__header small {
   margin-left: auto;
   color: #8f96a3;
   font-size: 12px;
@@ -2453,6 +2452,39 @@
 .plan-execution-task-list {
   display: grid;
   gap: 8px;
+}
+
+.plan-execution-task__footer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1.3fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-execution-task__footer small {
+  min-width: 0;
+  overflow: hidden;
+  color: #8f96a3;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-execution-task__link {
+  min-width: 0;
+  overflow: hidden;
+  color: #a9d8b1;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .plan-execution-task__footer {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 
 .plan-roadmap-form__field {

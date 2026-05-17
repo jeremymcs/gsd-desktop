@@ -76,6 +76,16 @@ export interface GeneratedOutputRecord {
   readonly updatedAt: string;
 }
 
+export interface TaskSessionLinkRecord {
+  readonly id: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly workspaceId: string;
+  readonly sessionId: string;
+  readonly title: string;
+  readonly createdAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -122,6 +132,12 @@ export type PlanEvent =
       readonly type: "generated-output.reviewed";
       readonly outputId: string;
       readonly status: "accepted" | "rejected";
+    }
+  | {
+      readonly type: "task.session-linked";
+      readonly link: Omit<TaskSessionLinkRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -151,6 +167,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly answers: readonly AnswerRecord[];
   readonly stages: readonly StageStateRecord[];
   readonly generatedOutputs: readonly GeneratedOutputRecord[];
+  readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

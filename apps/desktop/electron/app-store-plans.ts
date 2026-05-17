@@ -8,12 +8,14 @@ import {
   type PlanSnapshot,
   type PlanningStore,
 } from "@pi-gui/gsd-planning";
+import { sessionKey } from "@pi-gui/pi-sdk-driver";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  LinkPlanningTaskSessionInput,
   PlanningProjectionSummary,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
@@ -562,6 +564,71 @@ export async function startPlanningExecution(
   });
 }
 
+export async function linkPlanningTaskSession(
+  store: AppStoreInternals,
+  input: LinkPlanningTaskSessionInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+  const workspaceRef = store.workspaceRefFromState(workspace.id);
+  if (!workspaceRef) {
+    return store.withError(`Unknown workspace: ${workspace.id}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      if (snapshot.activePhase !== "execute") {
+        throw new Error("EXECUTE must be active before linking a task session");
+      }
+
+      const existingLink = snapshot.taskSessionLinks.find((link) => link.taskId === input.taskId);
+      if (existingLink) {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+
+      const createOptions = (await store.buildCreateSessionOptions(workspace.id)) ?? {};
+      const session = await store.driver.createSession(workspaceRef, {
+        ...createOptions,
+        title: buildTaskSessionTitle(input),
+      });
+      const key = sessionKey(session.ref);
+      store.sessionState.transcriptCache.set(key, []);
+      store.sessionState.loadedTranscriptKeys.add(key);
+      store.updateSessionConfig(session.ref, session.config);
+      await store.refreshState({
+        selectedWorkspaceId: store.state.selectedWorkspaceId,
+        selectedSessionId: store.state.selectedSessionId,
+        clearLastError: true,
+        activeView: "plans",
+        hydrateSelectedSession: false,
+      });
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "task.session-linked",
+          link: {
+            taskId: input.taskId,
+            taskPath: input.taskPath,
+            workspaceId: session.ref.workspaceId,
+            sessionId: session.ref.sessionId,
+            title: buildTaskSessionTitle(input),
+          },
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
 export async function regeneratePlanningProjectionsForPlan(
   store: AppStoreInternals,
   input: RegeneratePlanningProjectionsInput,
@@ -672,6 +739,27 @@ function assertAcceptedPlan(snapshot: PlanSnapshot): void {
   if (validationIssues.length > 0) {
     throw new Error(`EXECUTE blocked: ${validationIssues[0]?.message ?? "Plan validation failed."}`);
   }
+}
+
+function assertAcceptedPlanTask(snapshot: PlanSnapshot, taskId: string, taskPath: string): void {
+  const acceptedPlan = snapshot.generatedOutputs.find(
+    (output) => output.stage === "roadmap" && output.status === "accepted",
+  );
+  const proposal = acceptedPlan ? parsePlanProposal(acceptedPlan.content) : undefined;
+  const hasTask = proposal?.milestones.some((milestone) =>
+    milestone.slices.some((slice) =>
+      slice.tasks.some((task) => task.id === taskId && `${milestone.id}/${slice.id}/${task.id}` === taskPath),
+    ),
+  );
+  if (!hasTask) {
+    throw new Error(`Task ${taskId} is not part of the accepted PLAN`);
+  }
+}
+
+function buildTaskSessionTitle(input: LinkPlanningTaskSessionInput): string {
+  const taskTitle = input.taskTitle.trim();
+  const title = taskTitle ? `Task ${input.taskId} - ${taskTitle}` : `Task ${input.taskId}`;
+  return title.length > 90 ? `${title.slice(0, 87)}...` : title;
 }
 
 function advanceDiscussStageAfterAnswer(

@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import type { AnswerRecord, GeneratedOutputRecord, PlanSnapshot, PlanStage, StageStatus } from "@pi-gui/gsd-planning";
+import type {
+  AnswerRecord,
+  GeneratedOutputRecord,
+  PlanSnapshot,
+  PlanStage,
+  StageStatus,
+  TaskSessionLinkRecord,
+} from "@pi-gui/gsd-planning";
 import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  LinkPlanningTaskSessionInput,
   PlanningMilestoneDraft,
   PlanningPlanProposalDraft,
   PlanningProjectionSummary,
@@ -22,6 +30,7 @@ import type {
   StartPlanningResearchInput,
   WorkspacePlanningState,
   WorkspaceRecord,
+  WorkspaceSessionTarget,
 } from "./desktop-state";
 import { ArrowUpIcon, PlanIcon } from "./icons";
 import {
@@ -71,6 +80,8 @@ interface PlanBuilderViewProps {
   readonly onProposePlan: (input: ProposePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onReviewPlan: (input: ReviewPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onStartExecution: (input: StartPlanningExecutionInput) => Promise<DesktopAppState>;
+  readonly onLinkTaskSession: (input: LinkPlanningTaskSessionInput) => Promise<DesktopAppState>;
+  readonly onOpenTaskSession: (target: WorkspaceSessionTarget) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
 
@@ -92,6 +103,8 @@ export function PlanBuilderView({
   onProposePlan,
   onReviewPlan,
   onStartExecution,
+  onLinkTaskSession,
+  onOpenTaskSession,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
   const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
@@ -412,6 +425,36 @@ export function PlanBuilderView({
     });
   };
 
+  const linkTaskSession = (task: PlanningTaskDraft, taskPath: string) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onLinkTaskSession({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      taskId: task.id,
+      taskPath,
+      taskTitle: task.title,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const openTaskSession = (link: TaskSessionLinkRecord) => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onOpenTaskSession({
+      workspaceId: link.workspaceId,
+      sessionId: link.sessionId,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const updateMilestone = (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => {
     setPlanProposal((current) => ({
       ...current,
@@ -609,7 +652,7 @@ export function PlanBuilderView({
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
     : executeStarted
-      ? "EXECUTE queue is active; linked task sessions come next"
+      ? "EXECUTE queue is active; create or open linked task sessions"
     : planStarted
       ? "Structured plan proposals are validated before approval"
     : researchStarted
@@ -788,6 +831,9 @@ export function PlanBuilderView({
                 acceptedPlanProposal={acceptedPlanProposal}
                 projectionSummary={planningState?.projectionSummary}
                 submitting={submitting}
+                taskSessionLinks={snapshot.taskSessionLinks ?? []}
+                onLinkTaskSession={linkTaskSession}
+                onOpenTaskSession={openTaskSession}
                 onRegenerateProjections={regenerateProjections}
               />
             ) : allDiscussConfirmed && planStarted ? (
@@ -1360,17 +1406,24 @@ function PlanExecutionQueue({
   acceptedPlanProposal,
   projectionSummary,
   submitting,
+  taskSessionLinks,
+  onLinkTaskSession,
+  onOpenTaskSession,
   onRegenerateProjections,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly submitting: boolean;
+  readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
+  readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
+  readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
   readonly onRegenerateProjections: () => void;
 }) {
   const taskCount = acceptedPlanProposal?.milestones.reduce(
     (total, milestone) => total + milestone.slices.reduce((sliceTotal, slice) => sliceTotal + slice.tasks.length, 0),
     0,
   ) ?? 0;
+  const taskLinks = useMemo(() => new Map(taskSessionLinks.map((link) => [link.taskId, link])), [taskSessionLinks]);
 
   return (
     <div className="plan-execution" data-testid="plan-execution-panel">
@@ -1421,20 +1474,50 @@ function PlanExecutionQueue({
                   </div>
                   <p>{slice.goal}</p>
                   <div className="plan-execution-task-list">
-                    {slice.tasks.map((task) => (
-                      <article className="plan-execution-task" key={task.id} data-testid="execution-task">
-                        <div className="plan-execution-task__header">
-                          <span>{task.id}</span>
-                          <strong>{task.title}</strong>
-                        </div>
-                        <p>{task.acceptance}</p>
-                        {task.dependencies.length > 0 ? (
-                          <small>Depends on {task.dependencies.join(", ")}</small>
-                        ) : (
-                          <small>Ready</small>
-                        )}
-                      </article>
-                    ))}
+                    {slice.tasks.map((task) => {
+                      const taskPath = `${milestone.id}/${slice.id}/${task.id}`;
+                      const linkedSession = taskLinks.get(task.id);
+                      return (
+                        <article className="plan-execution-task" key={task.id} data-testid="execution-task">
+                          <div className="plan-execution-task__header">
+                            <span>{task.id}</span>
+                            <strong>{task.title}</strong>
+                          </div>
+                          <p>{task.acceptance}</p>
+                          <div className="plan-execution-task__footer">
+                            <small>
+                              {task.dependencies.length > 0 ? `Depends on ${task.dependencies.join(", ")}` : "Ready"}
+                            </small>
+                            {linkedSession ? (
+                              <>
+                                <span className="plan-execution-task__link" data-testid="execution-task-link">
+                                  Linked session: {linkedSession.title}
+                                </span>
+                                <button
+                                  className="plan-secondary-button plan-secondary-button--compact"
+                                  data-testid="open-task-session-button"
+                                  disabled={submitting}
+                                  onClick={() => onOpenTaskSession(linkedSession)}
+                                  type="button"
+                                >
+                                  Open session
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                className="plan-action-button plan-action-button--compact"
+                                data-testid="link-task-session-button"
+                                disabled={submitting}
+                                onClick={() => onLinkTaskSession(task, taskPath)}
+                                type="button"
+                              >
+                                Create session
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

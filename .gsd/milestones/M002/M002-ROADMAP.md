@@ -16,7 +16,7 @@
 - [x] **S01: EXECUTE Queue Activation** `risk:medium` `depends:[M001/S06,M001/S07]`
   > After this: a user can start `EXECUTE` from an accepted PLAN, see the task queue from the accepted hierarchy, and restart into the active execution view.
 
-- [ ] **S02: Task Session Linking** `risk:high` `depends:[S01]`
+- [x] **S02: Task Session Linking** `risk:high` `depends:[S01]`
   > After this: each execution task can launch or link a normal desktop session while preserving task identity in planning state.
 
 - [ ] **S03: Task Status and Evidence Capture** `risk:high` `depends:[S02]`
@@ -48,3 +48,12 @@ Produces:
 
 Consumes:
   session runtime -> linked task sessions
+
+### S02 -> S03
+
+Produces:
+  task session links -> persisted task identity plus workspace/session targets
+  execution queue controls -> explicit create/open session actions
+
+Consumes:
+  task evidence model -> status, blockers, and verification artifacts tied back to task identity

@@ -2124,6 +2124,10 @@ export default function App() {
               onProposePlan={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningPlan(input))}
               onReviewPlan={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningPlan(input))}
               onStartExecution={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningExecution(input))}
+              onLinkTaskSession={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.linkPlanningTaskSession(input))
+              }
+              onOpenTaskSession={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
               onRegenerateProjections={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))
               }

@@ -13,6 +13,7 @@ import type {
   CreateSessionInput,
   CreateWorktreeInput,
   DesktopAppState,
+  LinkPlanningTaskSessionInput,
   ModelSettingsScopeMode,
   NotificationPreferences,
   ProposePlanningPlanInput,
@@ -71,6 +72,7 @@ export const desktopIpc = {
   proposePlanningPlan: "pi-gui:propose-planning-plan",
   reviewPlanningPlan: "pi-gui:review-planning-plan",
   startPlanningExecution: "pi-gui:start-planning-execution",
+  linkPlanningTaskSession: "pi-gui:link-planning-task-session",
   regeneratePlanningProjections: "pi-gui:regenerate-planning-projections",
   syncCurrentWorkspace: "pi-gui:sync-current-workspace",
   selectSession: "pi-gui:select-session",
@@ -269,6 +271,7 @@ export interface PiDesktopApi {
   proposePlanningPlan(input: ProposePlanningPlanInput): Promise<DesktopAppState>;
   reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState>;
   startPlanningExecution(input: StartPlanningExecutionInput): Promise<DesktopAppState>;
+  linkPlanningTaskSession(input: LinkPlanningTaskSessionInput): Promise<DesktopAppState>;
   regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState>;
   syncCurrentWorkspace(): Promise<DesktopAppState>;
   selectSession(target: WorkspaceSessionTarget): Promise<DesktopAppState>;

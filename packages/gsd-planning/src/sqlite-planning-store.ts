@@ -20,6 +20,7 @@ import type {
   RequirementRecord,
   StageStateRecord,
   StageStatus,
+  TaskSessionLinkRecord,
 } from "./types.js";
 
 const SCHEMA_VERSION = 1;
@@ -273,6 +274,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const requirements = new Map<string, RequirementRecord>();
   const stages = new Map<PlanStage, MutableStageStateRecord>();
   const generatedOutputs = new Map<string, GeneratedOutputRecord>();
+  const taskSessionLinks = new Map<string, TaskSessionLinkRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -361,6 +363,17 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "task.session-linked":
+        taskSessionLinks.set(payload.link.taskId, {
+          id: payload.link.id ?? event.id,
+          taskId: payload.link.taskId,
+          taskPath: payload.link.taskPath,
+          workspaceId: payload.link.workspaceId,
+          sessionId: payload.link.sessionId,
+          title: payload.link.title,
+          createdAt: event.createdAt,
+        });
+        break;
     }
   }
 
@@ -371,6 +384,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     answers,
     stages: [...stages.values()].sort((left, right) => left.stage.localeCompare(right.stage)),
     generatedOutputs: [...generatedOutputs.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    taskSessionLinks: [...taskSessionLinks.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     events,
   };
 }
@@ -433,6 +447,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
       return { phase: phaseForStage(event.output.stage), stage: event.output.stage };
     case "generated-output.reviewed":
     case "answer.revised":
+    case "task.session-linked":
       return undefined;
   }
 }

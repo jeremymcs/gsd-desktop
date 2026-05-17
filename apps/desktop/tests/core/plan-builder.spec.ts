@@ -143,6 +143,21 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
     await expect(window.getByTestId("execution-task")).toContainText("Implement and verify the slice");
+    await window.getByTestId("link-task-session-button").click();
+    await expect(window.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
+    let linkedSessionId = "";
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
+        ?.selectedPlan;
+      linkedSessionId = plan?.taskSessionLinks.find((link) => link.taskId === "T1")?.sessionId ?? "";
+      return linkedSessionId;
+    }).not.toBe("");
+    await window.getByTestId("open-task-session-button").click();
+    await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
+    await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -161,6 +176,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
+    await expect(window.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -169,6 +185,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
           entry.selectedPlan.activePhase === "execute" &&
+          entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>
               output.stage === "research" &&

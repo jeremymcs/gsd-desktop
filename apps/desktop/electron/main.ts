@@ -38,6 +38,7 @@ import type {
   CreateWorktreeInput,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
+  LinkPlanningTaskSessionInput,
   RecordPlanningAnswerInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
@@ -565,6 +566,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.startPlanningExecution, (_event, input: StartPlanningExecutionInput) =>
     store.startPlanningExecution(input),
+  );
+  ipcMain.handle(desktopIpc.linkPlanningTaskSession, (_event, input: LinkPlanningTaskSessionInput) =>
+    store.linkPlanningTaskSession(input),
   );
   ipcMain.handle(desktopIpc.regeneratePlanningProjections, (_event, input: RegeneratePlanningProjectionsInput) =>
     store.regeneratePlanningProjections(input),

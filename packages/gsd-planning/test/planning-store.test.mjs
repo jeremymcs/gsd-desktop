@@ -88,16 +88,33 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withExecutePhase.revision, 4);
-    assert.equal(withExecutePhase.activePhase, "execute");
-    assert.equal(withExecutePhase.activeStage, "task");
+    const withTaskSession = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withExecutePhase.revision,
+      event: {
+        type: "task.session-linked",
+        link: {
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          workspaceId: "workspace-1",
+          sessionId: "session-1",
+          title: "Task T1 - Persist every answer",
+        },
+      },
+    });
+
+    assert.equal(withTaskSession.revision, 5);
+    assert.equal(withTaskSession.activePhase, "execute");
+    assert.equal(withTaskSession.activeStage, "task");
+    assert.equal(withTaskSession.taskSessionLinks.length, 1);
+    assert.equal(withTaskSession.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 4);
+    assert.equal(reopened.revision, 5);
     assert.equal(reopened.activePhase, "execute");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -107,7 +124,10 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.requirements.length, 1);
     assert.equal(reopened.requirements[0]?.id, "R001");
     assert.equal(reopened.requirements[0]?.validationStatus, "covered");
-    assert.equal(reopened.events.length, 4);
+    assert.equal(reopened.taskSessionLinks.length, 1);
+    assert.equal(reopened.taskSessionLinks[0]?.taskId, "T1");
+    assert.equal(reopened.taskSessionLinks[0]?.sessionId, "session-1");
+    assert.equal(reopened.events.length, 5);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

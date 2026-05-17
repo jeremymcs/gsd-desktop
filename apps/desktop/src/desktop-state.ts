@@ -279,6 +279,15 @@ export interface StartPlanningExecutionInput {
   readonly expectedRevision: number;
 }
 
+export interface LinkPlanningTaskSessionInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly taskTitle: string;
+}
+
 export interface ProposePlanningPlanInput {
   readonly workspaceId: string;
   readonly planId: string;

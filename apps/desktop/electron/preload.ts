@@ -28,6 +28,7 @@ import type {
   CreateSessionInput,
   CreateWorktreeInput,
   DesktopAppState,
+  LinkPlanningTaskSessionInput,
   NotificationPreferences,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
@@ -172,6 +173,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.reviewPlanningPlan, input) as Promise<DesktopAppState>,
   startPlanningExecution: (input: StartPlanningExecutionInput) =>
     ipcRenderer.invoke(desktopIpc.startPlanningExecution, input) as Promise<DesktopAppState>,
+  linkPlanningTaskSession: (input: LinkPlanningTaskSessionInput) =>
+    ipcRenderer.invoke(desktopIpc.linkPlanningTaskSession, input) as Promise<DesktopAppState>,
   regeneratePlanningProjections: (input: RegeneratePlanningProjectionsInput) =>
     ipcRenderer.invoke(desktopIpc.regeneratePlanningProjections, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>

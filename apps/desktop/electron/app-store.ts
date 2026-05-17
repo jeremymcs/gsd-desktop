@@ -45,6 +45,7 @@ import {
   type CreateSessionInput,
   type CreateWorktreeInput,
   type DesktopAppState,
+  type LinkPlanningTaskSessionInput,
   type NotificationPreferences,
   type ProposePlanningPlanInput,
   type ProposePlanningResearchInput,
@@ -404,6 +405,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async startPlanningExecution(input: StartPlanningExecutionInput): Promise<DesktopAppState> {
     return plans.startPlanningExecution(this, input);
+  }
+
+  async linkPlanningTaskSession(input: LinkPlanningTaskSessionInput): Promise<DesktopAppState> {
+    return plans.linkPlanningTaskSession(this, input);
   }
 
   async regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState> {
