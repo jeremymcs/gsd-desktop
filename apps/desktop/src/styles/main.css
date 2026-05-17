@@ -2100,10 +2100,79 @@
 }
 
 .canvas--plans {
+  --plan-canvas-bg: #f1f4f8;
+  --plan-workbench-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 249, 252, 0) 28%),
+    #f6f7fb;
+  --plan-pane-bg: #ffffff;
+  --plan-pane-subtle-bg: #f7f9fc;
+  --plan-pane-muted-bg: #eef2f7;
+  --plan-pane-raised-bg: #fbfcfe;
+  --plan-pane-border: #d9e0ec;
+  --plan-pane-border-strong: #cbd5e4;
+  --plan-text: #1f2638;
+  --plan-header-text: #39435b;
+  --plan-muted-text: #5f6b82;
+  --plan-soft-text: #667085;
+  --plan-faint-text: #8992a5;
+  --plan-accent: #7c5d16;
+  --plan-accent-bg: rgba(124, 93, 22, 0.1);
+  --plan-accent-border: rgba(124, 93, 22, 0.28);
+  --plan-primary-bg: #1f2638;
+  --plan-primary-text: #ffffff;
+  --plan-secondary-bg: #f2f5fa;
+  --plan-input-bg: #ffffff;
+  --plan-input-border: #d9e0ec;
+  --plan-card-shadow: 0 18px 48px rgba(31, 38, 56, 0.08);
+  --plan-success-text: #166534;
+  --plan-success-bg: rgba(22, 101, 52, 0.08);
+  --plan-success-border: rgba(22, 101, 52, 0.24);
+  --plan-danger-text: #b42318;
+  --plan-danger-bg: rgba(180, 35, 24, 0.08);
+  --plan-danger-border: rgba(180, 35, 24, 0.26);
+  --plan-info-bg: rgba(37, 99, 235, 0.08);
+  --plan-info-border: rgba(37, 99, 235, 0.22);
+  --plan-note-text: #775f17;
   min-height: 0;
   padding: 0;
   overflow: hidden;
-  background: #0f1012;
+  background: var(--plan-canvas-bg);
+}
+
+:root.dark .canvas--plans {
+  --plan-canvas-bg: #0f1012;
+  --plan-workbench-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 22%),
+    #0d0e10;
+  --plan-pane-bg: #111214;
+  --plan-pane-subtle-bg: #15161a;
+  --plan-pane-muted-bg: #17181c;
+  --plan-pane-raised-bg: #181a20;
+  --plan-pane-border: #25272d;
+  --plan-pane-border-strong: #30343d;
+  --plan-text: #f4f4f5;
+  --plan-header-text: #d9dce3;
+  --plan-muted-text: #a3a8b3;
+  --plan-soft-text: #9aa1ad;
+  --plan-faint-text: #8f96a3;
+  --plan-accent: #d7b269;
+  --plan-accent-bg: rgba(215, 178, 105, 0.06);
+  --plan-accent-border: rgba(215, 178, 105, 0.28);
+  --plan-primary-bg: #d7b269;
+  --plan-primary-text: #111214;
+  --plan-secondary-bg: #1b1d22;
+  --plan-input-bg: #101114;
+  --plan-input-border: #30343d;
+  --plan-card-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  --plan-success-text: #a9d8b1;
+  --plan-success-bg: rgba(128, 201, 141, 0.08);
+  --plan-success-border: rgba(128, 201, 141, 0.34);
+  --plan-danger-text: #f1a5a5;
+  --plan-danger-bg: rgba(236, 118, 118, 0.1);
+  --plan-danger-border: rgba(236, 118, 118, 0.42);
+  --plan-info-bg: rgba(132, 188, 255, 0.06);
+  --plan-info-border: rgba(132, 188, 255, 0.28);
+  --plan-note-text: #d0b779;
 }
 
 .plan-workbench {
@@ -3433,6 +3502,298 @@
 
   .plan-guidance-card {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.canvas--plans .plan-workbench {
+  background: var(--plan-workbench-bg);
+}
+
+.canvas--plans .plan-workbench__pane {
+  border-color: var(--plan-pane-border);
+  background: var(--plan-pane-bg);
+  color: var(--plan-text);
+}
+
+.canvas--plans .plan-workbench__pane--active {
+  border-color: var(--plan-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--plan-accent-bg),
+    0 0 0 1px color-mix(in srgb, var(--plan-accent-border) 40%, transparent);
+}
+
+.canvas--plans .plan-pane__header,
+.canvas--plans .plan-composer {
+  border-color: var(--plan-pane-border);
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-pane__chip {
+  background: var(--plan-pane-muted-bg);
+  color: var(--plan-soft-text);
+}
+
+.canvas--plans .plan-pane__separator,
+.canvas--plans .plan-phase__index,
+.canvas--plans .plan-guidance-card__meta dt {
+  color: var(--plan-faint-text);
+}
+
+.canvas--plans .plan-pane__icon-button,
+.canvas--plans .plan-builder__mark {
+  border-color: var(--plan-pane-border-strong);
+  background: var(--plan-pane-muted-bg);
+  color: var(--plan-accent);
+}
+
+.canvas--plans .plan-builder__eyebrow,
+.canvas--plans .plan-question-card__meta,
+.canvas--plans .plan-execution-milestone__header span,
+.canvas--plans .plan-execution-slice__header span,
+.canvas--plans .plan-execution-task__header span,
+.canvas--plans .plan-roadmap-card__header span,
+.canvas--plans .plan-research-output span,
+.canvas--plans .plan-depth-card__eyebrow,
+.canvas--plans .plan-phase--active .plan-phase__status,
+.canvas--plans .plan-guidance-card__banner,
+.canvas--plans .plan-inline-button,
+.canvas--plans .plan-memory__item-header small {
+  color: var(--plan-accent);
+}
+
+.canvas--plans .plan-builder__copy h1,
+.canvas--plans .plan-projection-card strong,
+.canvas--plans .plan-execution-milestone__header strong,
+.canvas--plans .plan-execution-slice__header strong,
+.canvas--plans .plan-execution-task__header strong,
+.canvas--plans .plan-validation strong,
+.canvas--plans .plan-roadmap-preview__milestone strong,
+.canvas--plans .plan-research-output h3,
+.canvas--plans .plan-question-card h2,
+.canvas--plans .plan-depth-card h2,
+.canvas--plans .plan-guidance-card strong,
+.canvas--plans .plan-outline-card__title,
+.canvas--plans .plan-outline-stat span,
+.canvas--plans .plan-memory__title,
+.canvas--plans .plan-memory__item-header span,
+.canvas--plans .plan-change-draft label {
+  color: var(--plan-text);
+}
+
+.canvas--plans .plan-builder__copy p,
+.canvas--plans .plan-execution-milestone p,
+.canvas--plans .plan-execution-slice p,
+.canvas--plans .plan-execution-task p,
+.canvas--plans .plan-roadmap-preview,
+.canvas--plans .plan-research-output p,
+.canvas--plans .plan-question-card p,
+.canvas--plans .plan-depth-card p,
+.canvas--plans .plan-guidance-card p,
+.canvas--plans .plan-memory__item p {
+  color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-create,
+.canvas--plans .plan-question-card,
+.canvas--plans .plan-depth-card,
+.canvas--plans .plan-research-form,
+.canvas--plans .plan-roadmap-form,
+.canvas--plans .plan-execution-milestone,
+.canvas--plans .plan-ship-summary,
+.canvas--plans .plan-research-output,
+.canvas--plans .plan-phase-strip,
+.canvas--plans .plan-outline-stat,
+.canvas--plans .plan-stage-list__item,
+.canvas--plans .plan-memory__item {
+  border-color: var(--plan-pane-border);
+  background: var(--plan-pane-subtle-bg);
+  box-shadow: var(--plan-card-shadow);
+}
+
+.canvas--plans .plan-execution-slice,
+.canvas--plans .plan-roadmap-card,
+.canvas--plans .plan-roadmap-nested,
+.canvas--plans .plan-guidance-card,
+.canvas--plans .plan-composer__field,
+.canvas--plans .plan-side__workspace select,
+.canvas--plans .plan-outline-card {
+  border-color: var(--plan-pane-border);
+  background: var(--plan-pane-muted-bg);
+}
+
+.canvas--plans .plan-execution-task,
+.canvas--plans .plan-task-row {
+  border-color: var(--plan-pane-border);
+  background: var(--plan-pane-raised-bg);
+}
+
+.canvas--plans .plan-create__field,
+.canvas--plans .plan-research-form__field,
+.canvas--plans .plan-roadmap-form__field,
+.canvas--plans .plan-execution-task-editor__field,
+.canvas--plans .plan-side__workspace,
+.canvas--plans .plan-outline-stat small,
+.canvas--plans .plan-stage-list__item small,
+.canvas--plans .plan-execution-slice__header small,
+.canvas--plans .plan-execution-task__footer small,
+.canvas--plans .plan-projection-card .plan-phase-model-row small {
+  color: var(--plan-soft-text);
+}
+
+.canvas--plans .plan-create__field input,
+.canvas--plans .plan-research-form__field input,
+.canvas--plans .plan-research-form__field textarea,
+.canvas--plans .plan-question-card textarea,
+.canvas--plans .plan-memory__editor textarea,
+.canvas--plans .plan-roadmap-form__field input,
+.canvas--plans .plan-roadmap-form__field textarea,
+.canvas--plans .plan-execution-task-editor__field select,
+.canvas--plans .plan-execution-task-editor__field textarea,
+.canvas--plans .plan-change-draft input,
+.canvas--plans .plan-change-draft select,
+.canvas--plans .plan-change-draft textarea,
+.canvas--plans .plan-phase-model-row__select,
+.canvas--plans .plan-side__workspace select {
+  border-color: var(--plan-input-border);
+  background: var(--plan-input-bg);
+  color: var(--plan-text);
+}
+
+.canvas--plans .plan-action-button,
+.canvas--plans .plan-composer__send {
+  background: var(--plan-primary-bg);
+  color: var(--plan-primary-text);
+}
+
+.canvas--plans .plan-secondary-button,
+.canvas--plans .plan-inline-button,
+.canvas--plans .plan-execution-task__status {
+  border-color: var(--plan-input-border);
+  background: var(--plan-secondary-bg);
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-inline-button {
+  color: var(--plan-accent);
+}
+
+.canvas--plans .plan-projection-card,
+.canvas--plans .plan-depth-card--complete,
+.canvas--plans .plan-validation--passed,
+.canvas--plans .plan-stage-list__item--active {
+  border-color: var(--plan-success-border);
+  background: var(--plan-success-bg);
+}
+
+.canvas--plans .plan-projection-card span,
+.canvas--plans .plan-execution-task__link,
+.canvas--plans .plan-outline-card__meta,
+.canvas--plans .plan-validation--passed,
+.canvas--plans .plan-execution-task__status--done,
+.canvas--plans .plan-execution-task__status--passed,
+.canvas--plans .plan-execution-evidence span {
+  color: var(--plan-success-text);
+}
+
+.canvas--plans .plan-execution-evidence span {
+  border-color: var(--plan-success-border);
+  background: var(--plan-success-bg);
+}
+
+.canvas--plans .plan-projection-card--blocked,
+.canvas--plans .plan-validation--blocked,
+.canvas--plans .plan-error {
+  border-color: var(--plan-danger-border);
+  background: var(--plan-danger-bg);
+  color: var(--plan-danger-text);
+}
+
+.canvas--plans .plan-projection-card--blocked span,
+.canvas--plans .plan-execution-task__blocker,
+.canvas--plans .plan-execution-task__status--blocked,
+.canvas--plans .plan-execution-task__status--failed {
+  color: var(--plan-danger-text);
+}
+
+.canvas--plans .plan-execution-task__status--in-progress {
+  border-color: var(--plan-info-border);
+  color: #3867c8;
+}
+
+:root.dark .canvas--plans .plan-execution-task__status--in-progress {
+  color: #b8c9f2;
+}
+
+.canvas--plans .plan-execution-task__note,
+.canvas--plans .plan-execution-task__blocker {
+  border-left-color: var(--plan-pane-border-strong);
+}
+
+.canvas--plans .plan-execution-task-editor,
+.canvas--plans .plan-change-draft {
+  border-top-color: var(--plan-pane-border);
+}
+
+.canvas--plans .plan-roadmap-preview__milestone {
+  border-color: var(--plan-pane-border);
+  background: var(--plan-pane-muted-bg);
+}
+
+.canvas--plans .plan-phase {
+  border-right-color: var(--plan-pane-border);
+  color: var(--plan-faint-text);
+}
+
+.canvas--plans .plan-phase--active {
+  background: linear-gradient(180deg, var(--plan-accent-bg), rgba(124, 93, 22, 0.03));
+  color: var(--plan-text);
+}
+
+:root.dark .canvas--plans .plan-phase--active {
+  background: linear-gradient(180deg, rgba(215, 178, 105, 0.16), rgba(215, 178, 105, 0.04));
+}
+
+.canvas--plans .plan-phase__status {
+  color: var(--plan-soft-text);
+}
+
+.canvas--plans .plan-guidance-card {
+  border-color: var(--plan-accent-border);
+  background: var(--plan-accent-bg);
+}
+
+.canvas--plans .plan-guidance-card__meta dd,
+.canvas--plans .plan-stage-list__item span {
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-composer__field,
+.canvas--plans .plan-stage-list__item,
+.canvas--plans .plan-memory__item {
+  color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-memory__item--parked {
+  border-color: var(--plan-accent-border);
+  background: var(--plan-accent-bg);
+}
+
+.canvas--plans .plan-memory__item--proposal {
+  border-color: var(--plan-info-border);
+  background: var(--plan-info-bg);
+}
+
+.canvas--plans .plan-memory__item .plan-memory__note {
+  color: var(--plan-note-text);
+}
+
+.canvas--plans .plan-memory__item-header small {
+  border-color: var(--plan-accent-border);
+}
+
+@media (max-width: 900px) {
+  .canvas--plans .plan-phase:nth-child(odd) {
+    border-right-color: var(--plan-pane-border);
   }
 }
 

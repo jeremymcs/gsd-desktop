@@ -1,7 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import {
   getDesktopState,
   launchDesktop,
@@ -26,6 +26,71 @@ const discussAnswers = [
   ["What could block execution or force the plan to change?", "Schema gaps, unclear dependencies, or UI changes that do not persist."],
   ["What would make you comfortable shipping this project?", "Restart persistence passes and the outline matches the saved discussion."],
 ] as const;
+
+async function contrastRatioFor(locator: Locator): Promise<number> {
+  return locator.evaluate((element) => {
+    type Rgba = { r: number; g: number; b: number; a: number };
+
+    const parseColor = (value: string): Rgba | null => {
+      const parts = value.match(/[\d.]+/g)?.map(Number);
+      if (!parts || parts.length < 3) {
+        return null;
+      }
+      return {
+        r: parts[0] ?? 0,
+        g: parts[1] ?? 0,
+        b: parts[2] ?? 0,
+        a: parts[3] ?? 1,
+      };
+    };
+
+    const composite = (top: Rgba, bottom: Rgba): Rgba => {
+      const alpha = top.a + bottom.a * (1 - top.a);
+      if (alpha === 0) {
+        return { r: 0, g: 0, b: 0, a: 0 };
+      }
+      return {
+        r: (top.r * top.a + bottom.r * bottom.a * (1 - top.a)) / alpha,
+        g: (top.g * top.a + bottom.g * bottom.a * (1 - top.a)) / alpha,
+        b: (top.b * top.a + bottom.b * bottom.a * (1 - top.a)) / alpha,
+        a: alpha,
+      };
+    };
+
+    const relativeLuminance = (color: Rgba) =>
+      [color.r, color.g, color.b]
+        .map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        })
+        .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+
+    const foreground = parseColor(getComputedStyle(element).color);
+    let background: Rgba = { r: 255, g: 255, b: 255, a: 1 };
+    const backgroundLayers: Rgba[] = [];
+    let node: Element | null = element;
+    while (node) {
+      const parsed = parseColor(getComputedStyle(node).backgroundColor);
+      if (parsed && parsed.a > 0) {
+        backgroundLayers.push(parsed);
+      }
+      node = node.parentElement;
+    }
+
+    for (const layer of backgroundLayers.reverse()) {
+      background = composite(layer, background);
+    }
+
+    if (!foreground) {
+      return 0;
+    }
+    const foregroundLuminance = relativeLuminance(foreground);
+    const backgroundLuminance = relativeLuminance(background);
+    const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+    const darker = Math.min(foregroundLuminance, backgroundLuminance);
+    return (lighter + 0.05) / (darker + 0.05);
+  });
+}
 
 test("opens the workspace-aware Plan Builder from sidebar and New Thread", async () => {
   const userDataDir = await makeUserDataDir();
@@ -56,6 +121,55 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("plans");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("keeps Plan Builder workflow controls readable in light and dark themes", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-theme");
+  const workspaceName = basename(workspacePath);
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
+    await window.getByTestId("plan-name-input").fill("Theme plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
+    await window.getByTestId("apply-workflow-preferences-button").click();
+    await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+
+    const readableTargets = [
+      { name: "plan title", locator: window.getByTestId("plan-builder-title") },
+      { name: "answer textarea", locator: window.getByTestId("plan-answer-textarea") },
+      { name: "phase model select", locator: window.getByTestId("phase-model-select-execute") },
+      {
+        name: "workflow preference summary",
+        locator: window.getByTestId("workflow-preferences-summary"),
+      },
+    ] as const;
+    const expectReadableContrast = async (theme: "light" | "dark") => {
+      await window.evaluate((nextTheme) => {
+        document.documentElement.classList.toggle("dark", nextTheme === "dark");
+      }, theme);
+      for (const target of readableTargets) {
+        await expect
+          .poll(() => contrastRatioFor(target.locator), { message: `${target.name} contrast in ${theme} theme` })
+          .toBeGreaterThanOrEqual(4.5);
+      }
+    };
+
+    await expectReadableContrast("light");
+    await expectReadableContrast("dark");
   } finally {
     await harness.close();
   }
