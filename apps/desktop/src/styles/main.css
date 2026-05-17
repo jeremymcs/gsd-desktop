@@ -3112,6 +3112,25 @@
   text-transform: uppercase;
 }
 
+.plan-readiness-warning {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(215, 178, 105, 0.34);
+  border-radius: 8px;
+  background: rgba(215, 178, 105, 0.08);
+}
+
+.plan-readiness-warning strong {
+  color: #ffcf7a;
+  font-size: 13px;
+}
+
+.plan-readiness-warning p {
+  color: #a3a8b3;
+  font-size: 12px;
+}
+
 .plan-error {
   padding: 10px 12px;
   border: 1px solid rgba(236, 118, 118, 0.42);
@@ -3829,6 +3848,19 @@
 }
 
 .canvas--plans .plan-follow-up small {
+  color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-readiness-warning {
+  border-color: var(--plan-note-border);
+  background: var(--plan-note-bg);
+}
+
+.canvas--plans .plan-readiness-warning strong {
+  color: var(--plan-note-text);
+}
+
+.canvas--plans .plan-readiness-warning p {
   color: var(--plan-muted-text);
 }
 

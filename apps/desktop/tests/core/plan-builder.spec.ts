@@ -292,6 +292,60 @@ test("labels weak requirements answers with requirement contract context", async
   }
 });
 
+test("warns about unresolved guidance before starting research", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-readiness-warning");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Readiness warning plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+
+    const answersWithUnresolvedGuidance = [
+      ["What should we call this project?", "not sure"],
+      ...discussAnswers.slice(1),
+    ] as const;
+
+    for (const [prompt, answer] of answersWithUnresolvedGuidance) {
+      await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+      await window.getByTestId("plan-answer-textarea").fill(answer);
+      await window.getByRole("button", { name: "Save answer" }).click();
+
+      if (prompt === projectDepthGatePrompt) {
+        await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+        await window.getByRole("button", { name: "Confirm Project" }).click();
+      } else if (prompt === requirementsDepthGatePrompt) {
+        await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+        await window.getByRole("button", { name: "Confirm Requirements" }).click();
+      }
+    }
+
+    await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+    await window.getByRole("button", { name: "Confirm Milestone" }).click();
+    await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+    await expect(window.getByTestId("plan-readiness-warning")).toContainText("1 unresolved guidance item");
+    await expect(window.getByTestId("plan-readiness-warning-stages")).toContainText("DISCUSS / Project");
+    await expect(window.getByRole("button", { name: "Start research" })).toBeEnabled();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Readiness warning plan",
+      )?.selectedPlan;
+      return plan?.answers.some((answer) => answer.answer.includes("What name would you recognize")) ?? false;
+    }).toBe(false);
+  } finally {
+    await harness.close();
+  }
+});
+
 test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");

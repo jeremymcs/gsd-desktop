@@ -1135,6 +1135,7 @@ export function PlanBuilderView({
                 <div className="plan-depth-card__eyebrow">DISCUSS complete</div>
                 <h2>Ready for RESEARCH</h2>
                 <p>The project, requirements, and milestone depth gates are confirmed.</p>
+                {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
                 <button className="plan-action-button" disabled={submitting} onClick={startResearch} type="button">
                   Start research
                 </button>
@@ -1759,6 +1760,21 @@ function GuidanceRollupCard({ items }: { readonly items: readonly GuidanceRollup
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+function ReadinessWarning({ items }: { readonly items: readonly GuidanceRollupItem[] }) {
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+  return (
+    <div className="plan-readiness-warning" data-testid="plan-readiness-warning">
+      <strong>{total} unresolved guidance item{total === 1 ? "" : "s"}</strong>
+      <p>Review or revise weak DISCUSS answers before later phases rely on them.</p>
+      <div className="plan-follow-up__signals" data-testid="plan-readiness-warning-stages">
+        {items.map((item) => (
+          <span key={item.stage}>DISCUSS / {stageLabel(item.stage)}</span>
+        ))}
+      </div>
     </div>
   );
 }
