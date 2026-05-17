@@ -78,14 +78,28 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withRequirement.revision, 3);
+    const withExecutePhase = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withRequirement.revision,
+      event: {
+        type: "phase.updated",
+        phase: "execute",
+        stage: "task",
+      },
+    });
+
+    assert.equal(withExecutePhase.revision, 4);
+    assert.equal(withExecutePhase.activePhase, "execute");
+    assert.equal(withExecutePhase.activeStage, "task");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 3);
+    assert.equal(reopened.revision, 4);
+    assert.equal(reopened.activePhase, "execute");
+    assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
     assert.deepEqual(reopened.project.antiGoals, ["Generic form wizard"]);
     assert.equal(reopened.answers.length, 1);
@@ -93,7 +107,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.requirements.length, 1);
     assert.equal(reopened.requirements[0]?.id, "R001");
     assert.equal(reopened.requirements[0]?.validationStatus, "covered");
-    assert.equal(reopened.events.length, 3);
+    assert.equal(reopened.events.length, 4);
     assert.equal(store.listPlans().length, 1);
 
     store.close();
@@ -147,4 +161,3 @@ test("rejects stale writes with a revision conflict", async () => {
 async function makeWorkspace() {
   return await mkdtemp(join(tmpdir(), "pi-gsd-planning-"));
 }
-

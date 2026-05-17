@@ -45,6 +45,7 @@ import type {
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
   StartThreadInput,
@@ -561,6 +562,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.reviewPlanningPlan, (_event, input: ReviewPlanningPlanInput) =>
     store.reviewPlanningPlan(input),
+  );
+  ipcMain.handle(desktopIpc.startPlanningExecution, (_event, input: StartPlanningExecutionInput) =>
+    store.startPlanningExecution(input),
   );
   ipcMain.handle(desktopIpc.regeneratePlanningProjections, (_event, input: RegeneratePlanningProjectionsInput) =>
     store.regeneratePlanningProjections(input),

@@ -57,6 +57,7 @@ import {
   type RevisePlanningAnswerInput,
   type SelectedTranscriptRecord,
   type SelectPlanningPlanInput,
+  type StartPlanningExecutionInput,
   type StartPlanningPlanInput,
   type StartPlanningResearchInput,
   type StartThreadInput,
@@ -399,6 +400,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async reviewPlanningPlan(input: ReviewPlanningPlanInput): Promise<DesktopAppState> {
     return plans.reviewPlanningPlan(this, input);
+  }
+
+  async startPlanningExecution(input: StartPlanningExecutionInput): Promise<DesktopAppState> {
+    return plans.startPlanningExecution(this, input);
   }
 
   async regeneratePlanningProjections(input: RegeneratePlanningProjectionsInput): Promise<DesktopAppState> {

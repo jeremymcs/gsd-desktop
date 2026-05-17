@@ -17,6 +17,7 @@ import type {
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
   WorkspacePlanningState,
@@ -69,6 +70,7 @@ interface PlanBuilderViewProps {
   readonly onStartPlan: (input: StartPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onProposePlan: (input: ProposePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onReviewPlan: (input: ReviewPlanningPlanInput) => Promise<DesktopAppState>;
+  readonly onStartExecution: (input: StartPlanningExecutionInput) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
 
@@ -89,6 +91,7 @@ export function PlanBuilderView({
   onStartPlan,
   onProposePlan,
   onReviewPlan,
+  onStartExecution,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
   const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
@@ -136,7 +139,9 @@ export function PlanBuilderView({
   const pendingPlanOutputs = planOutputs.filter((output) => output.status === "draft" || output.status === "proposed");
   const acceptedPlanOutputs = planOutputs.filter((output) => output.status === "accepted");
   const rejectedPlanOutputs = planOutputs.filter((output) => output.status === "rejected");
+  const acceptedPlanProposal = useMemo(() => parseLatestAcceptedPlanProposal(acceptedPlanOutputs), [acceptedPlanOutputs]);
   const roadmapStage = snapshot?.stages.find((stage) => stage.stage === "roadmap");
+  const executeStarted = snapshot?.activePhase === "execute";
   const planStarted = Boolean(snapshot && (snapshot.activePhase === "plan" || roadmapStage || planOutputs.length > 0));
   const planDraft = useMemo(
     () => buildPlanProposalDraft(snapshot, latestAnswers, acceptedResearchOutputs),
@@ -393,6 +398,20 @@ export function PlanBuilderView({
     });
   };
 
+  const startExecution = () => {
+    if (!snapshot || submitting || acceptedPlanOutputs.length === 0) {
+      return;
+    }
+    setSubmitting(true);
+    void onStartExecution({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const updateMilestone = (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => {
     setPlanProposal((current) => ({
       ...current,
@@ -589,6 +608,8 @@ export function PlanBuilderView({
   ] as const;
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
+    : executeStarted
+      ? "EXECUTE queue is active; linked task sessions come next"
     : planStarted
       ? "Structured plan proposals are validated before approval"
     : researchStarted
@@ -762,6 +783,13 @@ export function PlanBuilderView({
                   Start plan
                 </button>
               </div>
+            ) : allDiscussConfirmed && executeStarted ? (
+              <PlanExecutionQueue
+                acceptedPlanProposal={acceptedPlanProposal}
+                projectionSummary={planningState?.projectionSummary}
+                submitting={submitting}
+                onRegenerateProjections={regenerateProjections}
+              />
             ) : allDiscussConfirmed && planStarted ? (
               <PlanProposalEditor
                 acceptedPlanOutputs={acceptedPlanOutputs}
@@ -780,6 +808,7 @@ export function PlanBuilderView({
                 onIdeaPoolChange={(value) => setPlanProposal((current) => ({ ...current, ideaPool: value }))}
                 onProposePlan={proposePlan}
                 onRegenerateProjections={regenerateProjections}
+                onStartExecution={startExecution}
                 onRemoveMilestone={removeMilestone}
                 onRemoveSlice={removeSlice}
                 onRemoveTask={removeTask}
@@ -946,6 +975,10 @@ export function PlanBuilderView({
                 <span>Plan</span>
                 <small>{formatPlanStatus(roadmapStage?.status, planOutputs.length)}</small>
               </div>
+              <div className={`plan-stage-list__item ${executeStarted ? "plan-stage-list__item--active" : ""}`}>
+                <span>Execute</span>
+                <small>{formatExecuteStatus(executeStarted, acceptedPlanOutputs.length)}</small>
+              </div>
             </div>
 
             {latestAnswers.length > 0 ? (
@@ -1029,6 +1062,7 @@ function PlanProposalEditor({
   onIdeaPoolChange,
   onProposePlan,
   onRegenerateProjections,
+  onStartExecution,
   onRemoveMilestone,
   onRemoveSlice,
   onRemoveTask,
@@ -1053,6 +1087,7 @@ function PlanProposalEditor({
   readonly onIdeaPoolChange: (value: string) => void;
   readonly onProposePlan: (event: FormEvent<HTMLFormElement>) => void;
   readonly onRegenerateProjections: () => void;
+  readonly onStartExecution: () => void;
   readonly onRemoveMilestone: (milestoneIndex: number) => void;
   readonly onRemoveSlice: (milestoneIndex: number, sliceIndex: number) => void;
   readonly onRemoveTask: (milestoneIndex: number, sliceIndex: number, taskIndex: number) => void;
@@ -1099,6 +1134,15 @@ function PlanProposalEditor({
             type="button"
           >
             Regenerate projections
+          </button>
+          <button
+            className="plan-action-button plan-action-button--compact"
+            data-testid="start-execution-button"
+            disabled={submitting || Boolean(projectionSummary?.conflicts.length)}
+            onClick={onStartExecution}
+            type="button"
+          >
+            Start execute
           </button>
         </div>
       ) : null}
@@ -1312,6 +1356,96 @@ function PlanProposalEditor({
   );
 }
 
+function PlanExecutionQueue({
+  acceptedPlanProposal,
+  projectionSummary,
+  submitting,
+  onRegenerateProjections,
+}: {
+  readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly projectionSummary?: PlanningProjectionSummary;
+  readonly submitting: boolean;
+  readonly onRegenerateProjections: () => void;
+}) {
+  const taskCount = acceptedPlanProposal?.milestones.reduce(
+    (total, milestone) => total + milestone.slices.reduce((sliceTotal, slice) => sliceTotal + slice.tasks.length, 0),
+    0,
+  ) ?? 0;
+
+  return (
+    <div className="plan-execution" data-testid="plan-execution-panel">
+      <div className="plan-depth-card plan-depth-card--complete">
+        <div className="plan-depth-card__eyebrow">EXECUTE · ACTIVE</div>
+        <h2>Execution queue</h2>
+        <p>
+          {acceptedPlanProposal
+            ? `${acceptedPlanProposal.milestones.length} milestone${acceptedPlanProposal.milestones.length === 1 ? "" : "s"} and ${taskCount} task${taskCount === 1 ? "" : "s"} are ready for linked execution sessions.`
+            : "Accepted plan content could not be loaded."}
+        </p>
+      </div>
+
+      <div className="plan-projection-card" data-testid="execution-projection-summary">
+        <div>
+          <strong>Projection state</strong>
+          <span>
+            {projectionSummary
+              ? `${projectionSummary.written} written / ${projectionSummary.skipped} unchanged`
+              : "Generated files are available from the accepted plan"}
+          </span>
+        </div>
+        <button
+          className="plan-secondary-button plan-secondary-button--compact"
+          disabled={submitting}
+          onClick={onRegenerateProjections}
+          type="button"
+        >
+          Regenerate projections
+        </button>
+      </div>
+
+      {acceptedPlanProposal ? (
+        <div className="plan-execution-list">
+          {acceptedPlanProposal.milestones.map((milestone) => (
+            <section className="plan-execution-milestone" key={milestone.id} data-testid="execution-milestone">
+              <div className="plan-execution-milestone__header">
+                <span>{milestone.id}</span>
+                <strong>{milestone.title}</strong>
+              </div>
+              <p>{milestone.outcome}</p>
+              {milestone.slices.map((slice) => (
+                <div className="plan-execution-slice" key={slice.id}>
+                  <div className="plan-execution-slice__header">
+                    <span>{slice.id}</span>
+                    <strong>{slice.title}</strong>
+                    <small>{slice.tasks.length} task{slice.tasks.length === 1 ? "" : "s"}</small>
+                  </div>
+                  <p>{slice.goal}</p>
+                  <div className="plan-execution-task-list">
+                    {slice.tasks.map((task) => (
+                      <article className="plan-execution-task" key={task.id} data-testid="execution-task">
+                        <div className="plan-execution-task__header">
+                          <span>{task.id}</span>
+                          <strong>{task.title}</strong>
+                        </div>
+                        <p>{task.acceptance}</p>
+                        {task.dependencies.length > 0 ? (
+                          <small>Depends on {task.dependencies.join(", ")}</small>
+                        ) : (
+                          <small>Ready</small>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ValidationPanel({
   issues,
 }: {
@@ -1511,6 +1645,13 @@ function formatPlanStatus(status: StageStatus | undefined, outputCount: number):
   }
 }
 
+function formatExecuteStatus(started: boolean, acceptedPlanCount: number): string {
+  if (started) {
+    return "Active";
+  }
+  return acceptedPlanCount > 0 ? "Ready" : "Queued";
+}
+
 function stageLabel(stage: PlanStage): string {
   switch (stage) {
     case "project":
@@ -1528,4 +1669,11 @@ function stageLabel(stage: PlanStage): string {
     case "task":
       return "Task";
   }
+}
+
+function parseLatestAcceptedPlanProposal(
+  outputs: readonly GeneratedOutputRecord[],
+): PlanningPlanProposalDraft | undefined {
+  const output = [...outputs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+  return output ? parsePlanProposal(output.content) : undefined;
 }

@@ -2369,6 +2369,92 @@
   color: #f1a5a5;
 }
 
+.plan-execution {
+  width: min(860px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.plan-execution-list {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-execution-milestone,
+.plan-execution-slice,
+.plan-execution-task {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #252832;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.plan-execution-milestone {
+  padding: 14px;
+}
+
+.plan-execution-slice {
+  padding: 12px;
+  background: #111216;
+}
+
+.plan-execution-task {
+  padding: 10px;
+  background: #181a20;
+}
+
+.plan-execution-milestone__header,
+.plan-execution-slice__header,
+.plan-execution-task__header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-execution-milestone__header span,
+.plan-execution-slice__header span,
+.plan-execution-task__header span {
+  flex: 0 0 auto;
+  color: #d7b269;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 740;
+}
+
+.plan-execution-milestone__header strong,
+.plan-execution-slice__header strong,
+.plan-execution-task__header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f4f4f5;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-execution-slice__header small,
+.plan-execution-task small {
+  margin-left: auto;
+  color: #8f96a3;
+  font-size: 12px;
+}
+
+.plan-execution-milestone p,
+.plan-execution-slice p,
+.plan-execution-task p {
+  margin: 0;
+  color: #a3a8b3;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-execution-task-list {
+  display: grid;
+  gap: 8px;
+}
+
 .plan-roadmap-form__field {
   display: grid;
   gap: 8px;

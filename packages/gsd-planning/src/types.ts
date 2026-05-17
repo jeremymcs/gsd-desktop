@@ -82,6 +82,11 @@ export type PlanEvent =
       readonly project: Partial<ProjectSummary>;
     }
   | {
+      readonly type: "phase.updated";
+      readonly phase: PlanPhase;
+      readonly stage: PlanStage;
+    }
+  | {
       readonly type: "stage.updated";
       readonly stage: PlanStage;
       readonly status?: StageStatus;
@@ -169,4 +174,3 @@ export interface PlanningStore {
   appendEvent(input: AppendPlanEventInput): PlanSnapshot;
   close(): void;
 }
-

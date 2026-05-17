@@ -39,6 +39,7 @@ import type {
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
   SelectPlanningPlanInput,
+  StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
   StartThreadInput,
@@ -169,6 +170,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.proposePlanningPlan, input) as Promise<DesktopAppState>,
   reviewPlanningPlan: (input: ReviewPlanningPlanInput) =>
     ipcRenderer.invoke(desktopIpc.reviewPlanningPlan, input) as Promise<DesktopAppState>,
+  startPlanningExecution: (input: StartPlanningExecutionInput) =>
+    ipcRenderer.invoke(desktopIpc.startPlanningExecution, input) as Promise<DesktopAppState>,
   regeneratePlanningProjections: (input: RegeneratePlanningProjectionsInput) =>
     ipcRenderer.invoke(desktopIpc.regeneratePlanningProjections, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>

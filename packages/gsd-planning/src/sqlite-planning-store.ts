@@ -277,6 +277,8 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   for (const event of events) {
     const payload = event.payload;
     switch (payload.type) {
+      case "phase.updated":
+        break;
       case "project.updated":
         Object.assign(project, payload.project);
         project.antiGoals = payload.project.antiGoals ?? project.antiGoals;
@@ -416,6 +418,8 @@ function toPersistedPlanEvent(value: unknown): PersistedPlanEvent {
 
 function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; readonly stage: PlanStage } | undefined {
   switch (event.type) {
+    case "phase.updated":
+      return { phase: event.phase, stage: event.stage };
     case "project.updated":
       return { phase: "discuss", stage: "project" };
     case "requirement.upserted":

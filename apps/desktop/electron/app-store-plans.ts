@@ -23,6 +23,7 @@ import type {
   ReviewPlanningResearchInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
   WorkspacePlanningState,
@@ -527,6 +528,40 @@ export async function reviewPlanningPlan(
   });
 }
 
+export async function startPlanningExecution(
+  store: AppStoreInternals,
+  input: StartPlanningExecutionInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+
+      if (snapshot.activePhase === "execute") {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "phase.updated",
+          phase: "execute",
+          stage: "task",
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
 export async function regeneratePlanningProjectionsForPlan(
   store: AppStoreInternals,
   input: RegeneratePlanningProjectionsInput,
@@ -620,6 +655,22 @@ function assertAcceptedResearch(snapshot: PlanSnapshot): void {
   );
   if (!hasAcceptedResearch) {
     throw new Error("Accepted RESEARCH is required before PLAN can start");
+  }
+}
+
+function assertAcceptedPlan(snapshot: PlanSnapshot): void {
+  const acceptedPlan = snapshot.generatedOutputs.find(
+    (output) => output.stage === "roadmap" && output.status === "accepted",
+  );
+  if (!acceptedPlan) {
+    throw new Error("Accepted PLAN is required before EXECUTE can start");
+  }
+  const proposal = parsePlanProposal(acceptedPlan.content);
+  const validationIssues = proposal ? validatePlanProposal(proposal) : [
+    { id: "plan-output", path: acceptedPlan.title, message: "Plan proposal content is invalid." },
+  ];
+  if (validationIssues.length > 0) {
+    throw new Error(`EXECUTE blocked: ${validationIssues[0]?.message ?? "Plan validation failed."}`);
   }
 }
 

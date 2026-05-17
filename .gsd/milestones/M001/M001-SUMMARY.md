@@ -73,6 +73,21 @@ Known blockers:
 - `pnpm --filter @pi-gui/desktop run test:e2e:core` rebuilt successfully and the Plan Builder specs passed, but the lane is blocked by existing failures in integrated terminal, new-thread composer/model onboarding, provider settings, and unread state specs outside the Plan Builder path.
 - `pnpm run simplify` is unavailable because the repo has no `simplify` script.
 
+### S07: End-to-End Desktop Verification
+
+Plan Builder now connects accepted PLAN state to generated Markdown projections from the desktop app. PLAN approval writes projections automatically, the UI can manually regenerate projections after later database changes, and the Electron regression verifies generated files, revised-memory regeneration, and restart persistence.
+
+Verification:
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts`
+- `pnpm typecheck`
+- `git diff --check`
+
+Known blockers:
+- `pnpm --filter @pi-gui/desktop run test:e2e:core` rebuilt successfully and the Plan Builder specs passed, but the lane is blocked by existing failures in integrated terminal, new-thread composer/model onboarding, provider settings, and unread state specs outside the Plan Builder path.
+- `pnpm run simplify` is unavailable because the repo has no `simplify` script.
+
 ## Next Slice
 
-S07: End-to-End Desktop Verification.
+M002/S01: EXECUTE Queue Activation.

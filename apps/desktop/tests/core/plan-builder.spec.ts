@@ -139,6 +139,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(projectProjection).toContain("# Project: Launch Control Revised");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
+    await window.getByTestId("start-execution-button").click();
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
+    await expect(window.getByTestId("execution-task")).toContainText("Implement and verify the slice");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -155,8 +159,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
-    await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
+    await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
+    await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -164,6 +168,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
+          entry.selectedPlan.activePhase === "execute" &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>
               output.stage === "research" &&

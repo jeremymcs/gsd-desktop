@@ -273,6 +273,12 @@ export interface StartPlanningPlanInput {
   readonly expectedRevision: number;
 }
 
+export interface StartPlanningExecutionInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
 export interface ProposePlanningPlanInput {
   readonly workspaceId: string;
   readonly planId: string;
