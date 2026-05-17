@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import type {
   AnswerRecord,
   AppendPlanEventInput,
+  ChangeProposalRecord,
   CreatePlanInput,
   GeneratedOutputRecord,
   ParkedItemRecord,
@@ -284,6 +285,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const taskVerifications = new Map<string, TaskVerificationRecord>();
   const shipSummaries: ShipSummaryRecord[] = [];
   const parkedItems = new Map<string, ParkedItemRecord>();
+  const changeProposals = new Map<string, ChangeProposalRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -457,6 +459,21 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "change.proposal-drafted": {
+        const now = event.createdAt;
+        changeProposals.set(payload.proposal.id ?? event.id, {
+          id: payload.proposal.id ?? event.id,
+          sourceType: payload.proposal.sourceType,
+          sourceParkedItemId: payload.proposal.sourceParkedItemId,
+          title: payload.proposal.title,
+          summary: payload.proposal.summary,
+          impactNotes: payload.proposal.impactNotes,
+          status: payload.proposal.status ?? "draft",
+          createdAt: now,
+          updatedAt: now,
+        });
+        break;
+      }
     }
   }
 
@@ -472,6 +489,9 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     parkedItems: [...parkedItems.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    changeProposals: [...changeProposals.values()].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    ),
     events,
   };
 }
@@ -564,6 +584,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "ship.summary-recorded":
     case "idea.parked":
     case "idea.reviewed":
+    case "change.proposal-drafted":
       return undefined;
   }
 }

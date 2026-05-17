@@ -3185,6 +3185,11 @@
   background: rgba(215, 178, 105, 0.06);
 }
 
+.plan-memory__item--proposal {
+  border-color: rgba(132, 188, 255, 0.28);
+  background: rgba(132, 188, 255, 0.06);
+}
+
 .plan-memory__item-header {
   display: flex;
   align-items: center;
@@ -3231,6 +3236,44 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.plan-change-draft {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(215, 178, 105, 0.18);
+  padding-top: 10px;
+}
+
+.plan-change-draft label {
+  display: grid;
+  gap: 6px;
+  color: #d7d9df;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.plan-change-draft input,
+.plan-change-draft textarea {
+  width: 100%;
+  border: 1px solid #2e3340;
+  border-radius: 8px;
+  background: #111217;
+  color: #f4f4f5;
+  font: inherit;
+  font-size: 13px;
+}
+
+.plan-change-draft input {
+  height: 36px;
+  padding: 0 10px;
+}
+
+.plan-change-draft textarea {
+  min-height: 88px;
+  resize: vertical;
+  padding: 10px;
+  line-height: 1.45;
 }
 
 .plan-memory__editor {

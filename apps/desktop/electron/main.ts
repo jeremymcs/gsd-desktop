@@ -36,6 +36,7 @@ import type {
   CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
+  DraftPlanningChangeProposalInput,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   LinkPlanningTaskSessionInput,
@@ -551,6 +552,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.reviewPlanningIdea, (_event, input: ReviewPlanningIdeaInput) =>
     store.reviewPlanningIdea(input),
+  );
+  ipcMain.handle(desktopIpc.draftPlanningChangeProposal, (_event, input: DraftPlanningChangeProposalInput) =>
+    store.draftPlanningChangeProposal(input),
   );
   ipcMain.handle(desktopIpc.confirmPlanningStage, (_event, input: ConfirmPlanningStageInput) =>
     store.confirmPlanningStage(input),

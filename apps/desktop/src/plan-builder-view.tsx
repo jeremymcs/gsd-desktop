@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type {
   AnswerRecord,
+  ChangeProposalRecord,
   GeneratedOutputRecord,
   ParkedItemReviewStatus,
+  ParkedItemRecord,
   PlanSnapshot,
   PlanStage,
   ShipSummaryRecord,
@@ -17,6 +19,7 @@ import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  DraftPlanningChangeProposalInput,
   LinkPlanningTaskSessionInput,
   PlanningMilestoneDraft,
   PlanningPlanProposalDraft,
@@ -85,6 +88,7 @@ interface PlanBuilderViewProps {
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
+  readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
@@ -114,6 +118,7 @@ export function PlanBuilderView({
   onRecordAnswer,
   onReviseAnswer,
   onReviewIdea,
+  onDraftChangeProposal,
   onConfirmStage,
   onStartResearch,
   onProposeResearch,
@@ -141,6 +146,10 @@ export function PlanBuilderView({
   const [seededResearchPlanId, setSeededResearchPlanId] = useState("");
   const [planProposal, setPlanProposal] = useState<PlanningPlanProposalDraft>(() => emptyPlanProposal());
   const [seededPlanProposalPlanId, setSeededPlanProposalPlanId] = useState("");
+  const [draftingIdeaId, setDraftingIdeaId] = useState("");
+  const [changeProposalTitleDraft, setChangeProposalTitleDraft] = useState("");
+  const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
+  const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const snapshot = planningState?.selectedPlan;
   const activeQuestion = getActiveDiscussQuestion(snapshot);
@@ -187,6 +196,10 @@ export function PlanBuilderView({
     [acceptedResearchOutputs, latestAnswers, snapshot],
   );
   const planValidationIssues = useMemo(() => validatePlanProposal(planProposal), [planProposal]);
+  const changeProposalsBySource = useMemo(
+    () => new Map((snapshot?.changeProposals ?? []).map((proposal) => [proposal.sourceParkedItemId, proposal])),
+    [snapshot],
+  );
 
   useEffect(() => {
     const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id) : undefined;
@@ -196,6 +209,10 @@ export function PlanBuilderView({
   useEffect(() => {
     setEditingAnswerId("");
     setRevisionDraft("");
+    setDraftingIdeaId("");
+    setChangeProposalTitleDraft("");
+    setChangeProposalSummaryDraft("");
+    setChangeProposalImpactDraft("");
   }, [snapshot?.id]);
 
   useEffect(() => {
@@ -342,6 +359,51 @@ export function PlanBuilderView({
     }).finally(() => {
       setSubmitting(false);
     });
+  };
+
+  const startDraftChangeProposal = (item: ParkedItemRecord) => {
+    if (submitting || changeProposalsBySource.has(item.id)) {
+      return;
+    }
+    setDraftingIdeaId(item.id);
+    setChangeProposalTitleDraft(buildChangeProposalTitle(item));
+    setChangeProposalSummaryDraft(item.text);
+    setChangeProposalImpactDraft(buildChangeProposalImpactDraft(item));
+  };
+
+  const cancelDraftChangeProposal = () => {
+    setDraftingIdeaId("");
+    setChangeProposalTitleDraft("");
+    setChangeProposalSummaryDraft("");
+    setChangeProposalImpactDraft("");
+  };
+
+  const draftChangeProposal = (item: ParkedItemRecord) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    const title = changeProposalTitleDraft.trim();
+    const summary = changeProposalSummaryDraft.trim();
+    const impactNotes = changeProposalImpactDraft.trim();
+    if (!title || !summary || !impactNotes) {
+      return;
+    }
+    setSubmitting(true);
+    void onDraftChangeProposal({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      sourceParkedItemId: item.id,
+      title,
+      summary,
+      impactNotes,
+    })
+      .then(() => {
+        cancelDraftChangeProposal();
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
   };
 
   const startResearch = () => {
@@ -1253,6 +1315,8 @@ export function PlanBuilderView({
                 <div className="plan-memory__title">Idea pool</div>
                 {snapshot.parkedItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
+                  const proposal = changeProposalsBySource.get(item.id);
+                  const isDraftingProposal = draftingIdeaId === item.id;
                   return (
                     <article
                       className="plan-memory__item plan-memory__item--parked"
@@ -1290,10 +1354,79 @@ export function PlanBuilderView({
                         >
                           Dismiss
                         </button>
+                        {item.reviewStatus === "promotion-ready" ? (
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting || Boolean(proposal)}
+                            onClick={() => startDraftChangeProposal(item)}
+                            type="button"
+                          >
+                            {proposal ? "Drafted" : "Draft change"}
+                          </button>
+                        ) : null}
                       </div>
+                      {isDraftingProposal ? (
+                        <div className="plan-change-draft" data-testid="plan-change-draft-form">
+                          <label>
+                            <span>Title</span>
+                            <input
+                              data-testid="plan-change-title-input"
+                              onChange={(event) => setChangeProposalTitleDraft(event.target.value)}
+                              value={changeProposalTitleDraft}
+                            />
+                          </label>
+                          <label>
+                            <span>Summary</span>
+                            <textarea
+                              data-testid="plan-change-summary-textarea"
+                              onChange={(event) => setChangeProposalSummaryDraft(event.target.value)}
+                              value={changeProposalSummaryDraft}
+                            />
+                          </label>
+                          <label>
+                            <span>Impact notes</span>
+                            <textarea
+                              data-testid="plan-change-impact-textarea"
+                              onChange={(event) => setChangeProposalImpactDraft(event.target.value)}
+                              value={changeProposalImpactDraft}
+                            />
+                          </label>
+                          <div className="plan-memory__editor-actions">
+                            <button
+                              className="plan-action-button plan-action-button--compact"
+                              disabled={
+                                submitting ||
+                                !changeProposalTitleDraft.trim() ||
+                                !changeProposalSummaryDraft.trim() ||
+                                !changeProposalImpactDraft.trim()
+                              }
+                              onClick={() => draftChangeProposal(item)}
+                              type="button"
+                            >
+                              Save draft
+                            </button>
+                            <button
+                              className="plan-secondary-button plan-secondary-button--compact"
+                              onClick={cancelDraftChangeProposal}
+                              type="button"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}
+              </div>
+            ) : null}
+
+            {snapshot?.changeProposals?.length ? (
+              <div className="plan-memory" data-testid="plan-change-proposals">
+                <div className="plan-memory__title">Change proposals</div>
+                {snapshot.changeProposals.map((proposal) => (
+                  <ChangeProposalCard key={proposal.id} proposal={proposal} />
+                ))}
               </div>
             ) : null}
           </div>
@@ -2303,6 +2436,19 @@ function ResearchOutputCard({
   );
 }
 
+function ChangeProposalCard({ proposal }: { readonly proposal: ChangeProposalRecord }) {
+  return (
+    <article className="plan-memory__item plan-memory__item--proposal" data-testid="plan-change-proposal">
+      <div className="plan-memory__item-header">
+        <span>{proposal.title}</span>
+        <small>{formatChangeProposalStatus(proposal.status)}</small>
+      </div>
+      <p>{proposal.summary}</p>
+      <p className="plan-memory__note">{proposal.impactNotes}</p>
+    </article>
+  );
+}
+
 function buildResearchDraft(snapshot: PlanSnapshot | undefined, answers: readonly AnswerRecord[]): string {
   if (!snapshot) {
     return "";
@@ -2493,6 +2639,29 @@ function reviewIdeaNote(status: ParkedItemReviewStatus): string {
     case "dismissed":
       return "Dismissed from active consideration.";
   }
+}
+
+function formatChangeProposalStatus(status: ChangeProposalRecord["status"]): string {
+  switch (status) {
+    case "draft":
+      return "Draft";
+  }
+}
+
+function buildChangeProposalTitle(item: ParkedItemRecord): string {
+  const normalized = item.text.replace(/\s+/g, " ").trim();
+  return normalized.length > 48 ? `${normalized.slice(0, 45)}...` : normalized;
+}
+
+function buildChangeProposalImpactDraft(item: ParkedItemRecord): string {
+  return [
+    `Source idea: ${item.text}`,
+    "",
+    "Impact notes:",
+    "- Active plan changes to consider:",
+    "- Milestones, slices, or tasks likely affected:",
+    "- Verification evidence needed before approval:",
+  ].join("\n");
 }
 
 function stageLabel(stage: PlanStage): string {

@@ -15,6 +15,7 @@ import type {
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
+  DraftPlanningChangeProposalInput,
   LinkPlanningTaskSessionInput,
   PlanningProjectionSummary,
   ProposePlanningPlanInput,
@@ -260,6 +261,57 @@ export async function reviewPlanningIdea(
           itemId: input.itemId,
           status: input.status,
           ...(input.note ? { note: input.note } : {}),
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function draftPlanningChangeProposal(
+  store: AppStoreInternals,
+  input: DraftPlanningChangeProposalInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const title = input.title.trim();
+  const summary = input.summary.trim();
+  const impactNotes = input.impactNotes.trim();
+  if (!title || !summary || !impactNotes) {
+    return store.withError("Change proposal title, summary, and impact notes are required");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const source = current.parkedItems.find((item) => item.id === input.sourceParkedItemId);
+      if (!source) {
+        throw new Error(`Unknown parked idea: ${input.sourceParkedItemId}`);
+      }
+      if (source.reviewStatus !== "promotion-ready") {
+        throw new Error("Only ideas prepared for promotion can draft a change proposal");
+      }
+      if (current.changeProposals.some((proposal) => proposal.sourceParkedItemId === source.id)) {
+        throw new Error("A change proposal already exists for this idea");
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "change.proposal-drafted",
+          proposal: {
+            sourceType: "parked-item",
+            sourceParkedItemId: source.id,
+            title,
+            summary,
+            impactNotes,
+          },
         },
       });
 

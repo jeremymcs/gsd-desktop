@@ -20,7 +20,7 @@
 - [x] **S02: Idea Review Actions** `risk:medium` `depends:[S01]`
   > After this: parked ideas can be explicitly kept, dismissed, or prepared for promotion without changing the active plan.
 
-- [ ] **S03: Draft Change Proposal** `risk:high` `depends:[S02]`
+- [x] **S03: Draft Change Proposal** `risk:high` `depends:[S02]`
   > After this: a parked idea can seed a draft change proposal with impact notes before it enters the active plan.
 
 - [ ] **S04: Approved Injection** `risk:high` `depends:[S03]`
@@ -55,3 +55,11 @@ Produces:
 
 Consumes:
   draft proposal form -> impact notes before active plan mutation
+
+### S03 -> S04
+
+Produces:
+  draft change proposal -> auditable candidate for approved injection
+
+Consumes:
+  approval gate -> append-only plan structure changes that preserve original IDs

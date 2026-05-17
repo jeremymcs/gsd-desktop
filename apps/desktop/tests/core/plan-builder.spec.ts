@@ -92,6 +92,18 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const promotionIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" });
     await promotionIdea.getByRole("button", { name: "Prepare" }).click();
     await expect(promotionIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+    await promotionIdea.getByRole("button", { name: "Draft change" }).click();
+    await expect(promotionIdea.getByTestId("plan-change-draft-form")).toBeVisible();
+    await promotionIdea.getByTestId("plan-change-title-input").fill("Integration change draft");
+    await promotionIdea
+      .getByTestId("plan-change-summary-textarea")
+      .fill("Prepare the integration change before it enters the active plan.");
+    await promotionIdea
+      .getByTestId("plan-change-impact-textarea")
+      .fill("Impact: review roadmap boundaries, task dependencies, and verification evidence before approval.");
+    await promotionIdea.getByRole("button", { name: "Save draft" }).click();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
     const dismissedIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" });
     await dismissedIdea.getByRole("button", { name: "Dismiss" }).click();
     await expect(dismissedIdea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
@@ -233,6 +245,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" }).getByTestId("plan-idea-status"),
     ).toHaveText("Ready to promote");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" }).getByTestId("plan-idea-status"),
     ).toHaveText("Dismissed");
@@ -249,6 +263,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
           ) &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Prepare integration change" && item.reviewStatus === "promotion-ready",
+          ) &&
+          entry.selectedPlan.changeProposals.some(
+            (proposal) =>
+              proposal.title === "Integration change draft" &&
+              proposal.status === "draft" &&
+              proposal.impactNotes.includes("review roadmap boundaries"),
           ) &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Drop onboarding banner" && item.reviewStatus === "dismissed",

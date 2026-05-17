@@ -141,6 +141,20 @@ export interface ParkedItemRecord {
   readonly createdAt: string;
 }
 
+export type ChangeProposalStatus = "draft";
+
+export interface ChangeProposalRecord {
+  readonly id: string;
+  readonly sourceType: "parked-item";
+  readonly sourceParkedItemId: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly impactNotes: string;
+  readonly status: ChangeProposalStatus;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -227,6 +241,13 @@ export type PlanEvent =
       readonly itemId: string;
       readonly status: ParkedItemReviewStatus;
       readonly note?: string;
+    }
+  | {
+      readonly type: "change.proposal-drafted";
+      readonly proposal: Omit<ChangeProposalRecord, "id" | "createdAt" | "updatedAt" | "status"> & {
+        readonly id?: string;
+        readonly status?: ChangeProposalStatus;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -261,6 +282,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly parkedItems: readonly ParkedItemRecord[];
+  readonly changeProposals: readonly ChangeProposalRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 
