@@ -245,6 +245,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-answer-textarea").fill("not sure");
     await expect(window.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
+    await expect(window.getByTestId("adaptive-follow-up-severity")).toHaveText("High signal");
+    await expect(window.getByTestId("adaptive-follow-up-signals")).toContainText("uncertainty");
+    await expect(window.getByTestId("adaptive-follow-up-signals")).toContainText("working name");
     await expect(window.getByTestId("adaptive-follow-up-question")).toHaveText(
       "What name would you recognize in a file, branch, or task list next week?",
     );

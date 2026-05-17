@@ -4,6 +4,8 @@ import { getDiscussQuestion, type DiscussQuestion } from "./plan-builder-discuss
 export interface AdaptiveFollowUp {
   readonly question: string;
   readonly rationale: string;
+  readonly severity: "medium" | "high";
+  readonly signals: readonly string[];
 }
 
 const followUpQuestions: Readonly<Record<string, string>> = {
@@ -38,42 +40,79 @@ const uncertaintyPatterns = [
   /\bneed to think\b/,
 ];
 
+const questionSignals: Readonly<Record<string, readonly string[]>> = {
+  project_title: ["working name"],
+  project_vision: ["target outcome"],
+  project_shape: ["complexity drivers"],
+  project_users: ["primary user"],
+  project_core_value: ["user-visible value"],
+  project_antigoals: ["scope boundary"],
+  project_constraints: ["decision constraint"],
+  requirements_capabilities: ["must-have capability"],
+  requirements_quality: ["quality bar"],
+  requirements_integrations: ["dependency surface"],
+  requirements_validation: ["validation evidence"],
+  milestone_first_outcome: ["end-to-end proof"],
+  milestone_sequence: ["delivery order"],
+  milestone_risks: ["plan-changing risk"],
+  milestone_ship_signal: ["ship evidence"],
+};
+
 export function buildAdaptiveFollowUpForDraft(
   question: DiscussQuestion | undefined,
   answer: string,
 ): AdaptiveFollowUp | undefined {
-  if (!question || !isVagueAnswer(question, answer)) {
+  const signal = question ? analyzeAnswer(question, answer) : undefined;
+  if (!question || !signal) {
     return undefined;
   }
-  return buildFollowUp(question);
+  return buildFollowUp(question, signal);
 }
 
 export function buildAdaptiveFollowUpForAnswer(answer: AnswerRecord): AdaptiveFollowUp | undefined {
   const question = getDiscussQuestion(answer.questionId);
-  if (!question || !answer.loadBearing || !isVagueAnswer(question, answer.answer)) {
+  const signal = question ? analyzeAnswer(question, answer.answer) : undefined;
+  if (!question || !answer.loadBearing || !signal) {
     return undefined;
   }
-  return buildFollowUp(question);
+  return buildFollowUp(question, signal);
 }
 
-function buildFollowUp(question: DiscussQuestion): AdaptiveFollowUp {
+function buildFollowUp(
+  question: DiscussQuestion,
+  signal: { readonly severity: "medium" | "high"; readonly signals: readonly string[] },
+): AdaptiveFollowUp {
   return {
     question: followUpQuestions[question.id] ?? question.prompt,
     rationale: "This answer looks uncertain. Tighten it before saving if it should steer the plan.",
+    severity: signal.severity,
+    signals: signal.signals,
   };
 }
 
-function isVagueAnswer(question: DiscussQuestion, answer: string): boolean {
+function analyzeAnswer(
+  question: DiscussQuestion,
+  answer: string,
+): { readonly severity: "medium" | "high"; readonly signals: readonly string[] } | undefined {
   const normalized = answer.trim().toLowerCase();
   if (!normalized) {
-    return false;
+    return undefined;
   }
   if (uncertaintyPatterns.some((pattern) => pattern.test(normalized))) {
-    return true;
+    return {
+      severity: "high",
+      signals: ["uncertainty", ...(questionSignals[question.id] ?? ["planning detail"])],
+    };
   }
   if (question.id === "project_title") {
-    return false;
+    return undefined;
   }
   const wordCount = normalized.split(/\s+/).filter(Boolean).length;
-  return wordCount <= 2;
+  if (wordCount <= 2) {
+    return {
+      severity: "medium",
+      signals: ["low detail", ...(questionSignals[question.id] ?? ["planning detail"])],
+    };
+  }
+  return undefined;
 }

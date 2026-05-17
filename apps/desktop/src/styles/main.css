@@ -2989,12 +2989,25 @@
   padding: 9px 10px;
 }
 
-.plan-follow-up span {
+.plan-follow-up__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plan-follow-up__header span {
   color: #84bcff;
   font-size: 11px;
   font-weight: 740;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.plan-follow-up__header strong {
+  color: #ffcf7a;
+  font-size: 11px;
+  font-weight: 720;
 }
 
 .plan-follow-up p {
@@ -3003,6 +3016,21 @@
   font-size: 13px;
   font-weight: 650;
   line-height: 1.35;
+}
+
+.plan-follow-up__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-follow-up__signals span {
+  padding: 3px 7px;
+  border: 1px solid rgba(132, 188, 255, 0.24);
+  border-radius: 999px;
+  color: #aeb7c6;
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .plan-follow-up small {
@@ -3776,8 +3804,17 @@
   color: var(--plan-accent);
 }
 
+.canvas--plans .plan-follow-up__header strong {
+  color: var(--plan-note-text);
+}
+
 .canvas--plans .plan-follow-up p {
   color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-follow-up__signals span {
+  border-color: var(--plan-info-border);
+  color: var(--plan-muted-text);
 }
 
 .canvas--plans .plan-follow-up small {

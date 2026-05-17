@@ -1655,8 +1655,18 @@ function AdaptiveFollowUpCard({
       className={`plan-follow-up ${compact ? "plan-follow-up--compact" : ""}`}
       data-testid="adaptive-follow-up"
     >
-      <span>Suggested follow-up</span>
+      <div className="plan-follow-up__header">
+        <span>Suggested follow-up</span>
+        <strong data-testid="adaptive-follow-up-severity">
+          {followUp.severity === "high" ? "High signal" : "Medium signal"}
+        </strong>
+      </div>
       <p data-testid="adaptive-follow-up-question">{followUp.question}</p>
+      <div className="plan-follow-up__signals" data-testid="adaptive-follow-up-signals">
+        {followUp.signals.map((signal) => (
+          <span key={signal}>{signal}</span>
+        ))}
+      </div>
       <small>{followUp.rationale}</small>
     </div>
   );
