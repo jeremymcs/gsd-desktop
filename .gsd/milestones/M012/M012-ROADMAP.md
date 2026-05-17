@@ -16,7 +16,7 @@
 - [x] **S01: Composer VERIFY Handoff** `risk:medium` `depends:[M011]`
   > After this: a user can start VERIFY from the bottom composer once every active task is done with evidence.
 
-- [ ] **S02: Composer SHIP Handoff** `risk:medium` `depends:[S01]`
+- [x] **S02: Composer SHIP Handoff** `risk:medium` `depends:[S01]`
   > After this: a user can start SHIP from the bottom composer once every task verification passes.
 
 ## Boundary Map

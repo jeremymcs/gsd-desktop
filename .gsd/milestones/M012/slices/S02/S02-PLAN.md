@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Derive top-level SHIP readiness from accepted plan tasks and current verification records.
-- [ ] Add a composer phase action that calls the existing `startShip` handler when ready.
-- [ ] Keep the composer disabled/status-only while verification is incomplete or failed.
-- [ ] Add Electron coverage for the composer SHIP handoff.
+- [x] Derive top-level SHIP readiness from accepted plan tasks and current verification records.
+- [x] Add a composer phase action that calls the existing `startShip` handler when ready.
+- [x] Keep the composer disabled/status-only while verification is incomplete or failed.
+- [x] Add Electron coverage for the composer SHIP handoff.
 
 ## Acceptance
 

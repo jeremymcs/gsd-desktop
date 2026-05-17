@@ -277,12 +277,25 @@ export function PlanBuilderView({
     () => new Map((snapshot?.taskExecutions ?? []).map((execution) => [execution.taskId, execution])),
     [snapshot?.taskExecutions],
   );
+  const taskVerificationMap = useMemo(() => {
+    const acceptanceByTaskId = new Map(acceptedPlanTasks.map((entry) => [entry.task.id, entry.acceptance]));
+    const verificationMap = new Map<string, TaskVerificationRecord>();
+    for (const verification of snapshot?.taskVerifications ?? []) {
+      if (acceptanceByTaskId.get(verification.taskId) === verification.acceptance) {
+        verificationMap.set(verification.taskId, verification);
+      }
+    }
+    return verificationMap;
+  }, [acceptedPlanTasks, snapshot?.taskVerifications]);
   const executionReadyForVerify =
     acceptedPlanTasks.length > 0 &&
     acceptedPlanTasks.every(({ task }) => {
       const execution = taskExecutionMap.get(task.id);
       return execution?.status === "done" && execution.evidence.length > 0;
     });
+  const verificationReadyForShip =
+    acceptedPlanTasks.length > 0 &&
+    acceptedPlanTasks.every(({ task }) => taskVerificationMap.get(task.id)?.status === "passed");
   const roadmapStage = snapshot?.stages.find((stage) => stage.stage === "roadmap");
   const executeStarted = snapshot?.activePhase === "execute";
   const verifyStarted = snapshot?.activePhase === "verify";
@@ -1111,7 +1124,9 @@ export function PlanBuilderView({
     : shipStarted
       ? "SHIP gate is active; prepare the final handoff summary"
     : verifyStarted
-      ? "VERIFY gate is active; check completed tasks against acceptance"
+      ? verificationReadyForShip
+        ? "Start SHIP when all task verifications pass"
+        : "Pass every VERIFY task before SHIP"
       : executeStarted
       ? executionReadyForVerify
         ? "Start VERIFY when all task evidence is ready"
@@ -1154,7 +1169,13 @@ export function PlanBuilderView({
                 disabled: submitting,
                 run: startVerify,
               }
-            : undefined
+            : verifyStarted && !shipStarted && verificationReadyForShip
+              ? {
+                  ariaLabel: "Advance composer to SHIP",
+                  disabled: submitting,
+                  run: startShip,
+                }
+              : undefined
     : undefined;
   const composerSubmitDisabled = activeQuestion ? answerActionDisabled : !composerPhaseAction || composerPhaseAction.disabled;
   const submitComposerAction = () => {

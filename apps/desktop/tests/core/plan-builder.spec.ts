@@ -88,6 +88,20 @@ async function saveDoneExecutionEvidenceForAllTasks(window: Page): Promise<void>
   }
 }
 
+async function savePassedVerificationForAllTasks(window: Page): Promise<void> {
+  const tasks = window.getByTestId("verify-task");
+  const taskCount = await tasks.count();
+  expect(taskCount).toBeGreaterThan(0);
+
+  for (let index = 0; index < taskCount; index += 1) {
+    const task = tasks.nth(index);
+    await task.getByTestId("task-verification-status-select").selectOption("passed");
+    await task.getByTestId("task-verification-note-textarea").fill(`Verification ${index + 1} passed.`);
+    await task.getByTestId("record-task-verification-button").click();
+    await expect(task.getByTestId("task-verification-status")).toContainText("Passed");
+  }
+}
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };
@@ -617,6 +631,50 @@ test("starts VERIFY from the Plan Builder composer handoff", async () => {
       };
     }).toEqual({
       activePhase: "verify",
+      activeStage: "task",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("starts SHIP from the Plan Builder composer handoff", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-start-ship");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromQuestionCards(window, "Composer ship handoff plan");
+    await window.getByTestId("start-execution-button").click();
+    await saveDoneExecutionEvidenceForAllTasks(window);
+    await window.getByLabel("Advance composer to VERIFY").click();
+    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect(window.getByText("Pass every VERIFY task before SHIP")).toBeVisible();
+    await expect(window.getByLabel("Advance composer to SHIP")).toHaveCount(0);
+
+    await savePassedVerificationForAllTasks(window);
+    await expect(window.getByText("Start SHIP when all task verifications pass")).toBeVisible();
+    await window.getByLabel("Advance composer to SHIP").click();
+
+    await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer ship handoff plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        activeStage: plan?.activeStage ?? "",
+      };
+    }).toEqual({
+      activePhase: "ship",
       activeStage: "task",
     });
   } finally {
