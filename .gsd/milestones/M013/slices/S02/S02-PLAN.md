@@ -4,9 +4,9 @@
 
 ## Tasks
 
-- [ ] Route command/control-enter through SHIP composer submit.
-- [ ] Add Electron coverage for keyboard submit during SHIP.
-- [ ] Restart the app after a composer-saved summary and assert the saved summary restores.
+- [x] Route command/control-enter through SHIP composer submit.
+- [x] Add Electron coverage for keyboard submit during SHIP.
+- [x] Restart the app after a composer-saved summary and assert the saved summary restores.
 
 ## Acceptance
 

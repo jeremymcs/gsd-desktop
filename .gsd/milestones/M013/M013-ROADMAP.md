@@ -16,7 +16,7 @@
 - [x] **S01: Composer SHIP Summary Submit** `risk:medium` `depends:[M012]`
   > After this: a user can type a SHIP summary in the bottom composer and save it as the current ship summary.
 
-- [ ] **S02: Composer SHIP Summary Keyboard and Restart** `risk:medium` `depends:[S01]`
+- [x] **S02: Composer SHIP Summary Keyboard and Restart** `risk:medium` `depends:[S01]`
   > After this: command/control-enter saves the SHIP composer summary and restart restores the saved closeout.
 
 ## Boundary Map

@@ -729,6 +729,61 @@ test("records SHIP summary from the Plan Builder composer", async () => {
   }
 });
 
+test("restores keyboard-submitted SHIP summary from the Plan Builder composer", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-ship-summary-restart");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await reachShipFromQuestionCards(window, "Composer ship summary restart plan");
+    await window.getByTestId("plan-composer-textarea").fill("Keyboard closeout persists after restart.");
+    await window.getByTestId("plan-composer-textarea").press("Control+Enter");
+    await expect(window.getByTestId("ship-summary-recorded")).toContainText(
+      "Keyboard closeout persists after restart.",
+    );
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer ship summary restart plan");
+    await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
+    await expect(window.getByTestId("ship-summary-recorded")).toContainText(
+      "Keyboard closeout persists after restart.",
+    );
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer ship summary restart plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        summary: plan?.shipSummaries.at(-1)?.summary ?? "",
+      };
+    }).toEqual({
+      activePhase: "ship",
+      summary: "Keyboard closeout persists after restart.",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("parks the active DISCUSS draft from the Plan Builder composer", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-park");
