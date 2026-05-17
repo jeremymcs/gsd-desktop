@@ -232,6 +232,58 @@ test("resolves saved follow-up guidance through answer revision", async () => {
   }
 });
 
+test("labels weak requirements answers with requirement contract context", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-requirement-guidance");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Requirement guidance plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+
+    for (const [prompt, answer] of discussAnswers.slice(0, 7)) {
+      await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+      await window.getByTestId("plan-answer-textarea").fill(answer);
+      await window.getByRole("button", { name: "Save answer" }).click();
+
+      if (prompt === projectDepthGatePrompt) {
+        await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
+        await window.getByRole("button", { name: "Confirm Project" }).click();
+      }
+    }
+
+    await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+      "What must the first useful version be able to do?",
+    );
+    await window.getByTestId("plan-answer-textarea").fill("yes");
+    await window.getByRole("button", { name: "Save answer" }).click();
+
+    const capabilitiesMemory = window
+      .getByTestId("plan-answer-history")
+      .locator(".plan-memory__item")
+      .filter({ hasText: "Capabilities" });
+    await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");
+    await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-severity")).toHaveText("Medium signal");
+    await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-signals")).toContainText("R001");
+    await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-signals")).toContainText("functional requirement");
+    await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-signals")).toContainText("unvalidated");
+    await expect(capabilitiesMemory.getByTestId("adaptive-follow-up-rationale")).toHaveText(
+      "This answer feeds R001. Tighten the functional requirement before it steers PLAN.",
+    );
+  } finally {
+    await harness.close();
+  }
+});
+
 test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");

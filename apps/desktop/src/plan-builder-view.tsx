@@ -213,8 +213,8 @@ export function PlanBuilderView({
   const savedRequirements = snapshot?.requirements ?? [];
   const requirementRows = savedRequirements.length > 0 ? savedRequirements : requirementDrafts;
   const activeFollowUp = useMemo(
-    () => buildAdaptiveFollowUpForDraft(activeQuestion, answerDraft),
-    [activeQuestion, answerDraft],
+    () => buildAdaptiveFollowUpForDraft(activeQuestion, answerDraft, { requirements: requirementRows }),
+    [activeQuestion, answerDraft, requirementRows],
   );
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
@@ -1445,7 +1445,7 @@ export function PlanBuilderView({
                   const question = getDiscussQuestion(answer.questionId);
                   const prompt = answer.prompt || question?.prompt;
                   const isEditing = editingAnswerId === answer.id;
-                  const followUp = buildAdaptiveFollowUpForAnswer(answer);
+                  const followUp = buildAdaptiveFollowUpForAnswer(answer, { requirements: requirementRows });
                   return (
                     <article className="plan-memory__item" key={answer.id}>
                       <div className="plan-memory__item-header">
@@ -1680,7 +1680,7 @@ function AdaptiveFollowUpCard({
           <span key={signal}>{signal}</span>
         ))}
       </div>
-      <small>{followUp.rationale}</small>
+      <small data-testid="adaptive-follow-up-rationale">{followUp.rationale}</small>
       {actionLabel && onAction ? (
         <div className="plan-follow-up__actions">
           <button

@@ -19,7 +19,7 @@
 - [x] **S02: Revision-Focused Resolution Loop** `risk:medium` `depends:[S01]`
   > After this: saved discussion memory makes unresolved follow-ups easier to resolve through the existing answer revision flow, without introducing synthetic answer events.
 
-- [ ] **S03: Requirement-Aware Guidance** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Requirement-Aware Guidance** `risk:medium` `depends:[S01,S02]`
   > After this: requirements-stage follow-ups can point at missing capability, quality, integration, or validation detail using the requirement contract already in state.
 
 - [ ] **S04: Phase Guidance Rollup** `risk:medium` `depends:[S02,S03]`

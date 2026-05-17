@@ -1,4 +1,4 @@
-import type { AnswerRecord } from "@pi-gui/gsd-planning";
+import type { AnswerRecord, RequirementId, RequirementRecord } from "@pi-gui/gsd-planning";
 import { getDiscussQuestion, type DiscussQuestion } from "./plan-builder-discuss";
 
 export interface AdaptiveFollowUp {
@@ -6,6 +6,21 @@ export interface AdaptiveFollowUp {
   readonly rationale: string;
   readonly severity: "medium" | "high";
   readonly signals: readonly string[];
+}
+
+export interface AdaptiveFollowUpContext {
+  readonly requirements?: readonly RequirementRecord[];
+}
+
+interface AnswerSignal {
+  readonly severity: "medium" | "high";
+  readonly signals: readonly string[];
+  readonly rationale?: string;
+}
+
+interface RequirementFollowUpContext {
+  readonly signals: readonly string[];
+  readonly rationale?: string;
 }
 
 const followUpQuestions: Readonly<Record<string, string>> = {
@@ -58,20 +73,33 @@ const questionSignals: Readonly<Record<string, readonly string[]>> = {
   milestone_ship_signal: ["ship evidence"],
 };
 
+const requirementContextByQuestion: Readonly<
+  Record<string, { readonly id: RequirementId; readonly signal: string }>
+> = {
+  requirements_capabilities: { id: "R001", signal: "functional requirement" },
+  requirements_quality: { id: "R002", signal: "quality requirement" },
+  requirements_integrations: { id: "R003", signal: "integration requirement" },
+  requirements_validation: { id: "R004", signal: "validation signal" },
+};
+
 export function buildAdaptiveFollowUpForDraft(
   question: DiscussQuestion | undefined,
   answer: string,
+  context?: AdaptiveFollowUpContext,
 ): AdaptiveFollowUp | undefined {
-  const signal = question ? analyzeAnswer(question, answer) : undefined;
+  const signal = question ? analyzeAnswer(question, answer, context) : undefined;
   if (!question || !signal) {
     return undefined;
   }
   return buildFollowUp(question, signal);
 }
 
-export function buildAdaptiveFollowUpForAnswer(answer: AnswerRecord): AdaptiveFollowUp | undefined {
+export function buildAdaptiveFollowUpForAnswer(
+  answer: AnswerRecord,
+  context?: AdaptiveFollowUpContext,
+): AdaptiveFollowUp | undefined {
   const question = getDiscussQuestion(answer.questionId);
-  const signal = question ? analyzeAnswer(question, answer.answer) : undefined;
+  const signal = question ? analyzeAnswer(question, answer.answer, context) : undefined;
   if (!question || !answer.loadBearing || !signal) {
     return undefined;
   }
@@ -80,11 +108,11 @@ export function buildAdaptiveFollowUpForAnswer(answer: AnswerRecord): AdaptiveFo
 
 function buildFollowUp(
   question: DiscussQuestion,
-  signal: { readonly severity: "medium" | "high"; readonly signals: readonly string[] },
+  signal: AnswerSignal,
 ): AdaptiveFollowUp {
   return {
     question: followUpQuestions[question.id] ?? question.prompt,
-    rationale: "This answer looks uncertain. Tighten it before saving if it should steer the plan.",
+    rationale: buildRationale(question, signal),
     severity: signal.severity,
     signals: signal.signals,
   };
@@ -93,15 +121,18 @@ function buildFollowUp(
 function analyzeAnswer(
   question: DiscussQuestion,
   answer: string,
-): { readonly severity: "medium" | "high"; readonly signals: readonly string[] } | undefined {
+  context?: AdaptiveFollowUpContext,
+): AnswerSignal | undefined {
   const normalized = answer.trim().toLowerCase();
   if (!normalized) {
     return undefined;
   }
+  const requirementContext = getRequirementContext(question, context);
   if (uncertaintyPatterns.some((pattern) => pattern.test(normalized))) {
     return {
       severity: "high",
-      signals: ["uncertainty", ...(questionSignals[question.id] ?? ["planning detail"])],
+      signals: buildSignals(question, "uncertainty", requirementContext?.signals),
+      ...(requirementContext?.rationale ? { rationale: requirementContext.rationale } : {}),
     };
   }
   if (question.id === "project_title") {
@@ -111,8 +142,47 @@ function analyzeAnswer(
   if (wordCount <= 2) {
     return {
       severity: "medium",
-      signals: ["low detail", ...(questionSignals[question.id] ?? ["planning detail"])],
+      signals: buildSignals(question, "low detail", requirementContext?.signals),
+      ...(requirementContext?.rationale ? { rationale: requirementContext.rationale } : {}),
     };
   }
   return undefined;
+}
+
+function buildSignals(
+  question: DiscussQuestion,
+  issue: string,
+  contextSignals: readonly string[] | undefined,
+): readonly string[] {
+  return [issue, ...(questionSignals[question.id] ?? ["planning detail"]), ...(contextSignals ?? [])];
+}
+
+function getRequirementContext(
+  question: DiscussQuestion,
+  context: AdaptiveFollowUpContext | undefined,
+): RequirementFollowUpContext | undefined {
+  const requirementContext = requirementContextByQuestion[question.id];
+  if (!requirementContext) {
+    return undefined;
+  }
+  const requirement = context?.requirements?.find((entry) => entry.id === requirementContext.id);
+  if (!requirement) {
+    return {
+      signals: ["requirement contract gap"],
+    };
+  }
+  return {
+    signals: [requirement.id, requirementContext.signal, requirement.validationStatus],
+    rationale: `This answer feeds ${requirement.id}. Tighten the ${requirementContext.signal} before it steers PLAN.`,
+  };
+}
+
+function buildRationale(question: DiscussQuestion, signal: AnswerSignal): string {
+  if (signal.rationale) {
+    return signal.rationale;
+  }
+  if (question.stage === "requirements") {
+    return "This requirements answer needs enough detail to become a contract row before PLAN.";
+  }
+  return "This answer looks uncertain. Tighten it before saving if it should steer the plan.";
 }
