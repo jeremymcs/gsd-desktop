@@ -3166,6 +3166,12 @@
   line-height: 1.35;
 }
 
+.plan-guidance-card__meta dd span {
+  display: block;
+  margin-top: 3px;
+  color: #8f96a3;
+}
+
 .plan-composer {
   display: flex;
   align-items: center;
@@ -3806,6 +3812,10 @@
 .canvas--plans .plan-guidance-card__meta dd,
 .canvas--plans .plan-stage-list__item span {
   color: var(--plan-header-text);
+}
+
+.canvas--plans .plan-guidance-card__meta dd span {
+  color: var(--plan-muted-text);
 }
 
 .canvas--plans .plan-composer__field,

@@ -19,7 +19,7 @@
 - [x] **S02: Requirements Contract Review** `risk:high` `depends:[S01]`
   > After this: requirements-stage answers can be reviewed as explicit capability contract rows with class, status, owner, source, and validation state before PLAN.
 
-- [ ] **S03: Prompt Source Framing** `risk:medium` `depends:[S01]`
+- [x] **S03: Prompt Source Framing** `risk:medium` `depends:[S01]`
   > After this: workflow guidance can identify which GSD prompt family is shaping the current phase, so users understand why the wizard is asking a given question.
 
 - [ ] **S04: Adaptive Follow-Up Drafting** `risk:high` `depends:[S02,S03]`

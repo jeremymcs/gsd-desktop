@@ -115,6 +115,7 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / project");
     await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("Create a plan");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-project.md");
     await expect(window.locator(".topbar__session")).toHaveText("Plans");
     await expect(window.getByRole("button", { name: "Plans", exact: true })).toHaveClass(/sidebar__nav-item--active/);
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("plans");
@@ -160,6 +161,7 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
         name: "workflow preference summary",
         locator: window.getByTestId("workflow-preferences-summary"),
       },
+      { name: "prompt source", locator: window.getByTestId("workflow-guidance-prompt-source") },
     ] as const;
     const expectReadableContrast = async (theme: "light" | "dark") => {
       await window.evaluate((nextTheme) => {
@@ -215,6 +217,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / project");
     await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("What should we call this project?");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-project.md");
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
@@ -297,6 +300,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await window.getByRole("button", { name: "Confirm Project" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
+        await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-requirements.md");
       } else if (prompt === requirementsDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
         await expect(window.getByTestId("requirements-contract")).toContainText("Drafted from requirements answers");
@@ -320,6 +324,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         }).toBe(true);
         await window.getByRole("button", { name: "Confirm Requirements" }).click();
         await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / milestone");
+        await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-milestone.md");
       }
     }
 
@@ -327,9 +332,11 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Confirm Milestone" }).click();
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("RESEARCH DECISION");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-research-decision.md");
     await window.getByRole("button", { name: "Start research" }).click();
     await expect(window.getByTestId("plan-research-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("RESEARCH");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-research-project.md");
     await expect(window.getByTestId("research-content-textarea")).toContainText("Research checks:");
     await window.getByTestId("research-title-input").fill("Codebase and workflow research");
     await window
@@ -340,9 +347,11 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Accept" }).click();
     await expect(window.getByTestId("plan-ready-card")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("PLAN");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("plan-milestone.md / plan-slice.md");
     await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
     await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("PLAN");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("plan-milestone.md / plan-slice.md");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
     await window.getByTestId("plan-task-dependencies-input").fill("T404");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Unknown dependency T404");
@@ -431,6 +440,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("execute-task.md");
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
     await expect(window.getByTestId("plan-execution-panel")).not.toContainText("Review integration impact");
     const primaryExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
@@ -466,6 +476,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("start-verify-button").click();
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("VERIFY");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("run-uat.md");
     const primaryVerifyTask = window.getByTestId("verify-task").filter({ hasText: "Implement and verify the slice" });
     await expect(primaryVerifyTask).toContainText("No lost answers, projection state, and change-control persistence are verified.");
     await expect(primaryVerifyTask).toContainText("Linked session created and reopened from EXECUTE.");
@@ -479,6 +490,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("start-ship-button").click();
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("complete-slice.md / complete-milestone.md");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
     await expect(window.getByTestId("plan-ship-panel")).not.toContainText("Review integration impact");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
@@ -504,6 +516,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
     await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
+    await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("complete-slice.md / complete-milestone.md");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("requirements-contract")).toContainText("Requirements contract saved");
     await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");

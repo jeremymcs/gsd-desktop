@@ -70,6 +70,11 @@ import {
 } from "./plan-builder-plan";
 import { buildRequirementDrafts } from "./plan-builder-requirements";
 import {
+  promptSourceForDiscussStage,
+  workflowPromptSources,
+  type WorkflowPromptSource,
+} from "./plan-builder-prompt-sources";
+import {
   buildProjectPatch,
   discussStageOrder,
   getActiveDiscussQuestion,
@@ -2036,6 +2041,7 @@ interface WorkflowGuidance {
   readonly nextAction: string;
   readonly artifact: string;
   readonly frame: string;
+  readonly promptSource: WorkflowPromptSource;
 }
 
 function buildWorkflowGuidance({
@@ -2068,6 +2074,7 @@ function buildWorkflowGuidance({
       nextAction: "Create a plan, then capture the project outcome, users, anti-goals, and constraints.",
       artifact: ".gsd/PROJECT.md",
       frame: "Project discussion",
+      promptSource: workflowPromptSources.discussProject,
     };
   }
 
@@ -2078,6 +2085,7 @@ function buildWorkflowGuidance({
       nextAction: "Summarize what shipped, the verification evidence, and any follow-up the next session needs.",
       artifact: "Ship summary",
       frame: "Closeout",
+      promptSource: workflowPromptSources.shipCloseout,
     };
   }
 
@@ -2088,6 +2096,7 @@ function buildWorkflowGuidance({
       nextAction: "Record pass or fail for each completed task using the acceptance text from the accepted plan.",
       artifact: "Task verification",
       frame: "UAT and verification",
+      promptSource: workflowPromptSources.verifyUat,
     };
   }
 
@@ -2098,6 +2107,7 @@ function buildWorkflowGuidance({
       nextAction: "Create or open each task session, then save status, blockers, notes, and evidence before VERIFY.",
       artifact: "Task execution state",
       frame: "Task execution",
+      promptSource: workflowPromptSources.executeTask,
     };
   }
 
@@ -2108,6 +2118,7 @@ function buildWorkflowGuidance({
       nextAction: "Shape milestones, slices, tasks, dependencies, and boundary notes before accepting the plan.",
       artifact: ".gsd/milestones/*",
       frame: "Milestone and slice plan",
+      promptSource: workflowPromptSources.planRoadmap,
     };
   }
 
@@ -2118,6 +2129,7 @@ function buildWorkflowGuidance({
       nextAction: "Start PLAN and convert accepted research into milestones, slices, tasks, dependencies, and boundaries.",
       artifact: ".gsd/milestones/*",
       frame: "Milestone and slice plan",
+      promptSource: workflowPromptSources.planRoadmap,
     };
   }
 
@@ -2128,6 +2140,7 @@ function buildWorkflowGuidance({
       nextAction: "Capture findings that change planning decisions, then accept only the research the plan should trust.",
       artifact: "Research output",
       frame: "Project research",
+      promptSource: workflowPromptSources.researchProject,
     };
   }
 
@@ -2138,6 +2151,7 @@ function buildWorkflowGuidance({
       nextAction: "Start RESEARCH when findings are useful, or keep the deterministic skip decision from preferences.",
       artifact: ".gsd/runtime/research-decision.json",
       frame: "Research decision",
+      promptSource: workflowPromptSources.researchDecision,
     };
   }
 
@@ -2152,6 +2166,7 @@ function buildWorkflowGuidance({
       nextAction: `${currentProgress.answered}/${currentProgress.total} load-bearing answers are captured. Confirm the depth gate when the stage is ready.`,
       artifact: stageArtifact(currentProgress.stage),
       frame: stagePromptFrame(currentProgress.stage),
+      promptSource: promptSourceForDiscussStage(currentProgress.stage),
     };
   }
 
@@ -2161,6 +2176,7 @@ function buildWorkflowGuidance({
     nextAction: "Capture the next answer that should affect requirements, milestone scope, or verification.",
     artifact: ".gsd/PROJECT.md",
     frame: "Project discussion",
+    promptSource: workflowPromptSources.discussProject,
   };
 }
 
@@ -2171,6 +2187,7 @@ function guidanceForQuestion(question: DiscussQuestion): WorkflowGuidance {
     nextAction: question.prompt,
     artifact: stageArtifact(question.stage),
     frame: stagePromptFrame(question.stage),
+    promptSource: promptSourceForDiscussStage(question.stage),
   };
 }
 
@@ -2214,6 +2231,13 @@ function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidanc
         <div>
           <dt>Prompt frame</dt>
           <dd>{guidance.frame}</dd>
+        </div>
+        <div>
+          <dt>GSD prompt</dt>
+          <dd data-testid="workflow-guidance-prompt-source">
+            {guidance.promptSource.family} · {guidance.promptSource.prompt}
+            <span>{guidance.promptSource.purpose}</span>
+          </dd>
         </div>
       </dl>
     </section>
