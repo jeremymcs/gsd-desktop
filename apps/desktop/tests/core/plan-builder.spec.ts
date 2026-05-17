@@ -253,7 +253,7 @@ test("saves the active DISCUSS answer from the Plan Builder composer", async () 
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Driven Plan");
     await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("Composer Driven Plan");
-    await window.getByLabel("Save answer from composer").click();
+    await window.getByLabel("Submit composer answer").click();
 
     await expect(window.getByTestId("plan-question-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
@@ -299,7 +299,7 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Revisit naming after research");
     await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("Revisit naming after research");
-    await window.getByRole("button", { name: "Park composer draft" }).click();
+    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
 
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-answer-textarea")).toHaveValue("");
@@ -347,13 +347,13 @@ test("restores composer-submitted answers and parked drafts across restart", asy
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Restart Plan");
-    await window.getByLabel("Save answer from composer").click();
+    await window.getByLabel("Submit composer answer").click();
 
     await expect(window.getByTestId("plan-question-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await window.getByTestId("plan-composer-textarea").fill("Park restart-risk cleanup for later");
-    await window.getByRole("button", { name: "Park composer draft" }).click();
+    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
     await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {

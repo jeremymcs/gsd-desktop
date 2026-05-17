@@ -1433,7 +1433,7 @@ export function PlanBuilderView({
                 className="plan-composer__park"
                 type="button"
                 disabled={answerActionDisabled}
-                aria-label="Park composer draft"
+                aria-label="Move composer draft to idea pool"
                 onClick={() => recordAnswer(false)}
               >
                 Park
@@ -1443,7 +1443,7 @@ export function PlanBuilderView({
               className="plan-composer__send"
               type="submit"
               disabled={answerActionDisabled}
-              aria-label="Save answer from composer"
+              aria-label="Submit composer answer"
             >
               <ArrowUpIcon />
             </button>
