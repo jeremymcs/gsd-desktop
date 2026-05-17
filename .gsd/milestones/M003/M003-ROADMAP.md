@@ -26,7 +26,7 @@
 - [x] **S04: Approved Injection** `risk:high` `depends:[S03]`
   > After this: approved changes can add or modify plan structure while preserving original IDs and history.
 
-- [ ] **S05: Removal and Hidden State** `risk:high` `depends:[S04]`
+- [x] **S05: Removal and Hidden State** `risk:high` `depends:[S04]`
   > After this: deleted or removed items are hidden from active projections by append-only events instead of destructive edits.
 
 ## Boundary Map

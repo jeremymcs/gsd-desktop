@@ -9,6 +9,7 @@ import type {
   ChangeProposalRecord,
   CreatePlanInput,
   GeneratedOutputRecord,
+  HiddenPlanItemRecord,
   ParkedItemRecord,
   PersistedPlanEvent,
   PlanEvent,
@@ -288,6 +289,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const parkedItems = new Map<string, ParkedItemRecord>();
   const changeProposals = new Map<string, ChangeProposalRecord>();
   const approvedInjections = new Map<string, ApprovedPlanInjectionRecord>();
+  const hiddenPlanItems = new Map<string, HiddenPlanItemRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -506,6 +508,19 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "plan.item-hidden": {
+        const itemId = payload.item.id ?? event.id;
+        hiddenPlanItems.set(itemId, {
+          id: itemId,
+          targetType: payload.item.targetType,
+          targetId: payload.item.targetId,
+          targetPath: payload.item.targetPath,
+          reason: payload.item.reason,
+          acceptedOutputId: payload.item.acceptedOutputId,
+          createdAt: event.createdAt,
+        });
+        break;
+      }
     }
   }
 
@@ -525,6 +540,9 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
       left.createdAt.localeCompare(right.createdAt),
     ),
     approvedInjections: [...approvedInjections.values()].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    ),
+    hiddenPlanItems: [...hiddenPlanItems.values()].sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt),
     ),
     events,
@@ -621,6 +639,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "idea.reviewed":
     case "change.proposal-drafted":
     case "change.proposal-approved":
+    case "plan.item-hidden":
       return undefined;
   }
 }

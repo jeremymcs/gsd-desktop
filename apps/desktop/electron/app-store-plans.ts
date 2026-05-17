@@ -17,6 +17,7 @@ import type {
   CreatePlanningPlanInput,
   DesktopAppState,
   DraftPlanningChangeProposalInput,
+  HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
   PlanningPlanProposalDraft,
   PlanningTaskDraft,
@@ -414,6 +415,96 @@ export async function approvePlanningChangeProposal(
         status: "approved",
         activeQuestionId: "",
       });
+
+      const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
+    });
+  });
+}
+
+export async function hidePlanningTask(
+  store: AppStoreInternals,
+  input: HidePlanningTaskInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const taskPath = input.taskPath.trim();
+  const reason = input.reason.trim();
+  if (!taskPath || !reason) {
+    return store.withError("Hidden tasks need a task path and reason");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      const previousPosition = {
+        phase: snapshot.activePhase,
+        stage: snapshot.activeStage,
+      };
+      const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
+      if (!acceptedOutput) {
+        throw new Error("Accepted PLAN is required before hiding a task");
+      }
+      const acceptedPlan = parsePlanProposal(acceptedOutput.content);
+      if (!acceptedPlan) {
+        throw new Error("Accepted PLAN content is invalid and cannot hide tasks");
+      }
+
+      const hidden = hideTaskFromAcceptedPlan(acceptedPlan, taskPath);
+      const validationIssues = validatePlanProposal(hidden.proposal);
+      if (validationIssues.length > 0) {
+        throw new Error(`Task removal blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
+      }
+
+      const outputId = randomUUID();
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "plan.item-hidden",
+          item: {
+            targetType: "task",
+            targetId: hidden.task.id,
+            targetPath: taskPath,
+            reason,
+            acceptedOutputId: outputId,
+          },
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.proposed",
+        output: {
+          id: outputId,
+          stage: "roadmap",
+          title: `Hidden task - ${taskPath}`,
+          content: serializePlanProposal(hidden.proposal),
+          status: "proposed",
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.reviewed",
+        outputId,
+        status: "accepted",
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "stage.updated",
+        stage: "roadmap",
+        status: "approved",
+        activeQuestionId: "",
+      });
+      if (previousPosition.phase !== "plan" || previousPosition.stage !== "roadmap") {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "phase.updated",
+          phase: previousPosition.phase,
+          stage: previousPosition.stage,
+        });
+      }
 
       const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
@@ -1193,6 +1284,54 @@ function injectTaskIntoAcceptedPlan(
   return {
     ...proposal,
     milestones: nextMilestones,
+  };
+}
+
+function hideTaskFromAcceptedPlan(
+  proposal: PlanningPlanProposalDraft,
+  taskPath: string,
+): { readonly proposal: PlanningPlanProposalDraft; readonly task: PlanningTaskDraft } {
+  const [targetMilestoneId, targetSliceId, targetTaskId] = taskPath.split("/");
+  if (!targetMilestoneId || !targetSliceId || !targetTaskId) {
+    throw new Error(`Invalid task path: ${taskPath}`);
+  }
+
+  let hiddenTask: PlanningTaskDraft | undefined;
+  const nextMilestones = proposal.milestones.map((milestone) => {
+    if (milestone.id !== targetMilestoneId) {
+      return milestone;
+    }
+    return {
+      ...milestone,
+      slices: milestone.slices.map((slice) => {
+        if (slice.id !== targetSliceId) {
+          return slice;
+        }
+        hiddenTask = slice.tasks.find((task) => task.id === targetTaskId);
+        if (!hiddenTask) {
+          return slice;
+        }
+        if (slice.tasks.length === 1) {
+          throw new Error(`Task removal blocked: ${taskPath} is the last task in ${targetMilestoneId}/${targetSliceId}`);
+        }
+        return {
+          ...slice,
+          tasks: slice.tasks.filter((task) => task.id !== targetTaskId),
+        };
+      }),
+    };
+  });
+
+  if (!hiddenTask) {
+    throw new Error(`Task ${taskPath} is not part of the accepted PLAN`);
+  }
+
+  return {
+    proposal: {
+      ...proposal,
+      milestones: nextMilestones,
+    },
+    task: hiddenTask,
   };
 }
 

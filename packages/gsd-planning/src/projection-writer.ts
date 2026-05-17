@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   generatePlanningProjections,
@@ -88,6 +88,11 @@ export async function writeProjectionFiles(input: WriteProjectionFilesInput): Pr
     written.push({ path: entry.file.path, status: "written" });
   }
 
+  await removeStaleGeneratedProjectionFiles(
+    workspaceRoot,
+    new Set(writePlan.map((entry) => entry.targetPath)),
+  );
+
   return { written, skipped, conflicts };
 }
 
@@ -134,7 +139,45 @@ async function cleanupTempFile(path: string): Promise<void> {
   }
 }
 
+async function removeStaleGeneratedProjectionFiles(
+  workspaceRoot: string,
+  activeProjectionPaths: ReadonlySet<string>,
+): Promise<void> {
+  const projectionRoot = resolveProjectionPath(workspaceRoot, ".gsd");
+  const generatedFiles = await listGeneratedProjectionFiles(projectionRoot);
+  await Promise.all(
+    generatedFiles
+      .filter((path) => !activeProjectionPaths.has(path))
+      .map((path) => unlink(path)),
+  );
+}
+
+async function listGeneratedProjectionFiles(directory: string): Promise<readonly string[]> {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return [];
+    }
+    throw error;
+  }
+
+  const files: string[] = [];
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listGeneratedProjectionFiles(path)));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      const content = await readExisting(path);
+      if (content !== undefined && hasGeneratedProjectionHeader(content)) {
+        files.push(path);
+      }
+    }
+  }
+  return files;
+}
+
 function isMissingFileError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 }
-

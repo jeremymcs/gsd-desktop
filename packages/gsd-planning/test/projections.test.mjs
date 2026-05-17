@@ -80,6 +80,39 @@ test("writes projections atomically, skips unchanged files, and supports manual 
   }
 });
 
+test("removes stale generated projection files that are no longer projected", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    const snapshot = seedSnapshot(store);
+    const initialInput = makeProjectionInput(snapshot, { includeSecondTask: true });
+    await writeProjectionFiles({
+      workspaceRoot,
+      files: generatePlanningProjections(initialInput),
+    });
+
+    const staleTaskPath = join(workspaceRoot, ".gsd/milestones/M001/slices/S01/tasks/T02-PLAN.md");
+    assert.match(await readFile(staleTaskPath, "utf8"), /Second generated task/);
+
+    await regenerateProjections({
+      workspaceRoot,
+      projectionInput: makeProjectionInput(snapshot),
+    });
+
+    await assert.rejects(
+      () => readFile(staleTaskPath, "utf8"),
+      (error) => isMissingFileError(error),
+    );
+    const activeTask = await readFile(join(workspaceRoot, ".gsd/milestones/M001/slices/S01/tasks/T01-PLAN.md"), "utf8");
+    assert.match(activeTask, /Package scaffold/);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("blocks legacy Markdown by default and overwrites only when explicitly allowed", async () => {
   const workspaceRoot = await makeWorkspace();
 
@@ -153,7 +186,40 @@ function seedSnapshot(store) {
   return snapshot;
 }
 
-function makeProjectionInput(snapshot) {
+function makeProjectionInput(snapshot, options = {}) {
+  const tasks = [
+    {
+      id: "T01",
+      title: "Package scaffold",
+      status: "done",
+      description: "Create package metadata and types.",
+      goal: "Expose a narrow package contract.",
+      mustHaves: {
+        truths: ["Package builds."],
+        artifacts: ["packages/gsd-planning/package.json"],
+        keyLinks: ["index.ts -> types.ts"],
+      },
+      steps: ["Create package.", "Export types."],
+      context: ["Follow existing package conventions."],
+    },
+  ];
+  if (options.includeSecondTask) {
+    tasks.push({
+      id: "T02",
+      title: "Second generated task",
+      status: "pending",
+      description: "Create a removable generated task.",
+      goal: "Prove stale generated files are removed.",
+      mustHaves: {
+        truths: ["Stale files disappear."],
+        artifacts: [".gsd/milestones/M001/slices/S01/tasks/T02-PLAN.md"],
+        keyLinks: ["projection-writer.ts"],
+      },
+      steps: ["Generate task.", "Remove task."],
+      context: ["Only generated projection files can be removed."],
+    });
+  }
+
   return {
     plan: snapshot,
     generatedAt: "2026-05-16T00:00:00.000Z",
@@ -206,22 +272,7 @@ function makeProjectionInput(snapshot) {
             mustHaves: ["Store opens.", "Snapshots replay."],
             filesLikelyTouched: ["packages/gsd-planning/src/index.ts"],
             contextMarkdown: "# S01: Planning Engine Foundation — Context\n\n## Goal\n\nCreate the planning package.",
-            tasks: [
-              {
-                id: "T01",
-                title: "Package scaffold",
-                status: "done",
-                description: "Create package metadata and types.",
-                goal: "Expose a narrow package contract.",
-                mustHaves: {
-                  truths: ["Package builds."],
-                  artifacts: ["packages/gsd-planning/package.json"],
-                  keyLinks: ["index.ts -> types.ts"],
-                },
-                steps: ["Create package.", "Export types."],
-                context: ["Follow existing package conventions."],
-              },
-            ],
+            tasks,
           },
         ],
       },
@@ -231,4 +282,8 @@ function makeProjectionInput(snapshot) {
 
 async function makeWorkspace() {
   return await mkdtemp(join(tmpdir(), "pi-gsd-projections-"));
+}
+
+function isMissingFileError(error) {
+  return typeof error === "object" && error !== null && error.code === "ENOENT";
 }

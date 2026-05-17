@@ -150,9 +150,24 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    const withDismissedIdea = store.appendEvent({
+    const withHiddenTask = store.appendEvent({
       planId: created.id,
       expectedRevision: withApprovedProposal.revision,
+      event: {
+        type: "plan.item-hidden",
+        item: {
+          targetType: "task",
+          targetId: "T2",
+          targetPath: "M1/S1/T2",
+          reason: "No longer needed in the active plan.",
+          acceptedOutputId: "roadmap-output-2",
+        },
+      },
+    });
+
+    const withDismissedIdea = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withHiddenTask.revision,
       event: {
         type: "idea.reviewed",
         itemId: withParkedItem.parkedItems[0].id,
@@ -295,7 +310,7 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withShipSummary.revision, 19);
+    assert.equal(withShipSummary.revision, 20);
     assert.equal(withShipSummary.activePhase, "ship");
     assert.equal(withShipSummary.activeStage, "task");
     assert.equal(withShipSummary.taskSessionLinks.length, 1);
@@ -318,13 +333,15 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.changeProposals[0]?.injectedTaskPath, "M1/S1/T2");
     assert.equal(withShipSummary.approvedInjections.length, 1);
     assert.equal(withShipSummary.approvedInjections[0]?.taskPath, "M1/S1/T2");
+    assert.equal(withShipSummary.hiddenPlanItems.length, 1);
+    assert.equal(withShipSummary.hiddenPlanItems[0]?.targetPath, "M1/S1/T2");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 19);
+    assert.equal(reopened.revision, 20);
     assert.equal(reopened.activePhase, "ship");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -361,7 +378,11 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.approvedInjections.length, 1);
     assert.equal(reopened.approvedInjections[0]?.changeProposalId, reopened.changeProposals[0]?.id);
     assert.deepEqual(reopened.approvedInjections[0]?.dependencies, ["T1"]);
-    assert.equal(reopened.events.length, 19);
+    assert.equal(reopened.hiddenPlanItems.length, 1);
+    assert.equal(reopened.hiddenPlanItems[0]?.targetId, "T2");
+    assert.equal(reopened.hiddenPlanItems[0]?.reason, "No longer needed in the active plan.");
+    assert.equal(reopened.hiddenPlanItems[0]?.acceptedOutputId, "roadmap-output-2");
+    assert.equal(reopened.events.length, 20);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

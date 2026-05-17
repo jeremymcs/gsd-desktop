@@ -47,6 +47,7 @@ import {
   type CreateWorktreeInput,
   type DesktopAppState,
   type DraftPlanningChangeProposalInput,
+  type HidePlanningTaskInput,
   type LinkPlanningTaskSessionInput,
   type NotificationPreferences,
   type ProposePlanningPlanInput,
@@ -393,6 +394,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState> {
     return plans.approvePlanningChangeProposal(this, input);
+  }
+
+  async hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState> {
+    return plans.hidePlanningTask(this, input);
   }
 
   async confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState> {

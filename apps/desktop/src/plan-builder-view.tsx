@@ -21,6 +21,7 @@ import type {
   CreatePlanningPlanInput,
   DesktopAppState,
   DraftPlanningChangeProposalInput,
+  HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
   PlanningMilestoneDraft,
   PlanningPlanProposalDraft,
@@ -91,6 +92,7 @@ interface PlanBuilderViewProps {
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
+  readonly onHidePlanningTask: (input: HidePlanningTaskInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
@@ -122,6 +124,7 @@ export function PlanBuilderView({
   onReviewIdea,
   onDraftChangeProposal,
   onApproveChangeProposal,
+  onHidePlanningTask,
   onConfirmStage,
   onStartResearch,
   onProposeResearch,
@@ -425,6 +428,22 @@ export function PlanBuilderView({
       taskTitle: draft.taskTitle,
       taskAcceptance: draft.taskAcceptance,
       dependencies: splitDependencies(draft.dependencies),
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const hidePlanningTask = (taskPath: string, reason: string) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onHidePlanningTask({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      taskPath,
+      reason,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -1455,6 +1474,7 @@ export function PlanBuilderView({
                     proposal={proposal}
                     submitting={submitting}
                     onApprove={approveChangeProposal}
+                    onHideTask={hidePlanningTask}
                   />
                 ))}
               </div>
@@ -2487,13 +2507,19 @@ function ChangeProposalCard({
   proposal,
   submitting,
   onApprove,
+  onHideTask,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly proposal: ChangeProposalRecord;
   readonly submitting: boolean;
   readonly onApprove: (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => void;
+  readonly onHideTask: (taskPath: string, reason: string) => void;
 }) {
   const targets = useMemo(() => getPlanSliceTargets(acceptedPlanProposal), [acceptedPlanProposal]);
+  const activeTaskPaths = useMemo(
+    () => new Set(acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal).map((entry) => entry.taskPath) : []),
+    [acceptedPlanProposal],
+  );
   const defaultTargetId = targets[0]?.id ?? "";
   const defaultTaskId = useMemo(
     () =>
@@ -2507,7 +2533,9 @@ function ChangeProposalCard({
   const [taskTitle, setTaskTitle] = useState(proposal.title);
   const [taskAcceptance, setTaskAcceptance] = useState(buildDefaultInjectionAcceptance(proposal));
   const [dependencies, setDependencies] = useState("");
+  const [hideReason, setHideReason] = useState("No longer needed in the active plan.");
   const selectedTarget = targets.find((target) => target.id === targetId) ?? targets[0];
+  const injectedTaskActive = proposal.injectedTaskPath ? activeTaskPaths.has(proposal.injectedTaskPath) : false;
   const canApprove =
     proposal.status === "draft" &&
     Boolean(selectedTarget) &&
@@ -2522,6 +2550,7 @@ function ChangeProposalCard({
     setTaskTitle(proposal.title);
     setTaskAcceptance(buildDefaultInjectionAcceptance(proposal));
     setDependencies("");
+    setHideReason("No longer needed in the active plan.");
   }, [defaultTargetId, defaultTaskId, proposal.id, proposal.impactNotes, proposal.summary, proposal.title]);
 
   const submitApproval = (event: FormEvent<HTMLFormElement>) => {
@@ -2539,6 +2568,15 @@ function ChangeProposalCard({
     });
   };
 
+  const submitHideTask = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const reason = hideReason.trim();
+    if (!proposal.injectedTaskPath || !reason || submitting) {
+      return;
+    }
+    onHideTask(proposal.injectedTaskPath, reason);
+  };
+
   return (
     <article className="plan-memory__item plan-memory__item--proposal" data-testid="plan-change-proposal">
       <div className="plan-memory__item-header">
@@ -2549,6 +2587,11 @@ function ChangeProposalCard({
       <p className="plan-memory__note">{proposal.impactNotes}</p>
       {proposal.injectedTaskPath ? (
         <p className="plan-memory__note">Injected as {proposal.injectedTaskPath}</p>
+      ) : null}
+      {proposal.status === "approved" && proposal.injectedTaskPath && !injectedTaskActive ? (
+        <p className="plan-memory__note" data-testid="plan-hidden-task-note">
+          Hidden from active plan
+        </p>
       ) : null}
       {proposal.status === "draft" && !acceptedPlanProposal ? (
         <p className="plan-memory__note">Accept a plan before approving this change.</p>
@@ -2605,6 +2648,27 @@ function ChangeProposalCard({
           <div className="plan-memory__editor-actions">
             <button className="plan-action-button plan-action-button--compact" disabled={!canApprove} type="submit">
               Approve injection
+            </button>
+          </div>
+        </form>
+      ) : null}
+      {proposal.status === "approved" && proposal.injectedTaskPath && injectedTaskActive ? (
+        <form className="plan-change-draft" data-testid="plan-hide-task-form" onSubmit={submitHideTask}>
+          <label>
+            <span>Removal reason</span>
+            <textarea
+              data-testid="plan-hide-task-reason-textarea"
+              onChange={(event) => setHideReason(event.target.value)}
+              value={hideReason}
+            />
+          </label>
+          <div className="plan-memory__editor-actions">
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              disabled={submitting || !hideReason.trim()}
+              type="submit"
+            >
+              Hide injected task
             </button>
           </div>
         </form>

@@ -173,6 +173,16 @@ export interface ApprovedPlanInjectionRecord {
   readonly createdAt: string;
 }
 
+export interface HiddenPlanItemRecord {
+  readonly id: string;
+  readonly targetType: "task";
+  readonly targetId: string;
+  readonly targetPath: string;
+  readonly reason: string;
+  readonly acceptedOutputId: string;
+  readonly createdAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -276,6 +286,12 @@ export type PlanEvent =
       readonly injection: Omit<ApprovedPlanInjectionRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "plan.item-hidden";
+      readonly item: Omit<HiddenPlanItemRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -312,6 +328,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];
   readonly approvedInjections: readonly ApprovedPlanInjectionRecord[];
+  readonly hiddenPlanItems: readonly HiddenPlanItemRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 
