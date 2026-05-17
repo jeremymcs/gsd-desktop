@@ -181,6 +181,57 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
   }
 });
 
+test("resolves saved follow-up guidance through answer revision", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-follow-up-resolution");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Follow-up resolution plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-answer-textarea").fill("not sure");
+    await window.getByRole("button", { name: "Save answer" }).click();
+
+    const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
+    await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
+    await expect(nameMemory.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
+    await expect(nameMemory.getByTestId("adaptive-follow-up-action")).toHaveText("Edit answer");
+    await nameMemory.getByTestId("adaptive-follow-up-action").click();
+    await expect(nameMemory.getByTestId("plan-revision-textarea")).toHaveValue("not sure");
+    await nameMemory.getByTestId("plan-revision-textarea").fill("Resolved launch plan");
+    await nameMemory.getByRole("button", { name: "Save revision" }).click();
+
+    await expect(nameMemory).toContainText("Resolved launch plan");
+    await expect(nameMemory.getByTestId("adaptive-follow-up")).toHaveCount(0);
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Follow-up resolution plan",
+      )?.selectedPlan;
+      const titleAnswers = plan?.answers.filter((answer) => answer.questionId === "project_title") ?? [];
+      return {
+        hasFollowUpPrompt:
+          plan?.answers.some((answer) => answer.answer.includes("What name would you recognize")) ?? false,
+        revisedAnswer: titleAnswers.at(-1)?.answer ?? "",
+      };
+    }).toEqual({
+      hasFollowUpPrompt: false,
+      revisedAnswer: "Resolved launch plan",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");

@@ -428,6 +428,11 @@ export function PlanBuilderView({
       });
   };
 
+  const startAnswerRevision = (answer: AnswerRecord) => {
+    setEditingAnswerId(answer.id);
+    setRevisionDraft(answer.answer);
+  };
+
   const saveRequirementsContract = () => {
     if (!snapshot || requirementDrafts.length === 0 || submitting) {
       return;
@@ -1447,10 +1452,7 @@ export function PlanBuilderView({
                         <span>{question?.label ?? answer.questionId}</span>
                         <button
                           className="plan-inline-button"
-                          onClick={() => {
-                            setEditingAnswerId(answer.id);
-                            setRevisionDraft(answer.answer);
-                          }}
+                          onClick={() => startAnswerRevision(answer)}
                           type="button"
                         >
                           Edit
@@ -1492,7 +1494,14 @@ export function PlanBuilderView({
                       ) : (
                         <p>{answer.answer}</p>
                       )}
-                      {followUp ? <AdaptiveFollowUpCard followUp={followUp} compact /> : null}
+                      {followUp ? (
+                        <AdaptiveFollowUpCard
+                          actionLabel="Edit answer"
+                          followUp={followUp}
+                          compact
+                          onAction={() => startAnswerRevision(answer)}
+                        />
+                      ) : null}
                     </article>
                   );
                 })}
@@ -1644,11 +1653,15 @@ export function PlanBuilderView({
 }
 
 function AdaptiveFollowUpCard({
+  actionLabel,
   compact = false,
   followUp,
+  onAction,
 }: {
+  readonly actionLabel?: string;
   readonly compact?: boolean;
   readonly followUp: AdaptiveFollowUp;
+  readonly onAction?: () => void;
 }) {
   return (
     <div
@@ -1668,6 +1681,18 @@ function AdaptiveFollowUpCard({
         ))}
       </div>
       <small>{followUp.rationale}</small>
+      {actionLabel && onAction ? (
+        <div className="plan-follow-up__actions">
+          <button
+            className="plan-inline-button plan-follow-up__action"
+            data-testid="adaptive-follow-up-action"
+            onClick={onAction}
+            type="button"
+          >
+            {actionLabel}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

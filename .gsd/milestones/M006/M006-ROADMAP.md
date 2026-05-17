@@ -16,7 +16,7 @@
 - [x] **S01: Follow-Up Signal Detail** `risk:low` `depends:[M005/S04]`
   > After this: follow-up cards show deterministic severity and missing-context signals, helping users understand whether an answer needs a light edit or a stronger revision before it steers the plan.
 
-- [ ] **S02: Revision-Focused Resolution Loop** `risk:medium` `depends:[S01]`
+- [x] **S02: Revision-Focused Resolution Loop** `risk:medium` `depends:[S01]`
   > After this: saved discussion memory makes unresolved follow-ups easier to resolve through the existing answer revision flow, without introducing synthetic answer events.
 
 - [ ] **S03: Requirement-Aware Guidance** `risk:medium` `depends:[S01,S02]`

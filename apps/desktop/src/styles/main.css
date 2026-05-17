@@ -3039,6 +3039,17 @@
   line-height: 1.35;
 }
 
+.plan-follow-up__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.plan-follow-up__action {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .plan-action-button,
 .plan-secondary-button,
 .plan-inline-button {
