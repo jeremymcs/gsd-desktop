@@ -329,6 +329,82 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
   }
 });
 
+test("restores composer-submitted answers and parked drafts across restart", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-restart");
+
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer restart plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-composer-textarea").fill("Composer Restart Plan");
+    await window.getByLabel("Save answer from composer").click();
+
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await window.getByTestId("plan-composer-textarea").fill("Park restart-risk cleanup for later");
+    await window.getByRole("button", { name: "Park composer draft" }).click();
+    await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
+    await access(join(workspacePath, ".gsd", "gsd.db"));
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer restart plan");
+    await expect(window.getByTestId("plan-answer-history")).toContainText("Composer Restart Plan");
+    await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
+    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer restart plan",
+      )?.selectedPlan;
+      return {
+        answerCount: plan?.answers.length ?? -1,
+        parkedCount: plan?.parkedItems.length ?? -1,
+        savedAnswer: plan?.answers.find((entry) => entry.questionId === "project_title" && entry.loadBearing)
+          ?.answer ?? "",
+        parkedAnswer: plan?.answers.find((entry) => entry.questionId === "project_vision" && !entry.loadBearing)
+          ?.answer ?? "",
+        parkedText: plan?.parkedItems[0]?.text ?? "",
+        activeQuestionId: plan?.stages.find((entry) => entry.stage === "project")?.activeQuestionId ?? "",
+      };
+    }).toEqual({
+      answerCount: 2,
+      parkedCount: 1,
+      savedAnswer: "Composer Restart Plan",
+      parkedAnswer: "Park restart-risk cleanup for later",
+      parkedText: "Park restart-risk cleanup for later",
+      activeQuestionId: "project_vision",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("labels weak requirements answers with requirement contract context", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-requirement-guidance");

@@ -19,7 +19,7 @@
 - [x] **S02: Composer Park Action** `risk:medium` `depends:[S01]`
   > After this: a user can park the composer draft without advancing the active load-bearing question.
 
-- [ ] **S03: Composer Persistence Coverage** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Composer Persistence Coverage** `risk:medium` `depends:[S01,S02]`
   > After this: Electron tests prove composer-submitted answers and parked notes persist across restart without synthetic records.
 
 ## Boundary Map
