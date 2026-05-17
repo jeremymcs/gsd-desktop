@@ -907,7 +907,7 @@ export function PlanBuilderView({
           {
             id: milestoneId,
             title: "New milestone",
-            phase: "PLAN",
+            phase: current.phases[0]?.id ?? "P1",
             outcome: "Define the milestone outcome.",
             slices: [
               {
@@ -3621,6 +3621,7 @@ function emptyPlanProposal(): PlanningPlanProposalDraft {
     version: 1,
     boundaryMap: "",
     ideaPool: "",
+    phases: [],
     milestones: [],
   };
 }

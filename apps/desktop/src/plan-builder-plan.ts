@@ -1,6 +1,7 @@
 import type { AnswerRecord, GeneratedOutputRecord, PlanSnapshot } from "@pi-gui/gsd-planning";
 import type {
   PlanningMilestoneDraft,
+  PlanningPhaseDraft,
   PlanningPlanProposalDraft,
   PlanningSliceDraft,
   PlanningTaskDraft,
@@ -29,11 +30,18 @@ export function buildPlanProposalDraft(
     version: 1,
     boundaryMap: `Use accepted research to protect persistence, UI, and verification boundaries. Research: ${researchSummary}`,
     ideaPool: "Park follow-up slices, dependency risks, and scope changes here until they are promoted into a milestone.",
+    phases: [
+      {
+        id: "P1",
+        title: "First delivery phase",
+        goal: firstLine(firstOutcome),
+      },
+    ],
     milestones: [
       {
         id: "M1",
         title: firstLine(firstOutcome),
-        phase: "PLAN",
+        phase: "P1",
         outcome: firstOutcome,
         slices: [
           {
@@ -66,11 +74,13 @@ export function parsePlanProposal(content: string): PlanningPlanProposalDraft | 
     if (value.version !== 1 || !Array.isArray(value.milestones)) {
       return undefined;
     }
+    const milestones = value.milestones.map(normalizeMilestone);
     return {
       version: 1,
       boundaryMap: typeof value.boundaryMap === "string" ? value.boundaryMap : "",
       ideaPool: typeof value.ideaPool === "string" ? value.ideaPool : "",
-      milestones: value.milestones.map(normalizeMilestone),
+      phases: Array.isArray(value.phases) ? value.phases.map(normalizePhase) : derivePhasesFromMilestones(milestones),
+      milestones,
     };
   } catch {
     return undefined;
@@ -90,6 +100,29 @@ export function validatePlanProposal(proposal: PlanningPlanProposalDraft): reado
     issues.push(issue("milestones", "Milestones", "At least one milestone is required."));
   }
 
+  if (proposal.phases.length === 0) {
+    issues.push(issue("phases", "Phases", "At least one phase is required."));
+  }
+
+  const phaseIds = new Set<string>();
+  for (const [phaseIndex, phase] of proposal.phases.entries()) {
+    const phasePath = `Phase ${phaseIndex + 1}`;
+    const phaseId = phase.id.trim();
+    if (!phaseId) {
+      issues.push(issue(`phase-${phaseIndex}-id`, phasePath, "Phase id is required."));
+    } else if (phaseIds.has(phaseId)) {
+      issues.push(issue(`phase-${phaseId}-duplicate`, phasePath, `Phase id ${phaseId} is duplicated.`));
+    } else {
+      phaseIds.add(phaseId);
+    }
+    if (!phase.title.trim()) {
+      issues.push(issue(`phase-${phaseId || phaseIndex}-title`, phasePath, "Phase title is required."));
+    }
+    if (!phase.goal.trim()) {
+      issues.push(issue(`phase-${phaseId || phaseIndex}-goal`, phasePath, "Phase goal is required."));
+    }
+  }
+
   for (const [milestoneIndex, milestone] of proposal.milestones.entries()) {
     const milestonePath = `Milestone ${milestoneIndex + 1}`;
     if (!milestone.id.trim()) {
@@ -100,6 +133,14 @@ export function validatePlanProposal(proposal: PlanningPlanProposalDraft): reado
     }
     if (!milestone.phase.trim()) {
       issues.push(issue(`milestone-${milestoneIndex}-phase`, milestonePath, "Milestone phase is required."));
+    } else if (!phaseIds.has(milestone.phase.trim())) {
+      issues.push(
+        issue(
+          `milestone-${milestoneIndex}-phase-reference`,
+          milestonePath,
+          `Milestone phase ${milestone.phase.trim()} does not match a defined phase.`,
+        ),
+      );
     }
     if (!milestone.outcome.trim()) {
       issues.push(issue(`milestone-${milestoneIndex}-outcome`, milestonePath, "Milestone outcome is required."));
@@ -190,6 +231,40 @@ function normalizeMilestone(value: Partial<PlanningMilestoneDraft>): PlanningMil
     outcome: typeof value.outcome === "string" ? value.outcome : "",
     slices: Array.isArray(value.slices) ? value.slices.map(normalizeSlice) : [],
   };
+}
+
+function normalizePhase(value: Partial<PlanningPhaseDraft>): PlanningPhaseDraft {
+  return {
+    id: typeof value.id === "string" ? value.id : "",
+    title: typeof value.title === "string" ? value.title : "",
+    goal: typeof value.goal === "string" ? value.goal : "",
+  };
+}
+
+function derivePhasesFromMilestones(milestones: readonly PlanningMilestoneDraft[]): readonly PlanningPhaseDraft[] {
+  const phases: PlanningPhaseDraft[] = [];
+  const seen = new Set<string>();
+  for (const milestone of milestones) {
+    const phaseId = milestone.phase.trim();
+    if (!phaseId || seen.has(phaseId)) {
+      continue;
+    }
+    seen.add(phaseId);
+    phases.push({
+      id: phaseId,
+      title: phaseId,
+      goal: `Group milestones assigned to ${phaseId}.`,
+    });
+  }
+  return phases.length > 0
+    ? phases
+    : [
+        {
+          id: "P1",
+          title: "First delivery phase",
+          goal: "Group the accepted milestones into an executable order.",
+        },
+      ];
 }
 
 function normalizeSlice(value: Partial<PlanningSliceDraft>): PlanningSliceDraft {

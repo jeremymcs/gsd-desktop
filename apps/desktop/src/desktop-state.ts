@@ -328,6 +328,12 @@ export interface PlanningTaskDraft {
   readonly dependencies: readonly string[];
 }
 
+export interface PlanningPhaseDraft {
+  readonly id: string;
+  readonly title: string;
+  readonly goal: string;
+}
+
 export interface PlanningSliceDraft {
   readonly id: string;
   readonly title: string;
@@ -348,6 +354,7 @@ export interface PlanningPlanProposalDraft {
   readonly version: 1;
   readonly boundaryMap: string;
   readonly ideaPool: string;
+  readonly phases: readonly PlanningPhaseDraft[];
   readonly milestones: readonly PlanningMilestoneDraft[];
 }
 
