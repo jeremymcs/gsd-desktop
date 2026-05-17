@@ -17,6 +17,7 @@ Users can start a new project with the recommended workflow defaults already cap
 ### In Scope
 
 - Database-backed workflow preference records.
+- Phase-specific model preferences for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP.
 - UI affordance for applying the recommended defaults.
 - Generated `.gsd/PREFERENCES.md` from database state.
 - Generated `.gsd/runtime/research-decision.json` from database state.
@@ -32,5 +33,6 @@ Users can start a new project with the recommended workflow defaults already cap
 
 - Recommended defaults are an explicit planning event, not an implicit UI assumption.
 - Prompt-aligned workflow settings are projected from the database.
+- Model selection belongs in workflow preferences and must allow different models per phase.
 - Runtime decision files are written as machine-readable projections.
 - The first workflow preference slice uses deterministic defaults before adding broader editing controls.

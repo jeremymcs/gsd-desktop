@@ -8,6 +8,7 @@
 - Users can see when recommended defaults have been captured.
 - Preference and runtime decision files are projections from `.gsd/gsd.db`.
 - Restarted Plan Builder restores captured preferences.
+- Each workflow phase can carry its own model preference instead of sharing one executor class.
 - Later workflow guidance can build on the same database-backed preference model.
 
 ---
@@ -20,8 +21,8 @@
 - [x] **S02: Prompt-Guided Stage Framing** `risk:medium` `depends:[S01]`
   > After this: DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP screens expose the next useful prompt-framed action without relying on hidden agent instructions.
 
-- [ ] **S03: Preference Change Control** `risk:high` `depends:[S01]`
-  > After this: users can modify workflow preferences later through append-only events with clear impact on generated runtime files.
+- [ ] **S03: Preference and Phase Model Change Control** `risk:high` `depends:[S01,S02]`
+  > After this: users can modify workflow preferences, including per-phase model choices for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP, through append-only events with clear impact on generated runtime files.
 
 ## Boundary Map
 
@@ -46,6 +47,16 @@ Consumes:
 
 Produces:
   workflow preference record -> baseline for future preference edits
+  workflow preference defaults -> initial executor-class fallback before per-phase overrides
 
 Consumes:
   preference change control -> append-only modifications with projection updates
+  phase model controls -> per-phase model preferences for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP
+
+### S02 -> S03
+
+Produces:
+  stage framing UI -> explicit workflow phases that can own model choices
+
+Consumes:
+  phase model controls -> model pickers and persisted preferences scoped to each phase
