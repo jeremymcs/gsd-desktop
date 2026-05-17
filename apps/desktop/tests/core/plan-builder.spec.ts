@@ -313,6 +313,7 @@ test("requires research override and repeats unresolved guidance before planning
       ["What should we call this project?", "not sure"],
       ...discussAnswers.slice(1),
     ] as const;
+    const savedAnswerCount = answersWithUnresolvedGuidance.length;
 
     for (const [prompt, answer] of answersWithUnresolvedGuidance) {
       await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
@@ -355,8 +356,15 @@ test("requires research override and repeats unresolved guidance before planning
       const plan = Object.values(state.planningByWorkspace).find(
         (entry) => entry.selectedPlan?.name === "Readiness warning plan",
       )?.selectedPlan;
-      return plan?.answers.some((answer) => answer.answer.includes("What name would you recognize")) ?? false;
-    }).toBe(false);
+      return {
+        answerCount: plan?.answers.length ?? 0,
+        hasFollowUpPrompt:
+          plan?.answers.some((answer) => answer.answer.includes("What name would you recognize")) ?? false,
+      };
+    }).toEqual({
+      answerCount: savedAnswerCount,
+      hasFollowUpPrompt: false,
+    });
   } finally {
     await harness.close();
   }

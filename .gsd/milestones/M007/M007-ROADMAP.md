@@ -22,7 +22,7 @@
 - [x] **S03: PLAN Readiness Warning** `risk:medium` `depends:[S01]`
   > After this: accepted RESEARCH can surface unresolved DISCUSS guidance again before Start plan.
 
-- [ ] **S04: Readiness Gate Persistence Semantics** `risk:medium` `depends:[S02,S03]`
+- [x] **S04: Readiness Gate Persistence Semantics** `risk:medium` `depends:[S02,S03]`
   > After this: readiness decisions remain derived or explicit user actions, with tests proving guidance prompts are never stored as answers.
 
 ## Boundary Map
