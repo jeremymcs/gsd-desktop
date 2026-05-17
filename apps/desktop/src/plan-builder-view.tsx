@@ -1270,7 +1270,7 @@ export function PlanBuilderView({
       ? "Park a planning note or change request"
       : composerStatus);
   const composerPlaceholder = activeQuestion
-    ? "Answer with the context future planning decisions should remember."
+    ? activeQuestion.helper
     : composerCanRecordShipSummary
       ? "Write the final handoff summary for the next session."
       : "Capture a parking-lot note, change request, or follow-up without changing the active plan.";
@@ -1560,41 +1560,9 @@ export function PlanBuilderView({
                 onUpdateSlice={updateSlice}
                 onUpdateTask={updateTask}
               />
-            ) : activeQuestion ? (
-              <div className="plan-question-card" data-testid="plan-question-card">
-                <div className="plan-question-card__meta">
-                  <span>{stageLabel(activeQuestion.stage)}</span>
-                  <span>
-                    {Math.min((currentProgress?.answered ?? 0) + 1, currentProgress?.total ?? 1)} of {currentProgress?.total ?? 1}
-                  </span>
-                </div>
-                <h2 data-testid="plan-question-prompt">{activeQuestion.prompt}</h2>
-                <p>{activeQuestion.helper}</p>
-                <textarea
-                  data-testid="plan-answer-textarea"
-                  onChange={(event) => setAnswerDraft(event.target.value)}
-                  placeholder="Answer with the context future planning decisions should remember."
-                  value={answerDraft}
-                />
-                {activeFollowUp ? <AdaptiveFollowUpCard followUp={activeFollowUp} /> : null}
-                <div className="plan-question-card__actions">
-                  <button
-                    className="plan-action-button"
-                    disabled={!answerDraft.trim() || submitting}
-                    onClick={() => recordAnswer(true)}
-                    type="button"
-                  >
-                    Save answer
-                  </button>
-                  <button
-                    className="plan-secondary-button"
-                    disabled={!answerDraft.trim() || submitting}
-                    onClick={() => recordAnswer(false)}
-                    type="button"
-                  >
-                    Park
-                  </button>
-                </div>
+            ) : activeQuestion && activeFollowUp ? (
+              <div className="plan-question-feedback" data-testid="plan-question-feedback">
+                <AdaptiveFollowUpCard followUp={activeFollowUp} />
               </div>
             ) : currentProgress?.readyForReview && !currentProgress.depthConfirmed ? (
               <div className="plan-depth-card" data-testid="plan-depth-gate">
@@ -1681,7 +1649,11 @@ export function PlanBuilderView({
               {composerInputEnabled ? (
                 <>
                   <div className="plan-composer__question" data-testid="plan-composer-question">
-                    {composerQuestion}
+                    {activeQuestion ? (
+                      <span data-testid="plan-question-prompt">{composerQuestion}</span>
+                    ) : (
+                      composerQuestion
+                    )}
                   </div>
                   <textarea
                     aria-label={
@@ -2888,10 +2860,11 @@ function buildWorkflowGuidance({
 }
 
 function guidanceForQuestion(question: DiscussQuestion): WorkflowGuidance {
+  const label = stageLabel(question.stage);
   return {
-    banner: question.stage === "requirements" ? "REQUIREMENTS" : `QUESTIONING / ${stageLabel(question.stage).toLowerCase()}`,
+    banner: question.stage === "requirements" ? "REQUIREMENTS" : `QUESTIONING / ${label.toLowerCase()}`,
     title: question.stage === "requirements" ? "Keep capabilities testable" : "Ask one focused question",
-    nextAction: question.prompt,
+    nextAction: `Answer the current ${label} question in the composer, or park useful context for later review.`,
     artifact: stageArtifact(question.stage),
     frame: stagePromptFrame(question.stage),
     promptSource: promptSourceForDiscussStage(question.stage),

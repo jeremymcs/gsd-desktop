@@ -2337,6 +2337,7 @@
 
 .plan-create,
 .plan-question-card,
+.plan-question-feedback,
 .plan-depth-card,
 .plan-research-form {
   width: min(760px, 100%);
