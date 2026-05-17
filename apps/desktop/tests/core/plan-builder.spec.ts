@@ -292,7 +292,7 @@ test("labels weak requirements answers with requirement contract context", async
   }
 });
 
-test("requires acknowledgement for high-signal guidance before starting research", async () => {
+test("requires research override and repeats unresolved guidance before planning", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-readiness-warning");
 
@@ -339,6 +339,17 @@ test("requires acknowledgement for high-signal guidance before starting research
     await expect(window.getByRole("button", { name: "Start research" })).toBeDisabled();
     await window.getByTestId("plan-readiness-override-checkbox").check();
     await expect(window.getByRole("button", { name: "Start research" })).toBeEnabled();
+    await window.getByRole("button", { name: "Start research" }).click();
+    await expect(window.getByTestId("plan-research-panel")).toBeVisible();
+    await window.getByTestId("research-title-input").fill("Readiness research");
+    await window.getByTestId("research-content-textarea").fill("Findings: unresolved guidance remains visible at handoff gates.");
+    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
+    await expect(window.getByTestId("plan-ready-card")).toBeVisible();
+    await expect(window.getByTestId("plan-ready-card").getByTestId("plan-readiness-warning")).toContainText(
+      "1 unresolved guidance item",
+    );
+    await expect(window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" })).toBeEnabled();
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(

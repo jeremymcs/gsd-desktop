@@ -19,7 +19,7 @@
 - [x] **S02: Explicit Research Override** `risk:medium` `depends:[S01]`
   > After this: high-signal unresolved guidance requires an explicit "continue anyway" acknowledgement before starting RESEARCH.
 
-- [ ] **S03: PLAN Readiness Warning** `risk:medium` `depends:[S01]`
+- [x] **S03: PLAN Readiness Warning** `risk:medium` `depends:[S01]`
   > After this: accepted RESEARCH can surface unresolved DISCUSS guidance again before Start plan.
 
 - [ ] **S04: Readiness Gate Persistence Semantics** `risk:medium` `depends:[S02,S03]`

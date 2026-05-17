@@ -1247,6 +1247,7 @@ export function PlanBuilderView({
                 <div className="plan-depth-card__eyebrow">RESEARCH approved</div>
                 <h2>Ready for PLAN</h2>
                 <p>Accepted research is available. Structure milestones, slices, tasks, dependencies, and boundaries next.</p>
+                {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
                 <button className="plan-action-button" disabled={submitting} onClick={startPlan} type="button">
                   Start plan
                 </button>
