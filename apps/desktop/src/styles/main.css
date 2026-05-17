@@ -3254,6 +3254,7 @@
 }
 
 .plan-change-draft input,
+.plan-change-draft select,
 .plan-change-draft textarea {
   width: 100%;
   border: 1px solid #2e3340;
@@ -3264,7 +3265,8 @@
   font-size: 13px;
 }
 
-.plan-change-draft input {
+.plan-change-draft input,
+.plan-change-draft select {
   height: 36px;
   padding: 0 10px;
 }

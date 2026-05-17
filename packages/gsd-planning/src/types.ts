@@ -141,7 +141,7 @@ export interface ParkedItemRecord {
   readonly createdAt: string;
 }
 
-export type ChangeProposalStatus = "draft";
+export type ChangeProposalStatus = "draft" | "approved";
 
 export interface ChangeProposalRecord {
   readonly id: string;
@@ -151,8 +151,26 @@ export interface ChangeProposalRecord {
   readonly summary: string;
   readonly impactNotes: string;
   readonly status: ChangeProposalStatus;
+  readonly approvedAt?: string;
+  readonly injectedTaskPath?: string;
+  readonly acceptedOutputId?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface ApprovedPlanInjectionRecord {
+  readonly id: string;
+  readonly changeProposalId: string;
+  readonly sourceParkedItemId: string;
+  readonly acceptedOutputId: string;
+  readonly targetMilestoneId: string;
+  readonly targetSliceId: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly title: string;
+  readonly acceptance: string;
+  readonly dependencies: readonly string[];
+  readonly createdAt: string;
 }
 
 export type PlanEvent =
@@ -244,9 +262,19 @@ export type PlanEvent =
     }
   | {
       readonly type: "change.proposal-drafted";
-      readonly proposal: Omit<ChangeProposalRecord, "id" | "createdAt" | "updatedAt" | "status"> & {
+      readonly proposal: Omit<
+        ChangeProposalRecord,
+        "id" | "createdAt" | "updatedAt" | "status" | "approvedAt" | "injectedTaskPath" | "acceptedOutputId"
+      > & {
         readonly id?: string;
         readonly status?: ChangeProposalStatus;
+      };
+    }
+  | {
+      readonly type: "change.proposal-approved";
+      readonly proposalId: string;
+      readonly injection: Omit<ApprovedPlanInjectionRecord, "id" | "createdAt"> & {
+        readonly id?: string;
       };
     };
 
@@ -283,6 +311,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];
+  readonly approvedInjections: readonly ApprovedPlanInjectionRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

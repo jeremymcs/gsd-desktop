@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import type {
   AnswerRecord,
   AppendPlanEventInput,
+  ApprovedPlanInjectionRecord,
   ChangeProposalRecord,
   CreatePlanInput,
   GeneratedOutputRecord,
@@ -286,6 +287,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const shipSummaries: ShipSummaryRecord[] = [];
   const parkedItems = new Map<string, ParkedItemRecord>();
   const changeProposals = new Map<string, ChangeProposalRecord>();
+  const approvedInjections = new Map<string, ApprovedPlanInjectionRecord>();
 
   for (const event of events) {
     const payload = event.payload;
@@ -474,6 +476,36 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         });
         break;
       }
+      case "change.proposal-approved": {
+        const current = changeProposals.get(payload.proposalId);
+        const injectionId = payload.injection.id ?? event.id;
+        const injection = {
+          id: injectionId,
+          changeProposalId: payload.injection.changeProposalId,
+          sourceParkedItemId: payload.injection.sourceParkedItemId,
+          acceptedOutputId: payload.injection.acceptedOutputId,
+          targetMilestoneId: payload.injection.targetMilestoneId,
+          targetSliceId: payload.injection.targetSliceId,
+          taskId: payload.injection.taskId,
+          taskPath: payload.injection.taskPath,
+          title: payload.injection.title,
+          acceptance: payload.injection.acceptance,
+          dependencies: payload.injection.dependencies,
+          createdAt: event.createdAt,
+        };
+        approvedInjections.set(injectionId, injection);
+        if (current) {
+          changeProposals.set(payload.proposalId, {
+            ...current,
+            status: "approved",
+            approvedAt: event.createdAt,
+            injectedTaskPath: injection.taskPath,
+            acceptedOutputId: injection.acceptedOutputId,
+            updatedAt: event.createdAt,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -490,6 +522,9 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     parkedItems: [...parkedItems.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     changeProposals: [...changeProposals.values()].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    ),
+    approvedInjections: [...approvedInjections.values()].sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt),
     ),
     events,
@@ -585,6 +620,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "idea.parked":
     case "idea.reviewed":
     case "change.proposal-drafted":
+    case "change.proposal-approved":
       return undefined;
   }
 }

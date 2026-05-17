@@ -23,7 +23,7 @@
 - [x] **S03: Draft Change Proposal** `risk:high` `depends:[S02]`
   > After this: a parked idea can seed a draft change proposal with impact notes before it enters the active plan.
 
-- [ ] **S04: Approved Injection** `risk:high` `depends:[S03]`
+- [x] **S04: Approved Injection** `risk:high` `depends:[S03]`
   > After this: approved changes can add or modify plan structure while preserving original IDs and history.
 
 - [ ] **S05: Removal and Hidden State** `risk:high` `depends:[S04]`
@@ -63,3 +63,12 @@ Produces:
 
 Consumes:
   approval gate -> append-only plan structure changes that preserve original IDs
+
+### S04 -> S05
+
+Produces:
+  approved injection history -> active plan changes through a new accepted roadmap output
+  original accepted task identity -> unchanged historical IDs for prior plan structure
+
+Consumes:
+  removal and hidden-state controls -> append-only events that hide active items without destructive deletion

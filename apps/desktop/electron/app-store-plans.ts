@@ -12,11 +12,14 @@ import { sessionKey } from "@pi-gui/pi-sdk-driver";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import type {
+  ApprovePlanningChangeProposalInput,
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
   DraftPlanningChangeProposalInput,
   LinkPlanningTaskSessionInput,
+  PlanningPlanProposalDraft,
+  PlanningTaskDraft,
   PlanningProjectionSummary,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
@@ -316,6 +319,106 @@ export async function draftPlanningChangeProposal(
       });
 
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function approvePlanningChangeProposal(
+  store: AppStoreInternals,
+  input: ApprovePlanningChangeProposalInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const targetMilestoneId = input.targetMilestoneId.trim();
+  const targetSliceId = input.targetSliceId.trim();
+  const task: PlanningTaskDraft = {
+    id: input.taskId.trim(),
+    title: input.taskTitle.trim(),
+    acceptance: input.taskAcceptance.trim(),
+    dependencies: input.dependencies.map((dependency) => dependency.trim()).filter(Boolean),
+  };
+  if (!targetMilestoneId || !targetSliceId || !task.id || !task.title || !task.acceptance) {
+    return store.withError("Approved changes need a target slice, task id, title, and acceptance");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      const proposal = snapshot.changeProposals.find((entry) => entry.id === input.proposalId);
+      if (!proposal) {
+        throw new Error(`Unknown change proposal: ${input.proposalId}`);
+      }
+      if (proposal.status !== "draft") {
+        throw new Error("Only draft change proposals can be approved");
+      }
+
+      const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
+      if (!acceptedOutput) {
+        throw new Error("Accepted PLAN is required before approving a change proposal");
+      }
+      const acceptedPlan = parsePlanProposal(acceptedOutput.content);
+      if (!acceptedPlan) {
+        throw new Error("Accepted PLAN content is invalid and cannot receive approved changes");
+      }
+
+      const nextPlan = injectTaskIntoAcceptedPlan(acceptedPlan, targetMilestoneId, targetSliceId, task);
+      const validationIssues = validatePlanProposal(nextPlan);
+      if (validationIssues.length > 0) {
+        throw new Error(`Change approval blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
+      }
+
+      const outputId = randomUUID();
+      const taskPath = `${targetMilestoneId}/${targetSliceId}/${task.id}`;
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "change.proposal-approved",
+          proposalId: proposal.id,
+          injection: {
+            changeProposalId: proposal.id,
+            sourceParkedItemId: proposal.sourceParkedItemId,
+            acceptedOutputId: outputId,
+            targetMilestoneId,
+            targetSliceId,
+            taskId: task.id,
+            taskPath,
+            title: task.title,
+            acceptance: task.acceptance,
+            dependencies: task.dependencies,
+          },
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.proposed",
+        output: {
+          id: outputId,
+          stage: "roadmap",
+          title: `Approved change - ${proposal.title}`,
+          content: serializePlanProposal(nextPlan),
+          status: "proposed",
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.reviewed",
+        outputId,
+        status: "accepted",
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "stage.updated",
+        stage: "roadmap",
+        status: "approved",
+        activeQuestionId: "",
+      });
+
+      const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
     });
   });
 }
@@ -1042,6 +1145,57 @@ function getRequiredPlanSnapshot(planningStore: PlanningStore, planId: string): 
   return snapshot;
 }
 
+function getLatestAcceptedPlanOutput(snapshot: PlanSnapshot) {
+  return [...snapshot.generatedOutputs]
+    .filter((output) => output.stage === "roadmap" && output.status === "accepted")
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+}
+
+function injectTaskIntoAcceptedPlan(
+  proposal: PlanningPlanProposalDraft,
+  targetMilestoneId: string,
+  targetSliceId: string,
+  task: PlanningTaskDraft,
+): PlanningPlanProposalDraft {
+  const existingTaskIds = new Set(
+    proposal.milestones.flatMap((milestone) =>
+      milestone.slices.flatMap((slice) => slice.tasks.map((existingTask) => existingTask.id)),
+    ),
+  );
+  if (existingTaskIds.has(task.id)) {
+    throw new Error(`Task id ${task.id} already exists in the accepted PLAN`);
+  }
+
+  let targetFound = false;
+  const nextMilestones = proposal.milestones.map((milestone) => {
+    if (milestone.id !== targetMilestoneId) {
+      return milestone;
+    }
+    return {
+      ...milestone,
+      slices: milestone.slices.map((slice) => {
+        if (slice.id !== targetSliceId) {
+          return slice;
+        }
+        targetFound = true;
+        return {
+          ...slice,
+          tasks: [...slice.tasks, task],
+        };
+      }),
+    };
+  });
+
+  if (!targetFound) {
+    throw new Error(`Target slice ${targetMilestoneId}/${targetSliceId} is not part of the accepted PLAN`);
+  }
+
+  return {
+    ...proposal,
+    milestones: nextMilestones,
+  };
+}
+
 function assertDiscussComplete(snapshot: PlanSnapshot): void {
   const complete = discussStageOrder.every((stage) => getDiscussStageProgress(snapshot, stage).depthConfirmed);
   if (!complete) {
@@ -1059,9 +1213,7 @@ function assertAcceptedResearch(snapshot: PlanSnapshot): void {
 }
 
 function assertAcceptedPlan(snapshot: PlanSnapshot): void {
-  const acceptedPlan = snapshot.generatedOutputs.find(
-    (output) => output.stage === "roadmap" && output.status === "accepted",
-  );
+  const acceptedPlan = getLatestAcceptedPlanOutput(snapshot);
   if (!acceptedPlan) {
     throw new Error("Accepted PLAN is required before EXECUTE can start");
   }
@@ -1115,9 +1267,7 @@ function assertTaskReadyForVerification(snapshot: PlanSnapshot, taskId: string):
 function getAcceptedPlanTasks(
   snapshot: PlanSnapshot,
 ): readonly { readonly taskId: string; readonly taskPath: string; readonly acceptance: string }[] {
-  const acceptedPlan = snapshot.generatedOutputs.find(
-    (output) => output.stage === "roadmap" && output.status === "accepted",
-  );
+  const acceptedPlan = getLatestAcceptedPlanOutput(snapshot);
   const proposal = acceptedPlan ? parsePlanProposal(acceptedPlan.content) : undefined;
   return proposal
     ? proposal.milestones.flatMap((milestone) =>

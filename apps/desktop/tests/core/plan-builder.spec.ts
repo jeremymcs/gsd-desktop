@@ -154,6 +154,18 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("projection-summary")).toContainText("Projections");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
+    const changeProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Integration change draft" });
+    await expect(changeProposal.getByTestId("plan-injection-form")).toBeVisible();
+    await changeProposal.getByTestId("plan-injection-task-id-input").fill("T2");
+    await changeProposal.getByTestId("plan-injection-task-title-input").fill("Review integration impact");
+    await changeProposal
+      .getByTestId("plan-injection-task-acceptance-textarea")
+      .fill("Integration impact is reviewed before execution.");
+    await changeProposal.getByTestId("plan-injection-task-dependencies-input").fill("T1");
+    await changeProposal.getByRole("button", { name: "Approve injection" }).click();
+    await expect(changeProposal.getByTestId("plan-change-proposal-status")).toHaveText("Approved");
+    await expect(changeProposal).toContainText("Injected as M1/S1/T2");
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Approved change - Integration change draft");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await nameMemory.getByRole("button", { name: "Edit" }).click();
@@ -168,12 +180,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(projectProjection).toContain("# Project: Launch Control Revised");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
+    expect(roadmapProjection).toContain("Integration impact is reviewed before execution.");
+    const sliceProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "S1-PLAN.md"), "utf8");
+    expect(sliceProjection).toContain("Review integration impact");
+    const injectedTaskProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "tasks", "T2-PLAN.md"), "utf8");
+    expect(injectedTaskProjection).toContain("# T2: Review integration impact");
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
-    await expect(window.getByTestId("execution-task")).toContainText("Implement and verify the slice");
-    await window.getByTestId("link-task-session-button").click();
-    await expect(window.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
+    await expect(window.getByTestId("plan-execution-panel")).toContainText("Review integration impact");
+    const primaryExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
+    const injectedExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Review integration impact" });
+    await primaryExecutionTask.getByTestId("link-task-session-button").click();
+    await expect(primaryExecutionTask.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
     let linkedSessionId = "";
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -187,34 +206,48 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
-    await window.getByTestId("task-status-select").selectOption("blocked");
-    await window.getByTestId("task-note-textarea").fill("Implementation started in the linked session.");
-    await window.getByTestId("task-blocker-textarea").fill("Waiting on schema review.");
-    await window.getByTestId("update-task-execution-button").click();
-    await expect(window.getByTestId("task-status-pill")).toContainText("Blocked");
-    await expect(window.getByTestId("task-blocker")).toContainText("Waiting on schema review.");
-    await window.getByTestId("task-status-select").selectOption("done");
-    await window.getByTestId("task-note-textarea").fill("Slice implemented and checked.");
-    await window.getByTestId("task-evidence-textarea").fill("Linked session created and reopened from EXECUTE.");
-    await window.getByTestId("update-task-execution-button").click();
-    await expect(window.getByTestId("task-status-pill")).toContainText("Done");
-    await expect(window.getByTestId("task-note")).toContainText("Slice implemented and checked.");
-    await expect(window.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await primaryExecutionTask.getByTestId("task-status-select").selectOption("blocked");
+    await primaryExecutionTask.getByTestId("task-note-textarea").fill("Implementation started in the linked session.");
+    await primaryExecutionTask.getByTestId("task-blocker-textarea").fill("Waiting on schema review.");
+    await primaryExecutionTask.getByTestId("update-task-execution-button").click();
+    await expect(primaryExecutionTask.getByTestId("task-status-pill")).toContainText("Blocked");
+    await expect(primaryExecutionTask.getByTestId("task-blocker")).toContainText("Waiting on schema review.");
+    await primaryExecutionTask.getByTestId("task-status-select").selectOption("done");
+    await primaryExecutionTask.getByTestId("task-note-textarea").fill("Slice implemented and checked.");
+    await primaryExecutionTask.getByTestId("task-evidence-textarea").fill("Linked session created and reopened from EXECUTE.");
+    await primaryExecutionTask.getByTestId("update-task-execution-button").click();
+    await expect(primaryExecutionTask.getByTestId("task-status-pill")).toContainText("Done");
+    await expect(primaryExecutionTask.getByTestId("task-note")).toContainText("Slice implemented and checked.");
+    await expect(primaryExecutionTask.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await injectedExecutionTask.getByTestId("task-status-select").selectOption("done");
+    await injectedExecutionTask.getByTestId("task-note-textarea").fill("Approved change reviewed against the accepted plan.");
+    await injectedExecutionTask.getByTestId("task-evidence-textarea").fill("Integration impact reviewed before execution.");
+    await injectedExecutionTask.getByTestId("update-task-execution-button").click();
+    await expect(injectedExecutionTask.getByTestId("task-status-pill")).toContainText("Done");
+    await expect(injectedExecutionTask.getByTestId("task-evidence-list")).toContainText("Integration impact reviewed before execution.");
     await expect(window.getByTestId("start-verify-button")).toBeEnabled();
     await window.getByTestId("start-verify-button").click();
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
-    await expect(window.getByTestId("verify-task")).toContainText("Implement and verify the slice");
-    await expect(window.getByTestId("verify-task")).toContainText("Linked session created and reopened from EXECUTE.");
-    await window.getByTestId("task-verification-status-select").selectOption("passed");
-    await window.getByTestId("task-verification-note-textarea").fill("Acceptance matched the saved evidence.");
-    await window.getByTestId("record-task-verification-button").click();
-    await expect(window.getByTestId("task-verification-status")).toContainText("Passed");
-    await expect(window.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    const primaryVerifyTask = window.getByTestId("verify-task").filter({ hasText: "Implement and verify the slice" });
+    const injectedVerifyTask = window.getByTestId("verify-task").filter({ hasText: "Review integration impact" });
+    await expect(primaryVerifyTask).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(injectedVerifyTask).toContainText("Integration impact reviewed before execution.");
+    await primaryVerifyTask.getByTestId("task-verification-status-select").selectOption("passed");
+    await primaryVerifyTask.getByTestId("task-verification-note-textarea").fill("Acceptance matched the saved evidence.");
+    await primaryVerifyTask.getByTestId("record-task-verification-button").click();
+    await expect(primaryVerifyTask.getByTestId("task-verification-status")).toContainText("Passed");
+    await expect(primaryVerifyTask.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await injectedVerifyTask.getByTestId("task-verification-status-select").selectOption("passed");
+    await injectedVerifyTask.getByTestId("task-verification-note-textarea").fill("Approved injection matched the saved evidence.");
+    await injectedVerifyTask.getByTestId("record-task-verification-button").click();
+    await expect(injectedVerifyTask.getByTestId("task-verification-status")).toContainText("Passed");
+    await expect(injectedVerifyTask.getByTestId("task-verification-note")).toContainText("Approved injection matched the saved evidence.");
     await expect(window.getByTestId("verify-ready-to-ship")).toBeVisible();
     await window.getByTestId("start-ship-button").click();
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
-    await expect(window.getByTestId("ship-task")).toContainText("Implement and verify the slice");
-    await expect(window.getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Review integration impact" })).toContainText("Review integration impact");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await window.getByTestId("ship-summary-textarea").fill("Ship handoff: Launch plan verified with persisted evidence.");
     await window.getByTestId("record-ship-summary-button").click();
     await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
@@ -235,9 +268,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
-    await expect(window.getByTestId("ship-task")).toContainText("Implement and verify the slice");
-    await expect(window.getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
-    await expect(window.getByTestId("ship-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Review integration impact" })).toContainText("Review integration impact");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Review integration impact" }).getByTestId("ship-evidence-list")).toContainText("Integration impact reviewed before execution.");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await expect(window.getByTestId("ship-task").filter({ hasText: "Review integration impact" }).getByTestId("ship-verification-note")).toContainText("Approved injection matched the saved evidence.");
     await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Later automation follow-up" }).getByTestId("plan-idea-status"),
@@ -246,6 +282,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" }).getByTestId("plan-idea-status"),
     ).toHaveText("Ready to promote");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Injected as M1/S1/T2");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" }).getByTestId("plan-idea-status"),
@@ -267,8 +304,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
           entry.selectedPlan.changeProposals.some(
             (proposal) =>
               proposal.title === "Integration change draft" &&
-              proposal.status === "draft" &&
-              proposal.impactNotes.includes("review roadmap boundaries"),
+              proposal.status === "approved" &&
+              proposal.impactNotes.includes("review roadmap boundaries") &&
+              proposal.injectedTaskPath === "M1/S1/T2",
+          ) &&
+          entry.selectedPlan.approvedInjections.some(
+            (injection) =>
+              injection.taskId === "T2" &&
+              injection.taskPath === "M1/S1/T2" &&
+              injection.title === "Review integration impact",
           ) &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Drop onboarding banner" && item.reviewStatus === "dismissed",
@@ -280,11 +324,23 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               task.status === "done" &&
               task.evidence.some((evidence) => evidence.text === "Linked session created and reopened from EXECUTE."),
           ) &&
+          entry.selectedPlan.taskExecutions.some(
+            (task) =>
+              task.taskId === "T2" &&
+              task.status === "done" &&
+              task.evidence.some((evidence) => evidence.text === "Integration impact reviewed before execution."),
+          ) &&
           entry.selectedPlan.taskVerifications.some(
             (task) =>
               task.taskId === "T1" &&
               task.status === "passed" &&
               task.note === "Acceptance matched the saved evidence.",
+          ) &&
+          entry.selectedPlan.taskVerifications.some(
+            (task) =>
+              task.taskId === "T2" &&
+              task.status === "passed" &&
+              task.note === "Approved injection matched the saved evidence.",
           ) &&
           entry.selectedPlan.shipSummaries.some(
             (summary) => summary.summary === "Ship handoff: Launch plan verified with persisted evidence.",
@@ -300,6 +356,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               output.stage === "roadmap" &&
               output.status === "accepted" &&
               output.title === "Plan proposal",
+          ) &&
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "roadmap" &&
+              output.status === "accepted" &&
+              output.title === "Approved change - Integration change draft" &&
+              output.content.includes("Review integration impact"),
           ),
       ),
     ).toBe(true);

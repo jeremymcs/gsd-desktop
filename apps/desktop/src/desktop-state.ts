@@ -229,6 +229,19 @@ export interface DraftPlanningChangeProposalInput {
   readonly impactNotes: string;
 }
 
+export interface ApprovePlanningChangeProposalInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly proposalId: string;
+  readonly targetMilestoneId: string;
+  readonly targetSliceId: string;
+  readonly taskId: string;
+  readonly taskTitle: string;
+  readonly taskAcceptance: string;
+  readonly dependencies: readonly string[];
+}
+
 export interface ConfirmPlanningStageInput {
   readonly workspaceId: string;
   readonly planId: string;

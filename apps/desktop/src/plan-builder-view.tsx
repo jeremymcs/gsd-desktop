@@ -17,6 +17,7 @@ import type {
 } from "@pi-gui/gsd-planning";
 import type {
   ConfirmPlanningStageInput,
+  ApprovePlanningChangeProposalInput,
   CreatePlanningPlanInput,
   DesktopAppState,
   DraftPlanningChangeProposalInput,
@@ -89,6 +90,7 @@ interface PlanBuilderViewProps {
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
+  readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
@@ -119,6 +121,7 @@ export function PlanBuilderView({
   onReviseAnswer,
   onReviewIdea,
   onDraftChangeProposal,
+  onApproveChangeProposal,
   onConfirmStage,
   onStartResearch,
   onProposeResearch,
@@ -404,6 +407,27 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const approveChangeProposal = (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onApproveChangeProposal({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      proposalId: proposal.id,
+      targetMilestoneId: draft.targetMilestoneId,
+      targetSliceId: draft.targetSliceId,
+      taskId: draft.taskId,
+      taskTitle: draft.taskTitle,
+      taskAcceptance: draft.taskAcceptance,
+      dependencies: splitDependencies(draft.dependencies),
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const startResearch = () => {
@@ -1425,7 +1449,13 @@ export function PlanBuilderView({
               <div className="plan-memory" data-testid="plan-change-proposals">
                 <div className="plan-memory__title">Change proposals</div>
                 {snapshot.changeProposals.map((proposal) => (
-                  <ChangeProposalCard key={proposal.id} proposal={proposal} />
+                  <ChangeProposalCard
+                    acceptedPlanProposal={acceptedPlanProposal}
+                    key={proposal.id}
+                    proposal={proposal}
+                    submitting={submitting}
+                    onApprove={approveChangeProposal}
+                  />
                 ))}
               </div>
             ) : null}
@@ -1763,6 +1793,22 @@ interface PlanTaskEntry {
   readonly task: PlanningTaskDraft;
   readonly taskPath: string;
   readonly acceptance: string;
+}
+
+interface PlanInjectionApprovalDraft {
+  readonly targetMilestoneId: string;
+  readonly targetSliceId: string;
+  readonly taskId: string;
+  readonly taskTitle: string;
+  readonly taskAcceptance: string;
+  readonly dependencies: string;
+}
+
+interface PlanSliceTarget {
+  readonly id: string;
+  readonly label: string;
+  readonly milestoneId: string;
+  readonly sliceId: string;
 }
 
 function PlanExecutionQueue({
@@ -2436,15 +2482,133 @@ function ResearchOutputCard({
   );
 }
 
-function ChangeProposalCard({ proposal }: { readonly proposal: ChangeProposalRecord }) {
+function ChangeProposalCard({
+  acceptedPlanProposal,
+  proposal,
+  submitting,
+  onApprove,
+}: {
+  readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly proposal: ChangeProposalRecord;
+  readonly submitting: boolean;
+  readonly onApprove: (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => void;
+}) {
+  const targets = useMemo(() => getPlanSliceTargets(acceptedPlanProposal), [acceptedPlanProposal]);
+  const defaultTargetId = targets[0]?.id ?? "";
+  const defaultTaskId = useMemo(
+    () =>
+      acceptedPlanProposal
+        ? nextPlanId("T", getPlanTaskEntries(acceptedPlanProposal).map((entry) => entry.task.id))
+        : "",
+    [acceptedPlanProposal],
+  );
+  const [targetId, setTargetId] = useState(defaultTargetId);
+  const [taskId, setTaskId] = useState(defaultTaskId);
+  const [taskTitle, setTaskTitle] = useState(proposal.title);
+  const [taskAcceptance, setTaskAcceptance] = useState(buildDefaultInjectionAcceptance(proposal));
+  const [dependencies, setDependencies] = useState("");
+  const selectedTarget = targets.find((target) => target.id === targetId) ?? targets[0];
+  const canApprove =
+    proposal.status === "draft" &&
+    Boolean(selectedTarget) &&
+    Boolean(taskId.trim()) &&
+    Boolean(taskTitle.trim()) &&
+    Boolean(taskAcceptance.trim()) &&
+    !submitting;
+
+  useEffect(() => {
+    setTargetId(defaultTargetId);
+    setTaskId(defaultTaskId);
+    setTaskTitle(proposal.title);
+    setTaskAcceptance(buildDefaultInjectionAcceptance(proposal));
+    setDependencies("");
+  }, [defaultTargetId, defaultTaskId, proposal.id, proposal.impactNotes, proposal.summary, proposal.title]);
+
+  const submitApproval = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedTarget || !canApprove) {
+      return;
+    }
+    onApprove(proposal, {
+      targetMilestoneId: selectedTarget.milestoneId,
+      targetSliceId: selectedTarget.sliceId,
+      taskId: taskId.trim(),
+      taskTitle: taskTitle.trim(),
+      taskAcceptance: taskAcceptance.trim(),
+      dependencies,
+    });
+  };
+
   return (
     <article className="plan-memory__item plan-memory__item--proposal" data-testid="plan-change-proposal">
       <div className="plan-memory__item-header">
         <span>{proposal.title}</span>
-        <small>{formatChangeProposalStatus(proposal.status)}</small>
+        <small data-testid="plan-change-proposal-status">{formatChangeProposalStatus(proposal.status)}</small>
       </div>
       <p>{proposal.summary}</p>
       <p className="plan-memory__note">{proposal.impactNotes}</p>
+      {proposal.injectedTaskPath ? (
+        <p className="plan-memory__note">Injected as {proposal.injectedTaskPath}</p>
+      ) : null}
+      {proposal.status === "draft" && !acceptedPlanProposal ? (
+        <p className="plan-memory__note">Accept a plan before approving this change.</p>
+      ) : null}
+      {proposal.status === "draft" && acceptedPlanProposal ? (
+        <form className="plan-change-draft" data-testid="plan-injection-form" onSubmit={submitApproval}>
+          <label>
+            <span>Target slice</span>
+            <select
+              data-testid="plan-injection-target-select"
+              onChange={(event) => setTargetId(event.target.value)}
+              value={targetId}
+            >
+              {targets.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Task id</span>
+            <input
+              data-testid="plan-injection-task-id-input"
+              onChange={(event) => setTaskId(event.target.value)}
+              value={taskId}
+            />
+          </label>
+          <label>
+            <span>Task title</span>
+            <input
+              data-testid="plan-injection-task-title-input"
+              onChange={(event) => setTaskTitle(event.target.value)}
+              value={taskTitle}
+            />
+          </label>
+          <label>
+            <span>Acceptance</span>
+            <textarea
+              data-testid="plan-injection-task-acceptance-textarea"
+              onChange={(event) => setTaskAcceptance(event.target.value)}
+              value={taskAcceptance}
+            />
+          </label>
+          <label>
+            <span>Dependencies</span>
+            <input
+              data-testid="plan-injection-task-dependencies-input"
+              onChange={(event) => setDependencies(event.target.value)}
+              placeholder="T1, T2"
+              value={dependencies}
+            />
+          </label>
+          <div className="plan-memory__editor-actions">
+            <button className="plan-action-button plan-action-button--compact" disabled={!canApprove} type="submit">
+              Approve injection
+            </button>
+          </div>
+        </form>
+      ) : null}
     </article>
   );
 }
@@ -2489,6 +2653,19 @@ function getPlanTaskEntries(proposal: PlanningPlanProposalDraft): readonly PlanT
       })),
     ),
   );
+}
+
+function getPlanSliceTargets(proposal: PlanningPlanProposalDraft | undefined): readonly PlanSliceTarget[] {
+  return proposal
+    ? proposal.milestones.flatMap((milestone) =>
+        milestone.slices.map((slice) => ({
+          id: `${milestone.id}/${slice.id}`,
+          label: `${milestone.id}/${slice.id} · ${slice.title}`,
+          milestoneId: milestone.id,
+          sliceId: slice.id,
+        })),
+      )
+    : [];
 }
 
 function buildShipSummaryDraft(
@@ -2645,6 +2822,8 @@ function formatChangeProposalStatus(status: ChangeProposalRecord["status"]): str
   switch (status) {
     case "draft":
       return "Draft";
+    case "approved":
+      return "Approved";
   }
 }
 
@@ -2662,6 +2841,14 @@ function buildChangeProposalImpactDraft(item: ParkedItemRecord): string {
     "- Milestones, slices, or tasks likely affected:",
     "- Verification evidence needed before approval:",
   ].join("\n");
+}
+
+function buildDefaultInjectionAcceptance(proposal: ChangeProposalRecord): string {
+  const impactLine = proposal.impactNotes
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  return impactLine ?? proposal.summary;
 }
 
 function stageLabel(stage: PlanStage): string {

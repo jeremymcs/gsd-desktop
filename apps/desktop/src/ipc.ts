@@ -6,6 +6,7 @@ import type {
 } from "@pi-gui/session-driver/types";
 import type {
   AppView,
+  ApprovePlanningChangeProposalInput,
   ComposerAttachment,
   ComposerImageAttachment,
   ConfirmPlanningStageInput,
@@ -73,6 +74,7 @@ export const desktopIpc = {
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
+  approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
   confirmPlanningStage: "pi-gui:confirm-planning-stage",
   startPlanningResearch: "pi-gui:start-planning-research",
   proposePlanningResearch: "pi-gui:propose-planning-research",
@@ -279,6 +281,7 @@ export interface PiDesktopApi {
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
+  approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;
   confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;
   proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState>;
