@@ -292,7 +292,7 @@ test("labels weak requirements answers with requirement contract context", async
   }
 });
 
-test("warns about unresolved guidance before starting research", async () => {
+test("requires acknowledgement for high-signal guidance before starting research", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-readiness-warning");
 
@@ -332,7 +332,12 @@ test("warns about unresolved guidance before starting research", async () => {
     await window.getByRole("button", { name: "Confirm Milestone" }).click();
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
     await expect(window.getByTestId("plan-readiness-warning")).toContainText("1 unresolved guidance item");
+    await expect(window.getByTestId("plan-readiness-warning")).toContainText(
+      "High-signal answers should be revised before later phases rely on them.",
+    );
     await expect(window.getByTestId("plan-readiness-warning-stages")).toContainText("DISCUSS / Project");
+    await expect(window.getByRole("button", { name: "Start research" })).toBeDisabled();
+    await window.getByTestId("plan-readiness-override-checkbox").check();
     await expect(window.getByRole("button", { name: "Start research" })).toBeEnabled();
     await expect.poll(async () => {
       const state = await getDesktopState(window);

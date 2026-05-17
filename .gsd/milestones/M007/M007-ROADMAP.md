@@ -16,7 +16,7 @@
 - [x] **S01: DISCUSS Readiness Warning** `risk:low` `depends:[M006/S04]`
   > After this: the DISCUSS complete card shows unresolved guidance before Start research, while keeping Start research available.
 
-- [ ] **S02: Explicit Research Override** `risk:medium` `depends:[S01]`
+- [x] **S02: Explicit Research Override** `risk:medium` `depends:[S01]`
   > After this: high-signal unresolved guidance requires an explicit "continue anyway" acknowledgement before starting RESEARCH.
 
 - [ ] **S03: PLAN Readiness Warning** `risk:medium` `depends:[S01]`

@@ -205,6 +205,7 @@ export function PlanBuilderView({
   const [changeProposalTitleDraft, setChangeProposalTitleDraft] = useState("");
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
+  const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const snapshot = planningState?.selectedPlan;
   const activeQuestion = getActiveDiscussQuestion(snapshot);
@@ -238,6 +239,10 @@ export function PlanBuilderView({
     () => buildGuidanceRollup(latestAnswers, followUpsByAnswerId),
     [followUpsByAnswerId, latestAnswers],
   );
+  const readinessSignature = guidanceRollup
+    .map((item) => `${item.stage}:${item.high}:${item.medium}:${item.total}`)
+    .join("|");
+  const researchReadinessRequiresOverride = guidanceRollup.some((item) => item.high > 0);
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
   const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
   const researchOutputs = useMemo(
@@ -291,6 +296,10 @@ export function PlanBuilderView({
     setChangeProposalSummaryDraft("");
     setChangeProposalImpactDraft("");
   }, [snapshot?.id]);
+
+  useEffect(() => {
+    setResearchReadinessAcknowledged(false);
+  }, [readinessSignature, snapshot?.id]);
 
   useEffect(() => {
     if (!snapshot || !researchStarted) {
@@ -1135,8 +1144,20 @@ export function PlanBuilderView({
                 <div className="plan-depth-card__eyebrow">DISCUSS complete</div>
                 <h2>Ready for RESEARCH</h2>
                 <p>The project, requirements, and milestone depth gates are confirmed.</p>
-                {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
-                <button className="plan-action-button" disabled={submitting} onClick={startResearch} type="button">
+                {guidanceRollup.length > 0 ? (
+                  <ReadinessWarning
+                    acknowledged={researchReadinessAcknowledged}
+                    items={guidanceRollup}
+                    requiresAcknowledgement={researchReadinessRequiresOverride}
+                    onAcknowledgementChange={setResearchReadinessAcknowledged}
+                  />
+                ) : null}
+                <button
+                  className="plan-action-button"
+                  disabled={submitting || (researchReadinessRequiresOverride && !researchReadinessAcknowledged)}
+                  onClick={startResearch}
+                  type="button"
+                >
                   Start research
                 </button>
               </div>
@@ -1764,17 +1785,43 @@ function GuidanceRollupCard({ items }: { readonly items: readonly GuidanceRollup
   );
 }
 
-function ReadinessWarning({ items }: { readonly items: readonly GuidanceRollupItem[] }) {
+function ReadinessWarning({
+  acknowledged = false,
+  items,
+  requiresAcknowledgement = false,
+  onAcknowledgementChange,
+}: {
+  readonly acknowledged?: boolean;
+  readonly items: readonly GuidanceRollupItem[];
+  readonly requiresAcknowledgement?: boolean;
+  readonly onAcknowledgementChange?: (acknowledged: boolean) => void;
+}) {
   const total = items.reduce((sum, item) => sum + item.total, 0);
+  const high = items.reduce((sum, item) => sum + item.high, 0);
   return (
     <div className="plan-readiness-warning" data-testid="plan-readiness-warning">
       <strong>{total} unresolved guidance item{total === 1 ? "" : "s"}</strong>
-      <p>Review or revise weak DISCUSS answers before later phases rely on them.</p>
+      <p>
+        {high > 0
+          ? "High-signal answers should be revised before later phases rely on them."
+          : "Review or revise weak DISCUSS answers before later phases rely on them."}
+      </p>
       <div className="plan-follow-up__signals" data-testid="plan-readiness-warning-stages">
         {items.map((item) => (
           <span key={item.stage}>DISCUSS / {stageLabel(item.stage)}</span>
         ))}
       </div>
+      {requiresAcknowledgement && onAcknowledgementChange ? (
+        <label className="plan-readiness-warning__ack">
+          <input
+            checked={acknowledged}
+            data-testid="plan-readiness-override-checkbox"
+            onChange={(event) => onAcknowledgementChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span>Continue to RESEARCH with unresolved high-signal guidance</span>
+        </label>
+      ) : null}
     </div>
   );
 }

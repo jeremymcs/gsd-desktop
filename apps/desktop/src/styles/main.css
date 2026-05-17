@@ -3131,6 +3131,21 @@
   font-size: 12px;
 }
 
+.plan-readiness-warning__ack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d9dce3;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.plan-readiness-warning__ack input {
+  width: 14px;
+  height: 14px;
+  accent-color: #d7b269;
+}
+
 .plan-error {
   padding: 10px 12px;
   border: 1px solid rgba(236, 118, 118, 0.42);
@@ -3862,6 +3877,10 @@
 
 .canvas--plans .plan-readiness-warning p {
   color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-readiness-warning__ack {
+  color: var(--plan-header-text);
 }
 
 .canvas--plans .plan-projection-card span,
