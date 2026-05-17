@@ -6,6 +6,7 @@ import type {
 } from "@pi-gui/session-driver/types";
 import type {
   AppView,
+  ApplyPlanningWorkflowPreferencesInput,
   ApprovePlanningChangeProposalInput,
   ApprovePlanningTaskModificationInput,
   ComposerAttachment,
@@ -72,6 +73,7 @@ export const desktopIpc = {
   loadPlanningWorkspace: "pi-gui:load-planning-workspace",
   createPlanningPlan: "pi-gui:create-planning-plan",
   selectPlanningPlan: "pi-gui:select-planning-plan",
+  applyPlanningWorkflowPreferences: "pi-gui:apply-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
@@ -281,6 +283,7 @@ export interface PiDesktopApi {
   loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState>;
   createPlanningPlan(input: CreatePlanningPlanInput): Promise<DesktopAppState>;
   selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState>;
+  applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;

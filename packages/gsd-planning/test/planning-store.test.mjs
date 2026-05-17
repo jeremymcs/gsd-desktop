@@ -25,9 +25,27 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(existsSync(planningDatabasePath(workspaceRoot)), true);
     assert.match(await readFile(join(workspaceRoot, ".gitignore"), "utf8"), /^\.gsd\/gsd\.db$/m);
 
-    const withProject = store.appendEvent({
+    const withWorkflowPreferences = store.appendEvent({
       planId: created.id,
       expectedRevision: created.revision,
+      event: {
+        type: "workflow.preferences-updated",
+        preferences: {
+          commitPolicy: "per-task",
+          branchModel: "single",
+          uatDispatch: true,
+          research: "skip",
+          workflowPrefsCaptured: true,
+          models: {
+            executorClass: "balanced",
+          },
+        },
+      },
+    });
+
+    const withProject = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withWorkflowPreferences.revision,
       event: {
         type: "project.updated",
         project: {
@@ -372,7 +390,7 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withShipSummary.revision, 23);
+    assert.equal(withShipSummary.revision, 24);
     assert.equal(withShipSummary.activePhase, "ship");
     assert.equal(withShipSummary.activeStage, "task");
     assert.equal(withShipSummary.taskSessionLinks.length, 1);
@@ -385,6 +403,8 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.taskVerifications[0]?.status, "passed");
     assert.equal(withShipSummary.shipSummaries.length, 1);
     assert.equal(withShipSummary.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
+    assert.equal(withShipSummary.workflowPreferences?.commitPolicy, "per-task");
+    assert.equal(withShipSummary.workflowPreferences?.models.executorClass, "balanced");
     assert.equal(withShipSummary.parkedItems.length, 2);
     assert.equal(withShipSummary.parkedItems[0]?.text, "Add a future automation review lane.");
     assert.equal(withShipSummary.parkedItems[0]?.reviewStatus, "dismissed");
@@ -406,7 +426,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 23);
+    assert.equal(reopened.revision, 24);
     assert.equal(reopened.activePhase, "ship");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
@@ -430,6 +450,9 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskVerifications[0]?.note, "Acceptance matched the recorded evidence.");
     assert.equal(reopened.shipSummaries.length, 1);
     assert.equal(reopened.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
+    assert.equal(reopened.workflowPreferences?.branchModel, "single");
+    assert.equal(reopened.workflowPreferences?.research, "skip");
+    assert.equal(reopened.workflowPreferences?.workflowPrefsCaptured, true);
     assert.equal(reopened.parkedItems.length, 2);
     assert.equal(reopened.parkedItems[0]?.sourceAnswerId, "parked-answer-1");
     assert.equal(reopened.parkedItems[0]?.text, "Add a future automation review lane.");
@@ -454,7 +477,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.hiddenPlanItems[0]?.targetId, "T2");
     assert.equal(reopened.hiddenPlanItems[0]?.reason, "No longer needed in the active plan.");
     assert.equal(reopened.hiddenPlanItems[0]?.acceptedOutputId, "roadmap-output-3");
-    assert.equal(reopened.events.length, 23);
+    assert.equal(reopened.events.length, 24);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

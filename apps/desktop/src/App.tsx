@@ -2114,6 +2114,9 @@ export default function App() {
               onSelectWorkspace={handleSelectPlansWorkspace}
               onCreatePlan={(input) => updateSnapshot(api, setSnapshot, () => api.createPlanningPlan(input))}
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
+              onApplyWorkflowPreferences={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
+              }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
               onReviewIdea={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningIdea(input))}

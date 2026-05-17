@@ -29,6 +29,7 @@ import type { DesktopAppState, ThemeMode } from "../src/desktop-state";
 import { desktopIpc, getDesktopCommandFromShortcut } from "../src/ipc";
 import { SUPPORTED_COMPOSER_IMAGE_TYPES } from "../src/composer-attachments";
 import type {
+  ApplyPlanningWorkflowPreferencesInput,
   ComposerAttachment,
   ComposerFileAttachment,
   ComposerImageAttachment,
@@ -546,6 +547,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.selectPlanningPlan, (_event, input: SelectPlanningPlanInput) =>
     store.selectPlanningPlan(input),
+  );
+  ipcMain.handle(desktopIpc.applyPlanningWorkflowPreferences, (_event, input: ApplyPlanningWorkflowPreferencesInput) =>
+    store.applyPlanningWorkflowPreferences(input),
   );
   ipcMain.handle(desktopIpc.recordPlanningAnswer, (_event, input: RecordPlanningAnswerInput) =>
     store.recordPlanningAnswer(input),

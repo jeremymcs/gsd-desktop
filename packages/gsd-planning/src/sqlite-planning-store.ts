@@ -30,6 +30,7 @@ import type {
   TaskExecutionRecord,
   TaskSessionLinkRecord,
   TaskVerificationRecord,
+  WorkflowPreferencesRecord,
 } from "./types.js";
 
 const SCHEMA_VERSION = 1;
@@ -287,6 +288,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
   const taskVerifications = new Map<string, TaskVerificationRecord>();
   const shipSummaries: ShipSummaryRecord[] = [];
+  let workflowPreferences: WorkflowPreferencesRecord | undefined;
   const parkedItems = new Map<string, ParkedItemRecord>();
   const changeProposals = new Map<string, ChangeProposalRecord>();
   const approvedInjections = new Map<string, ApprovedPlanInjectionRecord>();
@@ -439,6 +441,19 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           createdAt: event.createdAt,
         });
         break;
+      case "workflow.preferences-updated":
+        workflowPreferences = {
+          commitPolicy: payload.preferences.commitPolicy,
+          branchModel: payload.preferences.branchModel,
+          uatDispatch: payload.preferences.uatDispatch,
+          research: payload.preferences.research,
+          models: {
+            executorClass: payload.preferences.models.executorClass,
+          },
+          workflowPrefsCaptured: payload.preferences.workflowPrefsCaptured,
+          capturedAt: payload.preferences.capturedAt ?? event.createdAt,
+        };
+        break;
       case "idea.parked":
         parkedItems.set(payload.item.id ?? event.id, {
           id: payload.item.id ?? event.id,
@@ -570,6 +585,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    ...(workflowPreferences ? { workflowPreferences } : {}),
     parkedItems: [...parkedItems.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     changeProposals: [...changeProposals.values()].sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt),
@@ -673,6 +689,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "task.evidence-recorded":
     case "task.verification-recorded":
     case "ship.summary-recorded":
+    case "workflow.preferences-updated":
     case "idea.parked":
     case "idea.reviewed":
     case "change.proposal-drafted":

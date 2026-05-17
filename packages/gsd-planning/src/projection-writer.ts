@@ -3,10 +3,13 @@ import { mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/pro
 import { dirname, join, resolve } from "node:path";
 import {
   generatePlanningProjections,
+  GENERATED_PROJECTION_MARKER,
+  GENERATED_PROJECTION_SOURCE,
   hasGeneratedProjectionHeader,
   type GeneratePlanningProjectionsInput,
   type ProjectionFile,
 } from "./projections.js";
+import type { PlanSnapshot, WorkflowPreferencesRecord } from "./types.js";
 
 export interface WriteProjectionFilesInput {
   readonly workspaceRoot: string;
@@ -18,6 +21,11 @@ export interface RegenerateProjectionsInput {
   readonly workspaceRoot: string;
   readonly projectionInput: GeneratePlanningProjectionsInput;
   readonly allowLegacyOverwrite?: boolean;
+}
+
+export interface WriteWorkflowPreferenceFilesInput {
+  readonly workspaceRoot: string;
+  readonly plan: PlanSnapshot;
 }
 
 export type ProjectionWriteStatus = "written" | "skipped";
@@ -55,6 +63,23 @@ export async function regenerateProjections(input: RegenerateProjectionsInput): 
     files: generatePlanningProjections(input.projectionInput),
     allowLegacyOverwrite: input.allowLegacyOverwrite,
   });
+}
+
+export async function writeWorkflowPreferenceFiles(input: WriteWorkflowPreferenceFilesInput): Promise<void> {
+  const preferences = input.plan.workflowPreferences;
+  if (!preferences) {
+    throw new Error("Workflow preferences are required before writing preference projections");
+  }
+
+  const workspaceRoot = resolve(input.workspaceRoot);
+  await atomicWriteFile(
+    resolveProjectionPath(workspaceRoot, ".gsd/PREFERENCES.md"),
+    renderWorkflowPreferencesFile(input.plan, preferences),
+  );
+  await atomicWriteFile(
+    resolveProjectionPath(workspaceRoot, ".gsd/runtime/research-decision.json"),
+    renderResearchDecisionFile(preferences),
+  );
 }
 
 export async function writeProjectionFiles(input: WriteProjectionFilesInput): Promise<ProjectionWriteResult> {
@@ -180,4 +205,44 @@ async function listGeneratedProjectionFiles(directory: string): Promise<readonly
 
 function isMissingFileError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: WorkflowPreferencesRecord): string {
+  return [
+    "---",
+    `commit_policy: ${preferences.commitPolicy}`,
+    `branch_model: ${preferences.branchModel}`,
+    `uat_dispatch: ${preferences.uatDispatch ? "true" : "false"}`,
+    `research: ${preferences.research}`,
+    `workflow_prefs_captured: ${preferences.workflowPrefsCaptured ? "true" : "false"}`,
+    "models:",
+    `  executor_class: ${preferences.models.executorClass}`,
+    "---",
+    "",
+    `<!-- ${GENERATED_PROJECTION_MARKER}`,
+    `source: ${GENERATED_PROJECTION_SOURCE}`,
+    `plan-id: ${plan.id}`,
+    `plan-readable-id: ${plan.readableId}`,
+    `plan-revision: ${plan.revision}`,
+    `captured-at: ${preferences.capturedAt}`,
+    "do-not-edit: true",
+    "-->",
+    "",
+    "# Workflow Preferences",
+    "",
+    "Recommended workflow defaults captured by Plan Builder.",
+  ].join("\n").concat("\n");
+}
+
+function renderResearchDecisionFile(preferences: WorkflowPreferencesRecord): string {
+  return JSON.stringify(
+    {
+      decision: preferences.research,
+      decided_at: preferences.capturedAt,
+      source: "workflow-preferences",
+      reason: "deterministic-default",
+    },
+    null,
+    2,
+  ).concat("\n");
 }

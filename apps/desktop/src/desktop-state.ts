@@ -187,6 +187,12 @@ export interface SelectPlanningPlanInput {
   readonly planId: string;
 }
 
+export interface ApplyPlanningWorkflowPreferencesInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
 export interface RecordPlanningAnswerInput {
   readonly workspaceId: string;
   readonly planId: string;

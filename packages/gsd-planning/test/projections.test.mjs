@@ -8,6 +8,7 @@ import {
   openPlanningStore,
   ProjectionWriteConflictError,
   regenerateProjections,
+  writeWorkflowPreferenceFiles,
   writeProjectionFiles,
 } from "../dist/index.js";
 
@@ -73,6 +74,49 @@ test("writes projections atomically, skips unchanged files, and supports manual 
 
     const roadmap = await readFile(join(workspaceRoot, ".gsd/milestones/M001/M001-ROADMAP.md"), "utf8");
     assert.match(roadmap, /S01: Planning Engine Foundation/);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("writes workflow preference projections and runtime research decision", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    let snapshot = seedSnapshot(store);
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "workflow.preferences-updated",
+        preferences: {
+          commitPolicy: "per-task",
+          branchModel: "single",
+          uatDispatch: true,
+          research: "skip",
+          workflowPrefsCaptured: true,
+          models: {
+            executorClass: "balanced",
+          },
+        },
+      },
+    });
+
+    await writeWorkflowPreferenceFiles({ workspaceRoot, plan: snapshot });
+
+    const preferences = await readFile(join(workspaceRoot, ".gsd/PREFERENCES.md"), "utf8");
+    assert.match(preferences, /^---\ncommit_policy: per-task\nbranch_model: single\nuat_dispatch: true\nresearch: skip\n/);
+    assert.match(preferences, /workflow_prefs_captured: true/);
+    assert.match(preferences, /models:\n  executor_class: balanced/);
+    assert.match(preferences, /pi-gui-plan-builder-generated/);
+
+    const decision = JSON.parse(await readFile(join(workspaceRoot, ".gsd/runtime/research-decision.json"), "utf8"));
+    assert.equal(decision.decision, "skip");
+    assert.equal(decision.source, "workflow-preferences");
+    assert.equal(decision.reason, "deterministic-default");
 
     store.close();
   } finally {

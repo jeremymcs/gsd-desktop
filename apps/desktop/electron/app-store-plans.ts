@@ -3,6 +3,7 @@ import {
   planningDatabasePath,
   ProjectionWriteConflictError,
   regenerateProjections,
+  writeWorkflowPreferenceFiles,
   type PlanEvent,
   type PlanListEntry,
   type PlanSnapshot,
@@ -12,6 +13,7 @@ import { sessionKey } from "@pi-gui/pi-sdk-driver";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import type {
+  ApplyPlanningWorkflowPreferencesInput,
   ApprovePlanningChangeProposalInput,
   ApprovePlanningTaskModificationInput,
   ConfirmPlanningStageInput,
@@ -136,6 +138,45 @@ export async function selectPlanningPlan(
       if (!snapshot) {
         throw new Error(`Unknown plan: ${input.planId}`);
       }
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function applyPlanningWorkflowPreferences(
+  store: AppStoreInternals,
+  input: ApplyPlanningWorkflowPreferencesInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      if (!snapshot.workflowPreferences) {
+        snapshot = planningStore.appendEvent({
+          planId: input.planId,
+          expectedRevision: input.expectedRevision,
+          event: {
+            type: "workflow.preferences-updated",
+            preferences: {
+              commitPolicy: "per-task",
+              branchModel: "single",
+              uatDispatch: true,
+              research: "skip",
+              workflowPrefsCaptured: true,
+              models: {
+                executorClass: "balanced",
+              },
+            },
+          },
+        });
+      }
+
+      await writeWorkflowPreferenceFiles({ workspaceRoot: workspace.path, plan: snapshot });
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });

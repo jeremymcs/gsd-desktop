@@ -78,6 +78,18 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("plan-name-input").fill("Launch plan");
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
+    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
+    await window.getByTestId("apply-workflow-preferences-button").click();
+    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
+    const preferencesProjection = await readFile(join(workspacePath, ".gsd", "PREFERENCES.md"), "utf8");
+    expect(preferencesProjection).toContain("commit_policy: per-task");
+    expect(preferencesProjection).toContain("branch_model: single");
+    expect(preferencesProjection).toContain("workflow_prefs_captured: true");
+    const researchDecision = JSON.parse(
+      await readFile(join(workspacePath, ".gsd", "runtime", "research-decision.json"), "utf8"),
+    ) as { decision: string; source: string };
+    expect(researchDecision.decision).toBe("skip");
+    expect(researchDecision.source).toBe("workflow-preferences");
     await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
     for (const idea of [
       "Later automation follow-up",
@@ -299,6 +311,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
+    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
     await expect(window.getByTestId("plan-ship-panel")).not.toContainText("Review integration impact");
@@ -328,6 +341,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
           entry.selectedPlan.activePhase === "ship" &&
+          entry.selectedPlan.workflowPreferences?.commitPolicy === "per-task" &&
+          entry.selectedPlan.workflowPreferences?.branchModel === "single" &&
+          entry.selectedPlan.workflowPreferences?.models.executorClass === "balanced" &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Later automation follow-up" && item.reviewStatus === "kept",
           ) &&

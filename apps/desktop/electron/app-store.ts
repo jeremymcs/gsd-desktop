@@ -35,6 +35,7 @@ import type {
 } from "@pi-gui/session-driver/runtime-types";
 import {
   type AppView,
+  type ApplyPlanningWorkflowPreferencesInput,
   type ApprovePlanningChangeProposalInput,
   type ApprovePlanningTaskModificationInput,
   type ComposerAttachment,
@@ -375,6 +376,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState> {
     return plans.selectPlanningPlan(this, input);
+  }
+
+  async applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState> {
+    return plans.applyPlanningWorkflowPreferences(this, input);
   }
 
   async recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState> {

@@ -16,6 +16,7 @@ import type {
   TaskVerificationStatus,
 } from "@pi-gui/gsd-planning";
 import type {
+  ApplyPlanningWorkflowPreferencesInput,
   ApprovePlanningChangeProposalInput,
   ApprovePlanningTaskModificationInput,
   ConfirmPlanningStageInput,
@@ -88,6 +89,7 @@ interface PlanBuilderViewProps {
   readonly onSelectWorkspace: (workspaceId: string) => void;
   readonly onCreatePlan: (input: CreatePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onSelectPlan: (input: SelectPlanningPlanInput) => Promise<DesktopAppState>;
+  readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
@@ -121,6 +123,7 @@ export function PlanBuilderView({
   onSelectWorkspace,
   onCreatePlan,
   onSelectPlan,
+  onApplyWorkflowPreferences,
   onRecordAnswer,
   onReviseAnswer,
   onReviewIdea,
@@ -278,6 +281,20 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const applyWorkflowPreferences = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onApplyWorkflowPreferences({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const recordAnswer = (loadBearing: boolean) => {
@@ -970,6 +987,14 @@ export function PlanBuilderView({
                 </div>
               ))}
             </div>
+
+            {snapshot ? (
+              <WorkflowPreferencesCard
+                capturedAt={snapshot.workflowPreferences?.capturedAt}
+                submitting={submitting}
+                onApply={applyWorkflowPreferences}
+              />
+            ) : null}
 
             {!snapshot ? (
               <form className="plan-create" onSubmit={handleCreatePlan}>
@@ -1859,6 +1884,41 @@ interface PlanSliceTarget {
   readonly label: string;
   readonly milestoneId: string;
   readonly sliceId: string;
+}
+
+function WorkflowPreferencesCard({
+  capturedAt,
+  submitting,
+  onApply,
+}: {
+  readonly capturedAt: string | undefined;
+  readonly submitting: boolean;
+  readonly onApply: () => void;
+}) {
+  const saved = Boolean(capturedAt);
+  return (
+    <div className="plan-projection-card" data-testid="workflow-preferences-card">
+      <div>
+        <strong>{saved ? "Workflow preferences saved" : "Workflow preferences"}</strong>
+        <span data-testid="workflow-preferences-summary">
+          commit_policy: per-task · branch_model: single · uat_dispatch: true · research: skip
+        </span>
+      </div>
+      {saved ? (
+        <span className="plan-execution-task__status plan-execution-task__status--done">Saved</span>
+      ) : (
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="apply-workflow-preferences-button"
+          disabled={submitting}
+          onClick={onApply}
+          type="button"
+        >
+          Apply defaults
+        </button>
+      )}
+    </div>
+  );
 }
 
 function PlanExecutionQueue({

@@ -124,6 +124,23 @@ export interface ShipSummaryRecord {
   readonly createdAt: string;
 }
 
+export type WorkflowCommitPolicy = "per-task";
+export type WorkflowBranchModel = "single";
+export type WorkflowResearchMode = "skip" | "research";
+export type WorkflowExecutorClass = "balanced";
+
+export interface WorkflowPreferencesRecord {
+  readonly commitPolicy: WorkflowCommitPolicy;
+  readonly branchModel: WorkflowBranchModel;
+  readonly uatDispatch: boolean;
+  readonly research: WorkflowResearchMode;
+  readonly models: {
+    readonly executorClass: WorkflowExecutorClass;
+  };
+  readonly workflowPrefsCaptured: boolean;
+  readonly capturedAt: string;
+}
+
 export type ParkedItemReviewStatus = "parked" | "kept" | "dismissed" | "promotion-ready";
 
 export interface ParkedItemRecord {
@@ -278,6 +295,12 @@ export type PlanEvent =
       };
     }
   | {
+      readonly type: "workflow.preferences-updated";
+      readonly preferences: Omit<WorkflowPreferencesRecord, "capturedAt"> & {
+        readonly capturedAt?: string;
+      };
+    }
+  | {
       readonly type: "idea.parked";
       readonly item: Omit<ParkedItemRecord, "id" | "createdAt" | "reviewStatus" | "reviewNote" | "reviewedAt"> & {
         readonly id?: string;
@@ -351,6 +374,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
+  readonly workflowPreferences?: WorkflowPreferencesRecord;
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];
   readonly approvedInjections: readonly ApprovedPlanInjectionRecord[];
