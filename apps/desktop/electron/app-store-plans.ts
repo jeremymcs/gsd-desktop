@@ -20,6 +20,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
@@ -29,6 +30,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningShipInput,
   StartPlanningVerifyInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
@@ -776,6 +778,84 @@ export async function recordPlanningTaskVerification(
   });
 }
 
+export async function startPlanningShip(
+  store: AppStoreInternals,
+  input: StartPlanningShipInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      assertReadyForShip(snapshot);
+
+      if (snapshot.activePhase === "ship") {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+      if (snapshot.activePhase !== "verify") {
+        throw new Error("VERIFY must be active before SHIP can start");
+      }
+
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "phase.updated",
+          phase: "ship",
+          stage: "task",
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function recordPlanningShipSummary(
+  store: AppStoreInternals,
+  input: RecordPlanningShipSummaryInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertAcceptedPlan(snapshot);
+      assertReadyForShip(snapshot);
+      if (snapshot.activePhase !== "ship") {
+        throw new Error("SHIP must be active before recording a ship summary");
+      }
+
+      const summary = input.summary.trim();
+      if (!summary) {
+        throw new Error("Ship summary is required");
+      }
+
+      const updated = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "ship.summary-recorded",
+          summary: {
+            summary,
+          },
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, updated);
+    });
+  });
+}
+
 export async function regeneratePlanningProjectionsForPlan(
   store: AppStoreInternals,
   input: RegeneratePlanningProjectionsInput,
@@ -903,6 +983,19 @@ function assertAcceptedPlanTask(
 function assertReadyForVerify(snapshot: PlanSnapshot): void {
   for (const task of getAcceptedPlanTasks(snapshot)) {
     assertTaskReadyForVerification(snapshot, task.taskId);
+  }
+}
+
+function assertReadyForShip(snapshot: PlanSnapshot): void {
+  const acceptedTasks = getAcceptedPlanTasks(snapshot);
+  if (acceptedTasks.length === 0) {
+    throw new Error("SHIP blocked: accepted PLAN has no tasks");
+  }
+  for (const task of acceptedTasks) {
+    const verification = snapshot.taskVerifications.find((entry) => entry.taskId === task.taskId);
+    if (verification?.status !== "passed") {
+      throw new Error(`SHIP blocked: ${task.taskId} needs passed verification`);
+    }
   }
 }
 

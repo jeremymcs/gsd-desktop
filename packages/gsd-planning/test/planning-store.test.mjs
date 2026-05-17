@@ -171,25 +171,48 @@ test("creates a repo-local planning database and replays event-backed plan state
       },
     });
 
-    assert.equal(withVerification.revision, 10);
-    assert.equal(withVerification.activePhase, "verify");
-    assert.equal(withVerification.activeStage, "task");
-    assert.equal(withVerification.taskSessionLinks.length, 1);
-    assert.equal(withVerification.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
-    assert.equal(withVerification.taskExecutions.length, 1);
-    assert.equal(withVerification.taskExecutions[0]?.status, "done");
-    assert.equal(withVerification.taskExecutions[0]?.blocker, "");
-    assert.equal(withVerification.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
-    assert.equal(withVerification.taskVerifications.length, 1);
-    assert.equal(withVerification.taskVerifications[0]?.status, "passed");
+    const withShipPhase = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withVerification.revision,
+      event: {
+        type: "phase.updated",
+        phase: "ship",
+        stage: "task",
+      },
+    });
+
+    const withShipSummary = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withShipPhase.revision,
+      event: {
+        type: "ship.summary-recorded",
+        summary: {
+          summary: "Ready to hand off verified planning persistence.",
+        },
+      },
+    });
+
+    assert.equal(withShipSummary.revision, 12);
+    assert.equal(withShipSummary.activePhase, "ship");
+    assert.equal(withShipSummary.activeStage, "task");
+    assert.equal(withShipSummary.taskSessionLinks.length, 1);
+    assert.equal(withShipSummary.taskSessionLinks[0]?.taskPath, "M1/S1/T1");
+    assert.equal(withShipSummary.taskExecutions.length, 1);
+    assert.equal(withShipSummary.taskExecutions[0]?.status, "done");
+    assert.equal(withShipSummary.taskExecutions[0]?.blocker, "");
+    assert.equal(withShipSummary.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
+    assert.equal(withShipSummary.taskVerifications.length, 1);
+    assert.equal(withShipSummary.taskVerifications[0]?.status, "passed");
+    assert.equal(withShipSummary.shipSummaries.length, 1);
+    assert.equal(withShipSummary.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
     store.close();
 
     store = openPlanningStore({ workspaceRoot });
     const reopened = store.getPlanSnapshot(created.id);
 
     assert.ok(reopened);
-    assert.equal(reopened.revision, 10);
-    assert.equal(reopened.activePhase, "verify");
+    assert.equal(reopened.revision, 12);
+    assert.equal(reopened.activePhase, "ship");
     assert.equal(reopened.activeStage, "task");
     assert.equal(reopened.project.title, "Database-backed Plan Builder");
     assert.deepEqual(reopened.project.antiGoals, ["Generic form wizard"]);
@@ -209,7 +232,9 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskVerifications.length, 1);
     assert.equal(reopened.taskVerifications[0]?.acceptance, "Persist every answer");
     assert.equal(reopened.taskVerifications[0]?.note, "Acceptance matched the recorded evidence.");
-    assert.equal(reopened.events.length, 10);
+    assert.equal(reopened.shipSummaries.length, 1);
+    assert.equal(reopened.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
+    assert.equal(reopened.events.length, 12);
     assert.equal(store.listPlans().length, 1);
 
     store.close();

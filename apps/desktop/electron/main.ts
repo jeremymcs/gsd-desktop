@@ -40,6 +40,7 @@ import type {
   ProposePlanningResearchInput,
   LinkPlanningTaskSessionInput,
   RecordPlanningAnswerInput,
+  RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
@@ -50,6 +51,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningShipInput,
   StartPlanningVerifyInput,
   StartThreadInput,
   UpdatePlanningTaskExecutionInput,
@@ -581,6 +583,12 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.recordPlanningTaskVerification, (_event, input: RecordPlanningTaskVerificationInput) =>
     store.recordPlanningTaskVerification(input),
+  );
+  ipcMain.handle(desktopIpc.startPlanningShip, (_event, input: StartPlanningShipInput) =>
+    store.startPlanningShip(input),
+  );
+  ipcMain.handle(desktopIpc.recordPlanningShipSummary, (_event, input: RecordPlanningShipSummaryInput) =>
+    store.recordPlanningShipSummary(input),
   );
   ipcMain.handle(desktopIpc.regeneratePlanningProjections, (_event, input: RegeneratePlanningProjectionsInput) =>
     store.regeneratePlanningProjections(input),

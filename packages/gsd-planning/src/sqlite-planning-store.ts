@@ -18,6 +18,7 @@ import type {
   PlanStatus,
   ProjectSummary,
   RequirementRecord,
+  ShipSummaryRecord,
   StageStateRecord,
   StageStatus,
   TaskEvidenceRecord,
@@ -280,6 +281,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
   const taskSessionLinks = new Map<string, TaskSessionLinkRecord>();
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
   const taskVerifications = new Map<string, TaskVerificationRecord>();
+  const shipSummaries: ShipSummaryRecord[] = [];
 
   for (const event of events) {
     const payload = event.payload;
@@ -420,6 +422,13 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           createdAt: event.createdAt,
         });
         break;
+      case "ship.summary-recorded":
+        shipSummaries.push({
+          id: payload.summary.id ?? event.id,
+          summary: payload.summary.summary,
+          createdAt: event.createdAt,
+        });
+        break;
     }
   }
 
@@ -433,6 +442,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     taskSessionLinks: [...taskSessionLinks.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
+    shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     events,
   };
 }
@@ -522,6 +532,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "task.status-updated":
     case "task.evidence-recorded":
     case "task.verification-recorded":
+    case "ship.summary-recorded":
       return undefined;
   }
 }

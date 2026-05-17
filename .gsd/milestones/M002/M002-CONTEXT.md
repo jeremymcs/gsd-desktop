@@ -1,6 +1,6 @@
 # M002: Execution Lifecycle
 
-**Status:** Started
+**Status:** Complete
 
 ## Project Description
 
@@ -8,7 +8,7 @@ Extend the database-backed Plan Builder beyond approved planning into the rest o
 
 ## User-Visible Outcome
 
-When this milestone is complete, a user can move from an accepted plan into execution, see the planned work as a queue, start or link task sessions, track execution status, verify results, and move toward ship readiness without losing the database-backed planning history.
+When this milestone is complete, a user can move from an accepted plan into execution, see the planned work as a queue, start or link task sessions, track execution status, verify results, and save ship readiness without losing the database-backed planning history.
 
 ## Scope
 

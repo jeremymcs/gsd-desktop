@@ -25,7 +25,7 @@
 - [x] **S04: VERIFY Gate** `risk:high` `depends:[S03]`
   > After this: completed tasks can be checked against acceptance criteria before the plan advances.
 
-- [ ] **S05: SHIP Gate** `risk:medium` `depends:[S04]`
+- [x] **S05: SHIP Gate** `risk:medium` `depends:[S04]`
   > After this: verified work can be summarized for final handoff or release readiness.
 
 ## Boundary Map
@@ -75,3 +75,12 @@ Produces:
 
 Consumes:
   ship gate -> verified task set and evidence summary before final handoff
+
+### S05 -> M002 Complete
+
+Produces:
+  ship summary state -> durable handoff summary stored in the planning database
+  lifecycle closure -> active phase can reach `SHIP` and survive restart
+
+Consumes:
+  next milestone planning -> completed execution lifecycle proof

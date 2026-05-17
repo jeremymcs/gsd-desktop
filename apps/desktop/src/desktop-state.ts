@@ -323,6 +323,19 @@ export interface RecordPlanningTaskVerificationInput {
   readonly note: string;
 }
 
+export interface StartPlanningShipInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+}
+
+export interface RecordPlanningShipSummaryInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly summary: string;
+}
+
 export interface ProposePlanningPlanInput {
   readonly workspaceId: string;
   readonly planId: string;

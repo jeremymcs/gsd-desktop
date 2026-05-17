@@ -182,6 +182,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("task-verification-status")).toContainText("Passed");
     await expect(window.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
     await expect(window.getByTestId("verify-ready-to-ship")).toBeVisible();
+    await window.getByTestId("start-ship-button").click();
+    await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect(window.getByTestId("ship-task")).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await window.getByTestId("ship-summary-textarea").fill("Ship handoff: Launch plan verified with persisted evidence.");
+    await window.getByTestId("record-ship-summary-button").click();
+    await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -198,12 +205,11 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
-    await expect(window.getByTestId("verify-task")).toContainText("Implement and verify the slice");
-    await expect(window.getByTestId("task-verification-status")).toContainText("Passed");
-    await expect(window.getByTestId("verify-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
-    await expect(window.getByTestId("task-verification-note")).toContainText("Acceptance matched the saved evidence.");
-    await expect(window.getByTestId("verify-ready-to-ship")).toBeVisible();
+    await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect(window.getByTestId("ship-task")).toContainText("Implement and verify the slice");
+    await expect(window.getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(window.getByTestId("ship-verification-note")).toContainText("Acceptance matched the saved evidence.");
+    await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
@@ -211,7 +217,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       Object.values((await getDesktopState(window)).planningByWorkspace).some(
         (entry) =>
           entry.selectedPlan?.name === "Launch plan" &&
-          entry.selectedPlan.activePhase === "verify" &&
+          entry.selectedPlan.activePhase === "ship" &&
           entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
           entry.selectedPlan.taskExecutions.some(
             (task) =>
@@ -224,6 +230,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               task.taskId === "T1" &&
               task.status === "passed" &&
               task.note === "Acceptance matched the saved evidence.",
+          ) &&
+          entry.selectedPlan.shipSummaries.some(
+            (summary) => summary.summary === "Ship handoff: Launch plan verified with persisted evidence.",
           ) &&
           entry.selectedPlan.generatedOutputs.some(
             (output) =>

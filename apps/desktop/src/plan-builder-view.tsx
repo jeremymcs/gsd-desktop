@@ -4,6 +4,7 @@ import type {
   GeneratedOutputRecord,
   PlanSnapshot,
   PlanStage,
+  ShipSummaryRecord,
   StageStatus,
   TaskExecutionRecord,
   TaskExecutionStatus,
@@ -24,6 +25,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
@@ -33,6 +35,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningShipInput,
   StartPlanningVerifyInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
@@ -91,6 +94,8 @@ interface PlanBuilderViewProps {
   readonly onUpdateTaskExecution: (input: UpdatePlanningTaskExecutionInput) => Promise<DesktopAppState>;
   readonly onStartVerify: (input: StartPlanningVerifyInput) => Promise<DesktopAppState>;
   readonly onRecordTaskVerification: (input: RecordPlanningTaskVerificationInput) => Promise<DesktopAppState>;
+  readonly onStartShip: (input: StartPlanningShipInput) => Promise<DesktopAppState>;
+  readonly onRecordShipSummary: (input: RecordPlanningShipSummaryInput) => Promise<DesktopAppState>;
   readonly onOpenTaskSession: (target: WorkspaceSessionTarget) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
@@ -117,6 +122,8 @@ export function PlanBuilderView({
   onUpdateTaskExecution,
   onStartVerify,
   onRecordTaskVerification,
+  onStartShip,
+  onRecordShipSummary,
   onOpenTaskSession,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
@@ -169,6 +176,7 @@ export function PlanBuilderView({
   const roadmapStage = snapshot?.stages.find((stage) => stage.stage === "roadmap");
   const executeStarted = snapshot?.activePhase === "execute";
   const verifyStarted = snapshot?.activePhase === "verify";
+  const shipStarted = snapshot?.activePhase === "ship";
   const planStarted = Boolean(snapshot && (snapshot.activePhase === "plan" || roadmapStage || planOutputs.length > 0));
   const planDraft = useMemo(
     () => buildPlanProposalDraft(snapshot, latestAnswers, acceptedResearchOutputs),
@@ -521,6 +529,35 @@ export function PlanBuilderView({
     });
   };
 
+  const startShip = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onStartShip({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const recordShipSummary = (summary: string) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onRecordShipSummary({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      summary,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const updateMilestone = (milestoneIndex: number, patch: Partial<PlanningMilestoneDraft>) => {
     setPlanProposal((current) => ({
       ...current,
@@ -717,7 +754,9 @@ export function PlanBuilderView({
   ] as const;
   const composerStatus = activeQuestion
     ? activeQuestion.prompt
-    : verifyStarted
+    : shipStarted
+      ? "SHIP gate is active; prepare the final handoff summary"
+      : verifyStarted
       ? "VERIFY gate is active; check completed tasks against acceptance"
       : executeStarted
       ? "EXECUTE queue is active; create or open linked task sessions"
@@ -894,6 +933,15 @@ export function PlanBuilderView({
                   Start plan
                 </button>
               </div>
+            ) : allDiscussConfirmed && shipStarted ? (
+              <PlanShipGate
+                acceptedPlanProposal={acceptedPlanProposal}
+                shipSummaries={snapshot.shipSummaries ?? []}
+                submitting={submitting}
+                taskExecutions={snapshot.taskExecutions ?? []}
+                taskVerifications={snapshot.taskVerifications ?? []}
+                onRecordShipSummary={recordShipSummary}
+              />
             ) : allDiscussConfirmed && verifyStarted ? (
               <PlanVerifyGate
                 acceptedPlanProposal={acceptedPlanProposal}
@@ -901,6 +949,7 @@ export function PlanBuilderView({
                 taskExecutions={snapshot.taskExecutions ?? []}
                 taskVerifications={snapshot.taskVerifications ?? []}
                 onRecordTaskVerification={recordTaskVerification}
+                onStartShip={startShip}
               />
             ) : allDiscussConfirmed && executeStarted ? (
               <PlanExecutionQueue
@@ -1107,6 +1156,10 @@ export function PlanBuilderView({
               <div className={`plan-stage-list__item ${verifyStarted ? "plan-stage-list__item--active" : ""}`}>
                 <span>Verify</span>
                 <small>{formatVerifyStatus(verifyStarted, snapshot?.taskVerifications?.length ?? 0)}</small>
+              </div>
+              <div className={`plan-stage-list__item ${shipStarted ? "plan-stage-list__item--active" : ""}`}>
+                <span>Ship</span>
+                <small>{formatShipStatus(shipStarted, snapshot?.shipSummaries?.length ?? 0)}</small>
               </div>
             </div>
 
@@ -1786,6 +1839,7 @@ function PlanVerifyGate({
   taskExecutions,
   taskVerifications,
   onRecordTaskVerification,
+  onStartShip,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly submitting: boolean;
@@ -1796,6 +1850,7 @@ function PlanVerifyGate({
     taskPath: string,
     draft: TaskVerificationDraft,
   ) => void;
+  readonly onStartShip: () => void;
 }) {
   const [verificationDrafts, setVerificationDrafts] = useState<Record<string, TaskVerificationDraft>>({});
   const planTasks = useMemo(
@@ -1854,8 +1909,17 @@ function PlanVerifyGate({
         <div className="plan-projection-card" data-testid="verify-ready-to-ship">
           <div>
             <strong>VERIFY complete</strong>
-            <span>All task acceptance checks passed. SHIP remains the next explicit gate.</span>
+            <span>All task acceptance checks passed. SHIP is ready for final handoff.</span>
           </div>
+          <button
+            className="plan-action-button plan-action-button--compact"
+            data-testid="start-ship-button"
+            disabled={submitting}
+            onClick={onStartShip}
+            type="button"
+          >
+            Start ship
+          </button>
         </div>
       ) : null}
 
@@ -1923,6 +1987,121 @@ function PlanVerifyGate({
                     Save verification
                   </button>
                 </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PlanShipGate({
+  acceptedPlanProposal,
+  shipSummaries,
+  submitting,
+  taskExecutions,
+  taskVerifications,
+  onRecordShipSummary,
+}: {
+  readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly shipSummaries: readonly ShipSummaryRecord[];
+  readonly submitting: boolean;
+  readonly taskExecutions: readonly TaskExecutionRecord[];
+  readonly taskVerifications: readonly TaskVerificationRecord[];
+  readonly onRecordShipSummary: (summary: string) => void;
+}) {
+  const planTasks = useMemo(
+    () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
+    [acceptedPlanProposal],
+  );
+  const taskExecutionMap = useMemo(
+    () => new Map(taskExecutions.map((execution) => [execution.taskId, execution])),
+    [taskExecutions],
+  );
+  const taskVerificationMap = useMemo(
+    () => new Map(taskVerifications.map((verification) => [verification.taskId, verification])),
+    [taskVerifications],
+  );
+  const latestSummary = shipSummaries[shipSummaries.length - 1];
+  const defaultSummary = useMemo(
+    () => buildShipSummaryDraft(acceptedPlanProposal, taskExecutions, taskVerifications),
+    [acceptedPlanProposal, taskExecutions, taskVerifications],
+  );
+  const [summaryDraft, setSummaryDraft] = useState("");
+
+  useEffect(() => {
+    setSummaryDraft(latestSummary?.summary ?? defaultSummary);
+  }, [defaultSummary, latestSummary?.id, latestSummary?.summary]);
+
+  return (
+    <div className="plan-execution" data-testid="plan-ship-panel">
+      <div className="plan-depth-card plan-depth-card--complete">
+        <div className="plan-depth-card__eyebrow">SHIP · ACTIVE</div>
+        <h2>Ship handoff</h2>
+        <p>
+          {acceptedPlanProposal
+            ? `${planTasks.length} verified task${planTasks.length === 1 ? "" : "s"} ready for release summary.`
+            : "Accepted plan content could not be loaded."}
+        </p>
+      </div>
+
+      {latestSummary ? (
+        <div className="plan-projection-card" data-testid="ship-summary-recorded">
+          <div>
+            <strong>Ship summary saved</strong>
+            <span>{latestSummary.summary}</span>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="plan-ship-summary">
+        <label className="plan-execution-task-editor__field">
+          <span>Handoff summary</span>
+          <textarea
+            data-testid="ship-summary-textarea"
+            onChange={(event) => setSummaryDraft(event.target.value)}
+            value={summaryDraft}
+          />
+        </label>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="record-ship-summary-button"
+          disabled={submitting || !summaryDraft.trim()}
+          onClick={() => onRecordShipSummary(summaryDraft)}
+          type="button"
+        >
+          Save ship summary
+        </button>
+      </div>
+
+      {acceptedPlanProposal ? (
+        <div className="plan-execution-list">
+          {planTasks.map((entry) => {
+            const execution = taskExecutionMap.get(entry.task.id);
+            const verification = taskVerificationMap.get(entry.task.id);
+            return (
+              <article className="plan-execution-task" key={entry.taskPath} data-testid="ship-task">
+                <div className="plan-execution-task__header">
+                  <span>{entry.task.id}</span>
+                  <strong>{entry.task.title}</strong>
+                  <span className="plan-execution-task__status plan-execution-task__status--passed">
+                    {formatTaskVerificationStatus(verification?.status)}
+                  </span>
+                </div>
+                <p>{entry.acceptance}</p>
+                {execution?.evidence.length ? (
+                  <div className="plan-execution-evidence" data-testid="ship-evidence-list">
+                    {execution.evidence.map((evidence) => (
+                      <span key={evidence.id}>{evidence.text}</span>
+                    ))}
+                  </div>
+                ) : null}
+                {verification?.note ? (
+                  <p className="plan-execution-task__note" data-testid="ship-verification-note">
+                    Verification: {verification.note}
+                  </p>
+                ) : null}
               </article>
             );
           })}
@@ -2090,6 +2269,32 @@ function getPlanTaskEntries(proposal: PlanningPlanProposalDraft): readonly PlanT
   );
 }
 
+function buildShipSummaryDraft(
+  proposal: PlanningPlanProposalDraft | undefined,
+  taskExecutions: readonly TaskExecutionRecord[],
+  taskVerifications: readonly TaskVerificationRecord[],
+): string {
+  if (!proposal) {
+    return "";
+  }
+  const executionMap = new Map(taskExecutions.map((execution) => [execution.taskId, execution]));
+  const verificationMap = new Map(taskVerifications.map((verification) => [verification.taskId, verification]));
+  const lines = ["Ship summary", ""];
+
+  for (const entry of getPlanTaskEntries(proposal)) {
+    const execution = executionMap.get(entry.task.id);
+    const verification = verificationMap.get(entry.task.id);
+    lines.push(`- ${entry.taskPath}: ${entry.task.title}`);
+    lines.push(`  Acceptance: ${entry.acceptance}`);
+    lines.push(`  Verification: ${formatTaskVerificationStatus(verification?.status)}${verification?.note ? ` - ${verification.note}` : ""}`);
+    if (execution?.evidence.length) {
+      lines.push(`  Evidence: ${execution.evidence.map((evidence) => evidence.text).join("; ")}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function formatOutputStatus(status: GeneratedOutputRecord["status"]): string {
   switch (status) {
     case "draft":
@@ -2153,6 +2358,13 @@ function formatExecuteStatus(started: boolean, acceptedPlanCount: number): strin
 function formatVerifyStatus(started: boolean, verificationCount: number): string {
   if (started) {
     return verificationCount > 0 ? `${verificationCount} checked` : "Active";
+  }
+  return "Queued";
+}
+
+function formatShipStatus(started: boolean, summaryCount: number): string {
+  if (started) {
+    return summaryCount > 0 ? "Summary saved" : "Active";
   }
   return "Queued";
 }

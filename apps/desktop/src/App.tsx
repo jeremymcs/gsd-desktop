@@ -2134,6 +2134,10 @@ export default function App() {
               onRecordTaskVerification={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.recordPlanningTaskVerification(input))
               }
+              onStartShip={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningShip(input))}
+              onRecordShipSummary={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.recordPlanningShipSummary(input))
+              }
               onOpenTaskSession={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
               onRegenerateProjections={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))

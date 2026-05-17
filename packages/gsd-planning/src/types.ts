@@ -118,6 +118,12 @@ export interface TaskVerificationRecord {
   readonly createdAt: string;
 }
 
+export interface ShipSummaryRecord {
+  readonly id: string;
+  readonly summary: string;
+  readonly createdAt: string;
+}
+
 export type PlanEvent =
   | {
       readonly type: "project.updated";
@@ -186,6 +192,12 @@ export type PlanEvent =
       readonly verification: Omit<TaskVerificationRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "ship.summary-recorded";
+      readonly summary: Omit<ShipSummaryRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
     };
 
 export interface PersistedPlanEvent {
@@ -218,6 +230,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
+  readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly events: readonly PersistedPlanEvent[];
 }
 

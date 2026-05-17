@@ -2554,6 +2554,21 @@
   grid-template-columns: 150px minmax(0, 1fr) auto;
 }
 
+.plan-ship-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #252832;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.plan-ship-summary textarea {
+  min-height: 140px;
+}
+
 .plan-execution-task-editor__field {
   min-width: 0;
   display: grid;
@@ -2592,6 +2607,11 @@
   }
 
   .plan-execution-task-editor {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .plan-ship-summary {
     grid-template-columns: 1fr;
     align-items: stretch;
   }

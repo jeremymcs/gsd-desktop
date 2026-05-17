@@ -33,6 +33,7 @@ import type {
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
+  RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
   ReviewPlanningPlanInput,
@@ -44,6 +45,7 @@ import type {
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
+  StartPlanningShipInput,
   StartPlanningVerifyInput,
   StartThreadInput,
   UpdatePlanningTaskExecutionInput,
@@ -184,6 +186,10 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.startPlanningVerify, input) as Promise<DesktopAppState>,
   recordPlanningTaskVerification: (input: RecordPlanningTaskVerificationInput) =>
     ipcRenderer.invoke(desktopIpc.recordPlanningTaskVerification, input) as Promise<DesktopAppState>,
+  startPlanningShip: (input: StartPlanningShipInput) =>
+    ipcRenderer.invoke(desktopIpc.startPlanningShip, input) as Promise<DesktopAppState>,
+  recordPlanningShipSummary: (input: RecordPlanningShipSummaryInput) =>
+    ipcRenderer.invoke(desktopIpc.recordPlanningShipSummary, input) as Promise<DesktopAppState>,
   regeneratePlanningProjections: (input: RegeneratePlanningProjectionsInput) =>
     ipcRenderer.invoke(desktopIpc.regeneratePlanningProjections, input) as Promise<DesktopAppState>,
   syncCurrentWorkspace: () =>
