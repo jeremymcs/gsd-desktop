@@ -8,6 +8,8 @@ import type {
   ProjectSummary,
   TaskExecutionStatus,
   TaskVerificationStatus,
+  WorkflowPhaseModelPreferences,
+  WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
 export type SessionStatus = "idle" | "running" | "failed";
 export type { SessionRole, TranscriptMessage } from "./timeline-types";
@@ -31,6 +33,10 @@ export interface NotificationPreferences {
   readonly backgroundCompletion: boolean;
   readonly backgroundFailure: boolean;
   readonly attentionNeeded: boolean;
+}
+
+export interface GlobalPlanningPreferences {
+  readonly phaseModels: WorkflowPhaseModelPreferences;
 }
 
 export interface ComposerImageAttachment {
@@ -191,6 +197,17 @@ export interface ApplyPlanningWorkflowPreferencesInput {
   readonly workspaceId: string;
   readonly planId: string;
   readonly expectedRevision: number;
+}
+
+export interface UpdatePlanningWorkflowPreferencesInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly preferences: Omit<WorkflowPreferencesRecord, "capturedAt">;
+}
+
+export interface SetGlobalPlanningPhaseModelsInput {
+  readonly phaseModels: WorkflowPhaseModelPreferences;
 }
 
 export interface RecordPlanningAnswerInput {
@@ -433,6 +450,7 @@ export interface DesktopAppState {
   readonly sessionExtensionUiBySession: Readonly<Record<string, SessionExtensionUiStateRecord>>;
   readonly extensionCommandCompatibilityByWorkspace: Readonly<Record<string, readonly ExtensionCommandCompatibilityRecord[]>>;
   readonly notificationPreferences: NotificationPreferences;
+  readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly integratedTerminalShell: string;
   readonly lastViewedAtBySession: Readonly<Record<string, string>>;
   readonly workspaceOrder: readonly string[];
@@ -474,6 +492,9 @@ export function createEmptyDesktopAppState(): DesktopAppState {
       backgroundCompletion: true,
       backgroundFailure: true,
       attentionNeeded: true,
+    },
+    globalPlanningPreferences: {
+      phaseModels: {},
     },
     integratedTerminalShell: "",
     lastViewedAtBySession: {},

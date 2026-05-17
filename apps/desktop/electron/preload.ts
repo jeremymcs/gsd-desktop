@@ -54,6 +54,8 @@ import type {
   StartPlanningShipInput,
   StartPlanningVerifyInput,
   StartThreadInput,
+  SetGlobalPlanningPhaseModelsInput,
+  UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -166,6 +168,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.selectPlanningPlan, input) as Promise<DesktopAppState>,
   applyPlanningWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) =>
     ipcRenderer.invoke(desktopIpc.applyPlanningWorkflowPreferences, input) as Promise<DesktopAppState>,
+  updatePlanningWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) =>
+    ipcRenderer.invoke(desktopIpc.updatePlanningWorkflowPreferences, input) as Promise<DesktopAppState>,
   recordPlanningAnswer: (input: RecordPlanningAnswerInput) =>
     ipcRenderer.invoke(desktopIpc.recordPlanningAnswer, input) as Promise<DesktopAppState>,
   revisePlanningAnswer: (input: RevisePlanningAnswerInput) =>
@@ -231,6 +235,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.refreshRuntime, workspaceId) as Promise<DesktopAppState>,
   setModelSettingsScopeMode: (mode: "app-global" | "per-repo") =>
     ipcRenderer.invoke(desktopIpc.setModelSettingsScopeMode, mode) as Promise<DesktopAppState>,
+  setGlobalPlanningPhaseModels: (input: SetGlobalPlanningPhaseModelsInput) =>
+    ipcRenderer.invoke(desktopIpc.setGlobalPlanningPhaseModels, input) as Promise<DesktopAppState>,
   setDefaultModel: (workspaceId: string, provider: string, modelId: string) =>
     ipcRenderer.invoke(desktopIpc.setDefaultModel, workspaceId, provider, modelId) as Promise<DesktopAppState>,
   setDefaultThinkingLevel: (workspaceId: string, thinkingLevel: RuntimeSettingsSnapshot["defaultThinkingLevel"]) =>

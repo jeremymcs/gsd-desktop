@@ -8,7 +8,9 @@ import {
   type PlanListEntry,
   type PlanSnapshot,
   type PlanningStore,
+  type WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
+import { normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
 import { sessionKey } from "@pi-gui/pi-sdk-driver";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -41,6 +43,7 @@ import type {
   StartPlanningResearchInput,
   StartPlanningShipInput,
   StartPlanningVerifyInput,
+  UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
@@ -162,19 +165,37 @@ export async function applyPlanningWorkflowPreferences(
           expectedRevision: input.expectedRevision,
           event: {
             type: "workflow.preferences-updated",
-            preferences: {
-              commitPolicy: "per-task",
-              branchModel: "single",
-              uatDispatch: true,
-              research: "skip",
-              workflowPrefsCaptured: true,
-              models: {
-                executorClass: "balanced",
-              },
-            },
+            preferences: defaultWorkflowPreferences(),
           },
         });
       }
+
+      await writeWorkflowPreferenceFiles({ workspaceRoot: workspace.path, plan: snapshot });
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningWorkflowPreferences(
+  store: AppStoreInternals,
+  input: UpdatePlanningWorkflowPreferencesInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "workflow.preferences-updated",
+          preferences: normalizeWorkflowPreferences(input.preferences),
+        },
+      });
 
       await writeWorkflowPreferenceFiles({ workspaceRoot: workspace.path, plan: snapshot });
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
@@ -1381,6 +1402,36 @@ function appendEvent(planningStore: PlanningStore, snapshot: PlanSnapshot, event
     expectedRevision: snapshot.revision,
     event,
   });
+}
+
+function defaultWorkflowPreferences(): Omit<WorkflowPreferencesRecord, "capturedAt"> {
+  return {
+    commitPolicy: "per-task",
+    branchModel: "single",
+    uatDispatch: true,
+    research: "skip",
+    workflowPrefsCaptured: true,
+    models: {
+      executorClass: "balanced",
+      phaseOverrides: {},
+    },
+  };
+}
+
+function normalizeWorkflowPreferences(
+  preferences: Omit<WorkflowPreferencesRecord, "capturedAt">,
+): Omit<WorkflowPreferencesRecord, "capturedAt"> {
+  return {
+    commitPolicy: preferences.commitPolicy,
+    branchModel: preferences.branchModel,
+    uatDispatch: preferences.uatDispatch,
+    research: preferences.research,
+    workflowPrefsCaptured: preferences.workflowPrefsCaptured,
+    models: {
+      executorClass: preferences.models.executorClass,
+      phaseOverrides: normalizeWorkflowPhaseModelPreferences(preferences.models.phaseOverrides),
+    },
+  };
 }
 
 function getRequiredPlanSnapshot(planningStore: PlanningStore, planId: string): PlanSnapshot {

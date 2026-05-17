@@ -38,6 +38,12 @@ test("creates a repo-local planning database and replays event-backed plan state
           workflowPrefsCaptured: true,
           models: {
             executorClass: "balanced",
+            phaseOverrides: {
+              plan: {
+                providerId: "openai",
+                modelId: "gpt-5",
+              },
+            },
           },
         },
       },
@@ -405,6 +411,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.shipSummaries[0]?.summary, "Ready to hand off verified planning persistence.");
     assert.equal(withShipSummary.workflowPreferences?.commitPolicy, "per-task");
     assert.equal(withShipSummary.workflowPreferences?.models.executorClass, "balanced");
+    assert.equal(withShipSummary.workflowPreferences?.models.phaseOverrides?.plan?.modelId, "gpt-5");
     assert.equal(withShipSummary.parkedItems.length, 2);
     assert.equal(withShipSummary.parkedItems[0]?.text, "Add a future automation review lane.");
     assert.equal(withShipSummary.parkedItems[0]?.reviewStatus, "dismissed");
@@ -453,6 +460,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.workflowPreferences?.branchModel, "single");
     assert.equal(reopened.workflowPreferences?.research, "skip");
     assert.equal(reopened.workflowPreferences?.workflowPrefsCaptured, true);
+    assert.equal(reopened.workflowPreferences?.models.phaseOverrides?.plan?.providerId, "openai");
     assert.equal(reopened.parkedItems.length, 2);
     assert.equal(reopened.parkedItems[0]?.sourceAnswerId, "parked-answer-1");
     assert.equal(reopened.parkedItems[0]?.text, "Add a future automation review lane.");

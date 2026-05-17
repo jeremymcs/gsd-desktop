@@ -100,6 +100,16 @@ test("writes workflow preference projections and runtime research decision", asy
           workflowPrefsCaptured: true,
           models: {
             executorClass: "balanced",
+            phaseOverrides: {
+              execute: {
+                providerId: "openai",
+                modelId: "gpt-5",
+              },
+              verify: {
+                providerId: "openai",
+                modelId: "gpt-4o",
+              },
+            },
           },
         },
       },
@@ -111,6 +121,8 @@ test("writes workflow preference projections and runtime research decision", asy
     assert.match(preferences, /^---\ncommit_policy: per-task\nbranch_model: single\nuat_dispatch: true\nresearch: skip\n/);
     assert.match(preferences, /workflow_prefs_captured: true/);
     assert.match(preferences, /models:\n  executor_class: balanced/);
+    assert.match(preferences, /phase_overrides:\n    execute:\n      provider: openai\n      model: gpt-5/);
+    assert.match(preferences, /verify:\n      provider: openai\n      model: gpt-4o/);
     assert.match(preferences, /pi-gui-plan-builder-generated/);
 
     const decision = JSON.parse(await readFile(join(workspaceRoot, ".gsd/runtime/research-decision.json"), "utf8"));

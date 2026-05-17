@@ -73,6 +73,8 @@ import {
   type StartPlanningVerifyInput,
   type StartThreadInput,
   type TranscriptMessage,
+  type SetGlobalPlanningPhaseModelsInput,
+  type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
   type WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -120,6 +122,7 @@ import * as worktree from "./app-store-worktree";
 import * as composer from "./app-store-composer";
 import * as plans from "./app-store-plans";
 import { isSessionActivelyViewed } from "./session-visibility";
+import { hasWorkflowPhaseModelPreferences, normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
 
 type StateListener = (state: DesktopAppState) => void;
 type SelectedTranscriptListener = (payload: SelectedTranscriptRecord | null) => void;
@@ -380,6 +383,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState> {
     return plans.applyPlanningWorkflowPreferences(this, input);
+  }
+
+  async updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState> {
+    return plans.updatePlanningWorkflowPreferences(this, input);
   }
 
   async recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState> {
@@ -643,6 +650,20 @@ export class DesktopAppStore implements AppStoreInternals {
     return this.refreshState({ clearLastError: true });
   }
 
+  async setGlobalPlanningPhaseModels(input: SetGlobalPlanningPhaseModelsInput): Promise<DesktopAppState> {
+    await this.initialize();
+    this.state = {
+      ...this.state,
+      globalPlanningPreferences: {
+        phaseModels: normalizeWorkflowPhaseModelPreferences(input.phaseModels),
+      },
+      lastError: undefined,
+      revision: this.state.revision + 1,
+    };
+    await this.persistUiState();
+    return this.emit();
+  }
+
   /* ── Runtime / model / provider settings ───────────────── */
 
   async refreshRuntime(workspaceId?: string): Promise<DesktopAppState> {
@@ -874,6 +895,7 @@ export class DesktopAppStore implements AppStoreInternals {
           ...this.state.notificationPreferences,
           ...persisted.notificationPreferences,
         },
+        globalPlanningPreferences: persisted.globalPlanningPreferences ?? this.state.globalPlanningPreferences,
         integratedTerminalShell: persisted.integratedTerminalShell ?? this.state.integratedTerminalShell,
         lastViewedAtBySession: persisted.lastViewedAtBySession ?? {},
         workspaceOrder: persisted.workspaceOrder ?? [],
@@ -1815,6 +1837,9 @@ export class DesktopAppStore implements AppStoreInternals {
       composerDraftsBySession: mapToRecord(this.sessionState.composerDraftsBySession),
       extensionCommandCompatibilityByWorkspace: serializeCompatibilityByWorkspace(this.extensionCommandCompatibilityByWorkspace),
       notificationPreferences: this.state.notificationPreferences,
+      globalPlanningPreferences: hasWorkflowPhaseModelPreferences(this.state.globalPlanningPreferences.phaseModels)
+        ? this.state.globalPlanningPreferences
+        : undefined,
       integratedTerminalShell: this.state.integratedTerminalShell || undefined,
       lastViewedAtBySession: mapToRecord(this.sessionState.lastViewedAtBySession),
       workspaceOrder: this.state.workspaceOrder.length > 0 ? this.state.workspaceOrder : undefined,

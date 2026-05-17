@@ -40,6 +40,8 @@ import type {
   StartPlanningShipInput,
   StartPlanningVerifyInput,
   StartThreadInput,
+  SetGlobalPlanningPhaseModelsInput,
+  UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspaceSessionTarget,
 } from "./desktop-state";
@@ -74,6 +76,7 @@ export const desktopIpc = {
   createPlanningPlan: "pi-gui:create-planning-plan",
   selectPlanningPlan: "pi-gui:select-planning-plan",
   applyPlanningWorkflowPreferences: "pi-gui:apply-planning-workflow-preferences",
+  updatePlanningWorkflowPreferences: "pi-gui:update-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
@@ -107,6 +110,7 @@ export const desktopIpc = {
   setSidebarCollapsed: "pi-gui:set-sidebar-collapsed",
   refreshRuntime: "pi-gui:refresh-runtime",
   setModelSettingsScopeMode: "pi-gui:set-model-settings-scope-mode",
+  setGlobalPlanningPhaseModels: "pi-gui:set-global-planning-phase-models",
   setDefaultModel: "pi-gui:set-default-model",
   setDefaultThinkingLevel: "pi-gui:set-default-thinking-level",
   setSessionModel: "pi-gui:set-session-model",
@@ -284,6 +288,7 @@ export interface PiDesktopApi {
   createPlanningPlan(input: CreatePlanningPlanInput): Promise<DesktopAppState>;
   selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState>;
   applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
+  updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
@@ -317,6 +322,7 @@ export interface PiDesktopApi {
   setSidebarCollapsed(collapsed: boolean): Promise<DesktopAppState>;
   refreshRuntime(workspaceId?: string): Promise<DesktopAppState>;
   setModelSettingsScopeMode(mode: ModelSettingsScopeMode): Promise<DesktopAppState>;
+  setGlobalPlanningPhaseModels(input: SetGlobalPlanningPhaseModelsInput): Promise<DesktopAppState>;
   setDefaultModel(workspaceId: string, provider: string, modelId: string): Promise<DesktopAppState>;
   setDefaultThinkingLevel(
     workspaceId: string,

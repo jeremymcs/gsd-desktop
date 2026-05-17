@@ -1,17 +1,31 @@
 import type {
   AppView,
   ExtensionCommandCompatibilityRecord,
+  GlobalPlanningPreferences,
   ModelSettingsScopeMode,
   NotificationPreferences,
 } from "../src/desktop-state";
+import { normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
 import type { ModelSettingsSnapshot } from "@pi-gui/session-driver/runtime-types";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const uiStateWriteQueueByPath = new Map<string, Promise<void>>();
+const PERSISTED_UI_STATE_VERSIONS: readonly NonNullable<PersistedUiState["version"]>[] = [
+  10,
+  9,
+  8,
+  7,
+  6,
+  5,
+  4,
+  3,
+  2,
+];
+
 export interface PersistedUiState {
-  readonly version?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+  readonly version?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
   readonly selectedWorkspaceId?: string;
   readonly selectedSessionId?: string;
   readonly activeView?: AppView;
@@ -19,6 +33,7 @@ export interface PersistedUiState {
   readonly composerDraftsBySession?: Record<string, string>;
   readonly extensionCommandCompatibilityByWorkspace?: Record<string, readonly ExtensionCommandCompatibilityRecord[]>;
   readonly notificationPreferences?: NotificationPreferences;
+  readonly globalPlanningPreferences?: GlobalPlanningPreferences;
   readonly integratedTerminalShell?: string;
   readonly lastViewedAtBySession?: Record<string, string>;
   readonly workspaceOrder?: readonly string[];
@@ -37,24 +52,7 @@ export async function readPersistedUiState(uiStateFilePath: string): Promise<Leg
     const raw = await readFile(uiStateFilePath, "utf8");
     const parsed = JSON.parse(raw) as LegacyPersistedUiState;
     return {
-      version:
-        parsed.version === 9
-          ? 9
-          : parsed.version === 8
-            ? 8
-            : parsed.version === 7
-            ? 7
-            : parsed.version === 6
-              ? 6
-              : parsed.version === 5
-                ? 5
-                : parsed.version === 4
-                  ? 4
-                  : parsed.version === 3
-                    ? 3
-                    : parsed.version === 2
-                      ? 2
-                      : undefined,
+      version: toPersistedVersion(parsed.version),
       selectedWorkspaceId: parsed.selectedWorkspaceId,
       selectedSessionId: parsed.selectedSessionId,
       activeView: parsed.activeView,
@@ -62,6 +60,7 @@ export async function readPersistedUiState(uiStateFilePath: string): Promise<Leg
       composerDraftsBySession: parsed.composerDraftsBySession,
       extensionCommandCompatibilityByWorkspace: parsed.extensionCommandCompatibilityByWorkspace,
       notificationPreferences: parsed.notificationPreferences,
+      globalPlanningPreferences: toPersistedGlobalPlanningPreferences(parsed.globalPlanningPreferences),
       integratedTerminalShell:
         typeof parsed.integratedTerminalShell === "string" ? parsed.integratedTerminalShell : undefined,
       lastViewedAtBySession: parsed.lastViewedAtBySession,
@@ -88,7 +87,7 @@ export async function writePersistedUiState(
     await mkdir(dirname(uiStateFilePath), { recursive: true });
     const serialized = `${JSON.stringify(
       {
-        version: 9,
+        version: 10,
         ...payload,
       } satisfies PersistedUiState,
       null,
@@ -122,6 +121,22 @@ export async function writePersistedUiState(
       }
     }
   });
+}
+
+function toPersistedVersion(value: unknown): PersistedUiState["version"] | undefined {
+  return PERSISTED_UI_STATE_VERSIONS.includes(value as NonNullable<PersistedUiState["version"]>)
+    ? (value as PersistedUiState["version"])
+    : undefined;
+}
+
+function toPersistedGlobalPlanningPreferences(value: unknown): GlobalPlanningPreferences | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const candidate = value as Partial<GlobalPlanningPreferences>;
+  return {
+    phaseModels: normalizeWorkflowPhaseModelPreferences(candidate.phaseModels),
+  };
 }
 
 function toPersistedModelSettingsSnapshot(value: unknown): ModelSettingsSnapshot | undefined {

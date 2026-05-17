@@ -1,5 +1,11 @@
 import type { RuntimeSettingsSnapshot, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
-import type { ModelSettingsScopeMode, NotificationPreferences, WorkspaceRecord } from "./desktop-state";
+import type {
+  GlobalPlanningPreferences,
+  ModelSettingsScopeMode,
+  NotificationPreferences,
+  WorkspaceRecord,
+} from "./desktop-state";
+import type { WorkflowPhaseModelPreferences } from "@pi-gui/gsd-planning";
 import type { DesktopNotificationPermissionStatus } from "./ipc";
 import { SettingsAppearanceSection } from "./settings-appearance-section";
 import { SettingsGeneralSection } from "./settings-general-section";
@@ -15,12 +21,14 @@ interface SettingsViewProps {
   readonly runtime?: RuntimeSnapshot;
   readonly section: SettingsSection;
   readonly notificationPreferences: NotificationPreferences;
+  readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly notificationPermissionStatus: DesktopNotificationPermissionStatus;
   readonly notificationPermissionPending: boolean;
   readonly modelSettingsScopeMode: ModelSettingsScopeMode;
   readonly integratedTerminalShell: string;
   readonly themeMode: "system" | "light" | "dark";
   readonly onSetModelSettingsScopeMode: (mode: ModelSettingsScopeMode) => void;
+  readonly onSetGlobalPlanningPhaseModels: (phaseModels: WorkflowPhaseModelPreferences) => void;
   readonly onSetDefaultModel: (provider: string, modelId: string) => void;
   readonly onSetThinkingLevel: (thinkingLevel: RuntimeSettingsSnapshot["defaultThinkingLevel"]) => void;
   readonly onToggleSkillCommands: (enabled: boolean) => void;
@@ -41,12 +49,14 @@ export function SettingsView({
   runtime,
   section,
   notificationPreferences,
+  globalPlanningPreferences,
   notificationPermissionStatus,
   notificationPermissionPending,
   modelSettingsScopeMode,
   integratedTerminalShell,
   themeMode,
   onSetModelSettingsScopeMode,
+  onSetGlobalPlanningPhaseModels,
   onSetDefaultModel,
   onSetThinkingLevel,
   onToggleSkillCommands,
@@ -118,6 +128,8 @@ export function SettingsView({
           {section === "models" ? (
             <SettingsModelsSection
               runtime={runtime}
+              globalPlanningPreferences={globalPlanningPreferences}
+              onSetGlobalPlanningPhaseModels={onSetGlobalPlanningPhaseModels}
               onSetDefaultModel={onSetDefaultModel}
               onSetScopedModelPatterns={onSetScopedModelPatterns}
               onSetThinkingLevel={onSetThinkingLevel}

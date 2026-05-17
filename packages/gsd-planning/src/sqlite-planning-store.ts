@@ -30,12 +30,14 @@ import type {
   TaskExecutionRecord,
   TaskSessionLinkRecord,
   TaskVerificationRecord,
+  WorkflowPhaseModelPreferences,
   WorkflowPreferencesRecord,
 } from "./types.js";
 
 const SCHEMA_VERSION = 1;
 const DATABASE_RELATIVE_PATH = ".gsd/gsd.db";
 const GITIGNORE_ENTRY = ".gsd/gsd.db";
+const PLAN_PHASES: readonly PlanPhase[] = ["discuss", "research", "plan", "execute", "verify", "ship"];
 
 export interface OpenPlanningStoreOptions {
   readonly workspaceRoot: string;
@@ -449,6 +451,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           research: payload.preferences.research,
           models: {
             executorClass: payload.preferences.models.executorClass,
+            phaseOverrides: normalizeWorkflowPhaseModels(payload.preferences.models.phaseOverrides),
           },
           workflowPrefsCaptured: payload.preferences.workflowPrefsCaptured,
           capturedAt: payload.preferences.capturedAt ?? event.createdAt,
@@ -719,6 +722,24 @@ function normalizeName(name: string): string {
   const normalized = name.trim();
   if (!normalized) {
     throw new Error("Plan name is required");
+  }
+  return normalized;
+}
+
+function normalizeWorkflowPhaseModels(
+  value: WorkflowPhaseModelPreferences | undefined,
+): WorkflowPhaseModelPreferences {
+  if (!value) {
+    return {};
+  }
+  const normalized: WorkflowPhaseModelPreferences = {};
+  for (const phase of PLAN_PHASES) {
+    const preference = value[phase];
+    const providerId = preference?.providerId.trim();
+    const modelId = preference?.modelId.trim();
+    if (providerId && modelId) {
+      normalized[phase] = { providerId, modelId };
+    }
   }
   return normalized;
 }

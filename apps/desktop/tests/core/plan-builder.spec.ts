@@ -75,6 +75,21 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const window = await harness.firstWindow();
     await waitForWorkspaceByPath(window, workspacePath);
 
+    await window.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(window.getByTestId("settings-surface")).toBeVisible();
+    await window.getByRole("button", { name: "Models", exact: true }).click();
+    await expect(window.getByTestId("global-phase-model-select-discuss")).toBeVisible();
+    await window.getByTestId("global-phase-model-select-discuss").selectOption("openai:gpt-5");
+    await window.getByTestId("global-phase-model-select-research").selectOption("openai:gpt-4o");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      return [
+        state.globalPlanningPreferences.phaseModels.discuss?.modelId,
+        state.globalPlanningPreferences.phaseModels.research?.modelId,
+      ].join(":");
+    }).toBe("gpt-5:gpt-4o");
+
+    await window.getByRole("button", { name: "Back to app", exact: true }).click();
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await window.getByTestId("plan-name-input").fill("Launch plan");
@@ -85,10 +100,22 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
+    await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
+    await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await window.getByTestId("phase-model-select-execute").selectOption("openai:gpt-4o");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
+        ?.selectedPlan;
+      return plan?.workflowPreferences?.models.phaseOverrides?.execute?.modelId ?? "";
+    }).toBe("gpt-4o");
     const preferencesProjection = await readFile(join(workspacePath, ".gsd", "PREFERENCES.md"), "utf8");
     expect(preferencesProjection).toContain("commit_policy: per-task");
     expect(preferencesProjection).toContain("branch_model: single");
     expect(preferencesProjection).toContain("workflow_prefs_captured: true");
+    expect(preferencesProjection).toContain("phase_overrides:");
+    expect(preferencesProjection).toContain("execute:");
+    expect(preferencesProjection).toContain("model: gpt-4o");
     const researchDecision = JSON.parse(
       await readFile(join(workspacePath, ".gsd", "runtime", "research-decision.json"), "utf8"),
     ) as { decision: string; source: string };
@@ -325,6 +352,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
+    await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
@@ -350,14 +378,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
-    await expect.poll(async () =>
-      Object.values((await getDesktopState(window)).planningByWorkspace).some(
-        (entry) =>
-          entry.selectedPlan?.name === "Launch plan" &&
-          entry.selectedPlan.activePhase === "ship" &&
-          entry.selectedPlan.workflowPreferences?.commitPolicy === "per-task" &&
-          entry.selectedPlan.workflowPreferences?.branchModel === "single" &&
-          entry.selectedPlan.workflowPreferences?.models.executorClass === "balanced" &&
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      return (
+        state.globalPlanningPreferences.phaseModels.discuss?.modelId === "gpt-5" &&
+        state.globalPlanningPreferences.phaseModels.research?.modelId === "gpt-4o" &&
+        Object.values(state.planningByWorkspace).some(
+          (entry) =>
+            entry.selectedPlan?.name === "Launch plan" &&
+            entry.selectedPlan.activePhase === "ship" &&
+            entry.selectedPlan.workflowPreferences?.commitPolicy === "per-task" &&
+            entry.selectedPlan.workflowPreferences?.branchModel === "single" &&
+            entry.selectedPlan.workflowPreferences?.models.executorClass === "balanced" &&
+            entry.selectedPlan.workflowPreferences?.models.phaseOverrides?.execute?.modelId === "gpt-4o" &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Later automation follow-up" && item.reviewStatus === "kept",
           ) &&
@@ -445,15 +478,16 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               output.title === "Modified task - M1/S1/T1" &&
               output.content.includes("change-control persistence are verified"),
           ) &&
-          entry.selectedPlan.generatedOutputs.some(
-            (output) =>
-              output.stage === "roadmap" &&
-              output.status === "accepted" &&
-              output.title === "Hidden task - M1/S1/T2" &&
-              !output.content.includes("Review integration impact"),
-          ),
-      ),
-    ).toBe(true);
+            entry.selectedPlan.generatedOutputs.some(
+              (output) =>
+                output.stage === "roadmap" &&
+                output.status === "accepted" &&
+                output.title === "Hidden task - M1/S1/T2" &&
+                !output.content.includes("Review integration impact"),
+            ),
+        )
+      );
+    }).toBe(true);
   } finally {
     await harness.close();
   }

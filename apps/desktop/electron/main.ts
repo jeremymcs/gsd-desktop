@@ -60,6 +60,8 @@ import type {
   StartPlanningShipInput,
   StartPlanningVerifyInput,
   StartThreadInput,
+  SetGlobalPlanningPhaseModelsInput,
+  UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
@@ -551,6 +553,9 @@ app.whenReady().then(async () => {
   ipcMain.handle(desktopIpc.applyPlanningWorkflowPreferences, (_event, input: ApplyPlanningWorkflowPreferencesInput) =>
     store.applyPlanningWorkflowPreferences(input),
   );
+  ipcMain.handle(desktopIpc.updatePlanningWorkflowPreferences, (_event, input: UpdatePlanningWorkflowPreferencesInput) =>
+    store.updatePlanningWorkflowPreferences(input),
+  );
   ipcMain.handle(desktopIpc.recordPlanningAnswer, (_event, input: RecordPlanningAnswerInput) =>
     store.recordPlanningAnswer(input),
   );
@@ -633,6 +638,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.refreshRuntime, (_event, workspaceId?: string) => store.refreshRuntime(workspaceId));
   ipcMain.handle(desktopIpc.setModelSettingsScopeMode, (_event, mode) => store.setModelSettingsScopeMode(mode));
+  ipcMain.handle(desktopIpc.setGlobalPlanningPhaseModels, (_event, input: SetGlobalPlanningPhaseModelsInput) =>
+    store.setGlobalPlanningPhaseModels(input),
+  );
   ipcMain.handle(desktopIpc.setSessionModel, (_event, workspaceId: string, sessionId: string, provider: string, modelId: string) =>
     store.setSessionModel({ workspaceId, sessionId }, provider, modelId),
   );

@@ -129,6 +129,13 @@ export type WorkflowBranchModel = "single";
 export type WorkflowResearchMode = "skip" | "research";
 export type WorkflowExecutorClass = "balanced";
 
+export interface WorkflowPhaseModelPreference {
+  readonly providerId: string;
+  readonly modelId: string;
+}
+
+export type WorkflowPhaseModelPreferences = Partial<Record<PlanPhase, WorkflowPhaseModelPreference>>;
+
 export interface WorkflowPreferencesRecord {
   readonly commitPolicy: WorkflowCommitPolicy;
   readonly branchModel: WorkflowBranchModel;
@@ -136,6 +143,7 @@ export interface WorkflowPreferencesRecord {
   readonly research: WorkflowResearchMode;
   readonly models: {
     readonly executorClass: WorkflowExecutorClass;
+    readonly phaseOverrides?: WorkflowPhaseModelPreferences;
   };
   readonly workflowPrefsCaptured: boolean;
   readonly capturedAt: string;

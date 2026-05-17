@@ -336,6 +336,7 @@ export default function App() {
   const plansWorkspace = plansWorkspaceId
     ? rootWorkspaceOptions.find((workspace) => workspace.id === plansWorkspaceId)
     : undefined;
+  const plansModelRuntime = snapshot ? getEffectiveModelRuntime(snapshot, plansWorkspace ?? rootWorkspaceOptions[0]) : undefined;
   const settingsRuntime = settingsWorkspace ? snapshot?.runtimeByWorkspace[settingsWorkspace.id] : undefined;
   const settingsModelRuntime = snapshot ? getEffectiveModelRuntime(snapshot, settingsWorkspace) : undefined;
   const skillsRuntime = skillsWorkspace ? snapshot?.runtimeByWorkspace[skillsWorkspace.id] : undefined;
@@ -1701,6 +1702,12 @@ export default function App() {
     void updateSnapshot(api, setSnapshot, () => api.setNotificationPreferences(preferences));
   };
 
+  const handleSetGlobalPlanningPhaseModels = (
+    phaseModels: DesktopAppState["globalPlanningPreferences"]["phaseModels"],
+  ) => {
+    void updateSnapshot(api, setSnapshot, () => api.setGlobalPlanningPhaseModels({ phaseModels }));
+  };
+
   const handleSetIntegratedTerminalShell = (shellPath: string) => {
     void updateSnapshot(api, setSnapshot, () => api.setIntegratedTerminalShell(shellPath));
   };
@@ -1944,6 +1951,7 @@ export default function App() {
           runtime={settingsSection === "models" ? settingsModelRuntime : settingsRuntime}
           section={settingsSection}
           notificationPreferences={snapshot.notificationPreferences}
+          globalPlanningPreferences={snapshot.globalPlanningPreferences}
           notificationPermissionStatus={notificationPermissionStatus}
           notificationPermissionPending={notificationPermissionPending}
           modelSettingsScopeMode={snapshot.modelSettingsScopeMode}
@@ -1954,6 +1962,7 @@ export default function App() {
           onSetProviderApiKey={handleSetProviderApiKey}
           onRemoveProviderApiKey={handleRemoveProviderApiKey}
           onSetModelSettingsScopeMode={handleSetModelSettingsScopeMode}
+          onSetGlobalPlanningPhaseModels={handleSetGlobalPlanningPhaseModels}
           onSetDefaultModel={handleSetDefaultModel}
           onSetNotificationPreferences={handleSetNotificationPreferences}
           onSetIntegratedTerminalShell={handleSetIntegratedTerminalShell}
@@ -2109,6 +2118,8 @@ export default function App() {
             <PlanBuilderView
               workspaces={rootWorkspaceOptions}
               selectedWorkspaceId={plansWorkspace?.id ?? rootWorkspaceOptions[0]?.id ?? ""}
+              runtime={plansModelRuntime}
+              globalPlanningPreferences={snapshot.globalPlanningPreferences}
               planningState={plansWorkspace ? snapshot.planningByWorkspace[plansWorkspace.id] : undefined}
               lastError={snapshot.lastError}
               onSelectWorkspace={handleSelectPlansWorkspace}
@@ -2116,6 +2127,9 @@ export default function App() {
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
               onApplyWorkflowPreferences={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
+              }
+              onUpdateWorkflowPreferences={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.updatePlanningWorkflowPreferences(input))
               }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}

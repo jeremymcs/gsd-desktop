@@ -9,7 +9,7 @@ import {
   type GeneratePlanningProjectionsInput,
   type ProjectionFile,
 } from "./projections.js";
-import type { PlanSnapshot, WorkflowPreferencesRecord } from "./types.js";
+import type { PlanPhase, PlanSnapshot, WorkflowPhaseModelPreferences, WorkflowPreferencesRecord } from "./types.js";
 
 export interface WriteProjectionFilesInput {
   readonly workspaceRoot: string;
@@ -208,6 +208,12 @@ function isMissingFileError(error: unknown): boolean {
 }
 
 function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: WorkflowPreferencesRecord): string {
+  const modelLines = [
+    "models:",
+    `  executor_class: ${preferences.models.executorClass}`,
+    ...renderPhaseModelOverrides(preferences.models.phaseOverrides),
+  ];
+
   return [
     "---",
     `commit_policy: ${preferences.commitPolicy}`,
@@ -215,8 +221,7 @@ function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: Workflow
     `uat_dispatch: ${preferences.uatDispatch ? "true" : "false"}`,
     `research: ${preferences.research}`,
     `workflow_prefs_captured: ${preferences.workflowPrefsCaptured ? "true" : "false"}`,
-    "models:",
-    `  executor_class: ${preferences.models.executorClass}`,
+    ...modelLines,
     "---",
     "",
     `<!-- ${GENERATED_PROJECTION_MARKER}`,
@@ -232,6 +237,38 @@ function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: Workflow
     "",
     "Recommended workflow defaults captured by Plan Builder.",
   ].join("\n").concat("\n");
+}
+
+function renderPhaseModelOverrides(phaseOverrides: WorkflowPhaseModelPreferences | undefined): readonly string[] {
+  if (!phaseOverrides) {
+    return [];
+  }
+  const lines: string[] = [];
+  for (const phase of workflowPhases()) {
+    const preference = phaseOverrides[phase];
+    if (!preference) {
+      continue;
+    }
+    lines.push(`  phase_overrides:`);
+    break;
+  }
+  if (lines.length === 0) {
+    return [];
+  }
+  for (const phase of workflowPhases()) {
+    const preference = phaseOverrides[phase];
+    if (!preference) {
+      continue;
+    }
+    lines.push(`    ${phase}:`);
+    lines.push(`      provider: ${preference.providerId}`);
+    lines.push(`      model: ${preference.modelId}`);
+  }
+  return lines;
+}
+
+function workflowPhases(): readonly PlanPhase[] {
+  return ["discuss", "research", "plan", "execute", "verify", "ship"];
 }
 
 function renderResearchDecisionFile(preferences: WorkflowPreferencesRecord): string {

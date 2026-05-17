@@ -21,8 +21,8 @@
 - [x] **S02: Prompt-Guided Stage Framing** `risk:medium` `depends:[S01]`
   > After this: DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP screens expose the next useful prompt-framed action without relying on hidden agent instructions.
 
-- [ ] **S03: Preference and Phase Model Change Control** `risk:high` `depends:[S01,S02]`
-  > After this: users can modify workflow preferences, including per-phase model choices for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP, through append-only events with clear impact on generated runtime files.
+- [x] **S03: Preference and Phase Model Change Control** `risk:high` `depends:[S01,S02]`
+  > After this: users can set global phase model defaults in Settings and project-specific phase overrides in Plan Builder, with project overrides persisted through append-only events and reflected in generated preference projections.
 
 ## Boundary Map
 
@@ -34,6 +34,7 @@ Produces:
 
 Consumes:
   workflow preference bootstrap -> durable defaults and runtime decision projection
+  global phase model defaults -> app-level fallback when a project leaves a phase unset
 
 ### S01 -> S02
 
@@ -51,7 +52,7 @@ Produces:
 
 Consumes:
   preference change control -> append-only modifications with projection updates
-  phase model controls -> per-phase model preferences for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP
+  phase model controls -> project overrides for DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP
 
 ### S02 -> S03
 

@@ -2369,6 +2369,44 @@
   color: #f1a5a5;
 }
 
+.plan-workflow-preferences {
+  width: 100%;
+}
+
+.plan-phase-model-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.plan-phase-model-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 320px);
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-projection-card .plan-phase-model-row span {
+  display: grid;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.plan-projection-card .plan-phase-model-row small {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.plan-phase-model-row__select {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #101114;
+  border-color: #2a2d35;
+  color: #f4f4f5;
+}
+
 .plan-execution {
   width: min(860px, 100%);
   display: grid;
@@ -3578,6 +3616,7 @@
 }
 
 .settings-select,
+.settings-phase-select,
 .settings-search,
 .settings-text-input {
   width: min(420px, 100%);
@@ -4541,6 +4580,7 @@ mark.thread-find-active {
 }
 
 :root.dark .settings-select,
+:root.dark .settings-phase-select,
 :root.dark .settings-search,
 :root.dark .settings-text-input {
   border-color: var(--line);

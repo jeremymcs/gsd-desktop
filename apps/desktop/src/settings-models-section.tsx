@@ -1,5 +1,13 @@
 import { useState } from "react";
 import type { RuntimeSettingsSnapshot, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import type { WorkflowPhaseModelPreferences } from "@pi-gui/gsd-planning";
+import { buildModelOptions } from "./composer-commands";
+import type { GlobalPlanningPreferences } from "./desktop-state";
+import {
+  phaseModelPreferenceFromValue,
+  phaseModelPreferenceToValue,
+  planningPhaseModelOptions,
+} from "./planning-phase-models";
 import {
   filterModels,
   labelForThinking,
@@ -11,6 +19,8 @@ import {
 
 interface SettingsModelsSectionProps {
   readonly runtime?: RuntimeSnapshot;
+  readonly globalPlanningPreferences: GlobalPlanningPreferences;
+  readonly onSetGlobalPlanningPhaseModels: (phaseModels: WorkflowPhaseModelPreferences) => void;
   readonly onSetDefaultModel: (provider: string, modelId: string) => void;
   readonly onSetThinkingLevel: (thinkingLevel: RuntimeSettingsSnapshot["defaultThinkingLevel"]) => void;
   readonly onSetScopedModelPatterns: (patterns: readonly string[]) => void;
@@ -18,6 +28,8 @@ interface SettingsModelsSectionProps {
 
 export function SettingsModelsSection({
   runtime,
+  globalPlanningPreferences,
+  onSetGlobalPlanningPhaseModels,
   onSetDefaultModel,
   onSetThinkingLevel,
   onSetScopedModelPatterns,
@@ -51,6 +63,8 @@ export function SettingsModelsSection({
 
   const filteredModels = filterModels(models, modelQuery);
   const filteredScopedModels = filterModels(availableModels, scopedQuery);
+  const modelOptions = buildModelOptions(runtime);
+  const phaseModels = globalPlanningPreferences.phaseModels;
 
   const togglePattern = (pattern: string, checked: boolean) => {
     const newPatterns = checked
@@ -101,6 +115,36 @@ export function SettingsModelsSection({
             ))}
           </div>
         </SettingsRow>
+      </SettingsGroup>
+
+      <SettingsGroup title="Planning phase defaults" description="Choose app-wide model defaults for each planning phase.">
+        {planningPhaseModelOptions.map((phase) => (
+          <SettingsRow
+            key={phase.id}
+            title={phase.label}
+            description="Used by new project plans unless that project overrides the phase."
+          >
+            <select
+              className="settings-phase-select"
+              data-testid={`global-phase-model-select-${phase.id}`}
+              value={phaseModelPreferenceToValue(phaseModels[phase.id])}
+              onChange={(event) => {
+                const preference = phaseModelPreferenceFromValue(event.target.value);
+                onSetGlobalPlanningPhaseModels({
+                  ...phaseModels,
+                  [phase.id]: preference,
+                });
+              }}
+            >
+              <option value="">Use default model</option>
+              {modelOptions.map((model) => (
+                <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </SettingsRow>
+        ))}
       </SettingsGroup>
 
       <SettingsGroup title="Enabled models" description="Choose which models appear in pickers throughout the app.">
