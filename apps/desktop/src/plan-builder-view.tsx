@@ -5,6 +5,7 @@ import type {
   GeneratedOutputRecord,
   ParkedItemReviewStatus,
   ParkedItemRecord,
+  PlanPhase,
   PlanSnapshot,
   PlanStage,
   ShipSummaryRecord,
@@ -69,10 +70,12 @@ import {
   getLatestAnswersByQuestion,
   getLatestDiscussAnswers,
   isDiscussStage,
+  type DiscussQuestion,
   type DiscussStage,
+  type DiscussStageProgress,
 } from "./plan-builder-discuss";
 
-const planPhases = [
+const planPhases: readonly { readonly id: PlanPhase; readonly label: string }[] = [
   { id: "discuss", label: "DISCUSS" },
   { id: "research", label: "RESEARCH" },
   { id: "plan", label: "PLAN" },
@@ -940,6 +943,18 @@ export function PlanBuilderView({
         : snapshot
           ? "DISCUSS memory is persisted in the planning database"
           : "Start with the project outcome, constraints, and users";
+  const workflowGuidance = buildWorkflowGuidance({
+    activeQuestion,
+    acceptedResearchCount: acceptedResearchOutputs.length,
+    allDiscussConfirmed,
+    currentProgress,
+    executeStarted,
+    planStarted,
+    researchStarted,
+    shipStarted,
+    snapshot,
+    verifyStarted,
+  });
 
   return (
     <section className="canvas canvas--plans" data-testid="plan-builder-view">
@@ -987,6 +1002,8 @@ export function PlanBuilderView({
                 </div>
               ))}
             </div>
+
+            <WorkflowGuidanceCard guidance={workflowGuidance} />
 
             {snapshot ? (
               <WorkflowPreferencesCard
@@ -1884,6 +1901,196 @@ interface PlanSliceTarget {
   readonly label: string;
   readonly milestoneId: string;
   readonly sliceId: string;
+}
+
+interface WorkflowGuidance {
+  readonly banner: string;
+  readonly title: string;
+  readonly nextAction: string;
+  readonly artifact: string;
+  readonly frame: string;
+}
+
+function buildWorkflowGuidance({
+  activeQuestion,
+  acceptedResearchCount,
+  allDiscussConfirmed,
+  currentProgress,
+  executeStarted,
+  planStarted,
+  researchStarted,
+  shipStarted,
+  snapshot,
+  verifyStarted,
+}: {
+  readonly activeQuestion: DiscussQuestion | undefined;
+  readonly acceptedResearchCount: number;
+  readonly allDiscussConfirmed: boolean;
+  readonly currentProgress: DiscussStageProgress | undefined;
+  readonly executeStarted: boolean;
+  readonly planStarted: boolean;
+  readonly researchStarted: boolean;
+  readonly shipStarted: boolean;
+  readonly snapshot: PlanSnapshot | undefined;
+  readonly verifyStarted: boolean;
+}): WorkflowGuidance {
+  if (!snapshot) {
+    return {
+      banner: "QUESTIONING / project",
+      title: "Open with the user's language",
+      nextAction: "Create a plan, then capture the project outcome, users, anti-goals, and constraints.",
+      artifact: ".gsd/PROJECT.md",
+      frame: "Project discussion",
+    };
+  }
+
+  if (shipStarted) {
+    return {
+      banner: "SHIP",
+      title: "Prepare the handoff",
+      nextAction: "Summarize what shipped, the verification evidence, and any follow-up the next session needs.",
+      artifact: "Ship summary",
+      frame: "Closeout",
+    };
+  }
+
+  if (verifyStarted) {
+    return {
+      banner: "VERIFY",
+      title: "Check acceptance against evidence",
+      nextAction: "Record pass or fail for each completed task using the acceptance text from the accepted plan.",
+      artifact: "Task verification",
+      frame: "UAT and verification",
+    };
+  }
+
+  if (executeStarted) {
+    return {
+      banner: "EXECUTE",
+      title: "Work through linked task sessions",
+      nextAction: "Create or open each task session, then save status, blockers, notes, and evidence before VERIFY.",
+      artifact: "Task execution state",
+      frame: "Task execution",
+    };
+  }
+
+  if (planStarted) {
+    return {
+      banner: "PLAN",
+      title: "Make the work executable",
+      nextAction: "Shape milestones, slices, tasks, dependencies, and boundary notes before accepting the plan.",
+      artifact: ".gsd/milestones/*",
+      frame: "Milestone and slice plan",
+    };
+  }
+
+  if (acceptedResearchCount > 0) {
+    return {
+      banner: "PLAN",
+      title: "Turn findings into structure",
+      nextAction: "Start PLAN and convert accepted research into milestones, slices, tasks, dependencies, and boundaries.",
+      artifact: ".gsd/milestones/*",
+      frame: "Milestone and slice plan",
+    };
+  }
+
+  if (researchStarted) {
+    return {
+      banner: "RESEARCH",
+      title: "Stage findings for review",
+      nextAction: "Capture findings that change planning decisions, then accept only the research the plan should trust.",
+      artifact: "Research output",
+      frame: "Project research",
+    };
+  }
+
+  if (allDiscussConfirmed) {
+    return {
+      banner: "RESEARCH DECISION",
+      title: "Choose the research path",
+      nextAction: "Start RESEARCH when findings are useful, or keep the deterministic skip decision from preferences.",
+      artifact: ".gsd/runtime/research-decision.json",
+      frame: "Research decision",
+    };
+  }
+
+  if (activeQuestion) {
+    return guidanceForQuestion(activeQuestion);
+  }
+
+  if (currentProgress?.readyForReview && !currentProgress.depthConfirmed) {
+    return {
+      banner: `DEPTH CHECK / ${stageLabel(currentProgress.stage).toLowerCase()}`,
+      title: "Confirm the stage has enough signal",
+      nextAction: `${currentProgress.answered}/${currentProgress.total} load-bearing answers are captured. Confirm the depth gate when the stage is ready.`,
+      artifact: stageArtifact(currentProgress.stage),
+      frame: stagePromptFrame(currentProgress.stage),
+    };
+  }
+
+  return {
+    banner: "QUESTIONING / project",
+    title: "Keep the next answer load-bearing",
+    nextAction: "Capture the next answer that should affect requirements, milestone scope, or verification.",
+    artifact: ".gsd/PROJECT.md",
+    frame: "Project discussion",
+  };
+}
+
+function guidanceForQuestion(question: DiscussQuestion): WorkflowGuidance {
+  return {
+    banner: question.stage === "requirements" ? "REQUIREMENTS" : `QUESTIONING / ${stageLabel(question.stage).toLowerCase()}`,
+    title: question.stage === "requirements" ? "Keep capabilities testable" : "Ask one focused question",
+    nextAction: question.prompt,
+    artifact: stageArtifact(question.stage),
+    frame: stagePromptFrame(question.stage),
+  };
+}
+
+function stageArtifact(stage: DiscussStage): string {
+  switch (stage) {
+    case "project":
+      return ".gsd/PROJECT.md";
+    case "requirements":
+      return ".gsd/REQUIREMENTS.md";
+    case "milestone":
+      return ".gsd/milestones/M###/M###-CONTEXT.md";
+  }
+}
+
+function stagePromptFrame(stage: DiscussStage): string {
+  switch (stage) {
+    case "project":
+      return "Project discussion";
+    case "requirements":
+      return "Requirements";
+    case "milestone":
+      return "Milestone discussion";
+  }
+}
+
+function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidance }) {
+  return (
+    <section className="plan-guidance-card" data-testid="workflow-guidance-card">
+      <div className="plan-guidance-card__main">
+        <div className="plan-guidance-card__banner" data-testid="workflow-guidance-banner">
+          {guidance.banner}
+        </div>
+        <strong>{guidance.title}</strong>
+        <p data-testid="workflow-guidance-next-action">{guidance.nextAction}</p>
+      </div>
+      <dl className="plan-guidance-card__meta">
+        <div>
+          <dt>Artifact</dt>
+          <dd data-testid="workflow-guidance-artifact">{guidance.artifact}</dd>
+        </div>
+        <div>
+          <dt>Prompt frame</dt>
+          <dd>{guidance.frame}</dd>
+        </div>
+      </dl>
+    </section>
+  );
 }
 
 function WorkflowPreferencesCard({

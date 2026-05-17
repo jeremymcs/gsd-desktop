@@ -17,7 +17,7 @@
 - [x] **S01: Workflow Preferences Bootstrap** `risk:medium` `depends:[M003]`
   > After this: users can apply recommended workflow defaults, see the saved state, and get `.gsd/PREFERENCES.md` plus `.gsd/runtime/research-decision.json` generated from the planning database.
 
-- [ ] **S02: Prompt-Guided Stage Framing** `risk:medium` `depends:[S01]`
+- [x] **S02: Prompt-Guided Stage Framing** `risk:medium` `depends:[S01]`
   > After this: DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, and SHIP screens expose the next useful prompt-framed action without relying on hidden agent instructions.
 
 - [ ] **S03: Preference Change Control** `risk:high` `depends:[S01]`
