@@ -380,6 +380,7 @@ export default function App() {
   const selectedSessionKey = selectedWorkspace && selectedSession ? `${selectedWorkspace.id}:${selectedSession.id}` : "";
   const isTerminalVisibleForSelectedThread = Boolean(selectedSessionKey) && openTerminalSessionKeys.has(selectedSessionKey);
   const isTerminalTakeoverForSelectedThread = Boolean(selectedSessionKey) && takeoverTerminalSessionKeys.has(selectedSessionKey);
+  const previousTerminalSessionKeyRef = useRef("");
   const activeTranscript =
     selectedTranscript &&
     selectedWorkspace &&
@@ -404,6 +405,14 @@ export default function App() {
       setTakeoverTerminalSessionKeys(new Set());
     }
   }, [snapshot]);
+  useEffect(() => {
+    const previousSessionKey = previousTerminalSessionKeyRef.current;
+    if (previousSessionKey && previousSessionKey !== selectedSessionKey) {
+      setOpenTerminalSessionKeys(new Set());
+      setTakeoverTerminalSessionKeys(new Set());
+    }
+    previousTerminalSessionKeyRef.current = selectedSessionKey;
+  }, [selectedSessionKey]);
   const selectedExtensionDock = useMemo(() => buildExtensionDockModel(selectedExtensionUi), [selectedExtensionUi]);
   const displayedSessionTitle = selectedExtensionUi?.title ?? selectedSession?.title ?? "";
   const activeExtensionDialog = selectedExtensionUi?.pendingDialogs[0];
