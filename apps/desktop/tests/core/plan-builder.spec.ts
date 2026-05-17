@@ -376,10 +376,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     }).toBe("missing");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
+    await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await nameMemory.getByRole("button", { name: "Edit" }).click();
     await window.getByTestId("plan-revision-textarea").fill("Launch Control Revised");
     await nameMemory.getByRole("button", { name: "Save revision" }).click();
     await expect(nameMemory).toContainText("Launch Control Revised");
+    await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("written");
 
@@ -490,6 +492,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" }).getByTestId("plan-idea-status"),
     ).toHaveText("Dismissed");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Launch Control Revised");
+    await expect(
+      window
+        .getByTestId("plan-answer-history")
+        .locator(".plan-memory__item")
+        .filter({ hasText: "Name" })
+        .getByTestId("plan-memory-question"),
+    ).toHaveText("What should we call this project?");
     const persistedProjectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
     expect(persistedProjectProjection).toContain("# Project: Launch Control Revised");
     await expect.poll(async () => {

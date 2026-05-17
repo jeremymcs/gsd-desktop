@@ -3400,6 +3400,13 @@
   white-space: pre-wrap;
 }
 
+.plan-memory__item .plan-memory__question {
+  max-height: none;
+  color: #d9dce3;
+  font-size: 12px;
+  font-weight: 620;
+}
+
 .plan-memory__item .plan-memory__note {
   color: #d0b779;
   font-size: 12px;
@@ -3591,6 +3598,10 @@
 .canvas--plans .plan-guidance-card p,
 .canvas--plans .plan-memory__item p {
   color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-memory__item .plan-memory__question {
+  color: var(--plan-header-text);
 }
 
 .canvas--plans .plan-create,

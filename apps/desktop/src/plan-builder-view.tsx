@@ -1400,6 +1400,7 @@ export function PlanBuilderView({
                 <div className="plan-memory__title">Discussion memory</div>
                 {latestAnswers.map((answer) => {
                   const question = getDiscussQuestion(answer.questionId);
+                  const prompt = answer.prompt || question?.prompt;
                   const isEditing = editingAnswerId === answer.id;
                   return (
                     <article className="plan-memory__item" key={answer.id}>
@@ -1416,6 +1417,11 @@ export function PlanBuilderView({
                           Edit
                         </button>
                       </div>
+                      {prompt ? (
+                        <p className="plan-memory__question" data-testid="plan-memory-question">
+                          {prompt}
+                        </p>
+                      ) : null}
                       {isEditing ? (
                         <div className="plan-memory__editor">
                           <textarea
