@@ -75,6 +75,7 @@ async function createAcceptedPlanFromQuestionCards(window: Page, planName: strin
 
 async function saveDoneExecutionEvidenceForAllTasks(window: Page): Promise<void> {
   const tasks = window.getByTestId("execution-task");
+  await expect(tasks.first()).toBeVisible();
   const taskCount = await tasks.count();
   expect(taskCount).toBeGreaterThan(0);
 
@@ -90,6 +91,7 @@ async function saveDoneExecutionEvidenceForAllTasks(window: Page): Promise<void>
 
 async function savePassedVerificationForAllTasks(window: Page): Promise<void> {
   const tasks = window.getByTestId("verify-task");
+  await expect(tasks.first()).toBeVisible();
   const taskCount = await tasks.count();
   expect(taskCount).toBeGreaterThan(0);
 
