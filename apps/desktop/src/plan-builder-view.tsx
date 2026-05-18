@@ -555,6 +555,29 @@ export function PlanBuilderView({
       });
   };
 
+  const parkLegacyReference = (reference: LegacyReferenceRecord) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    const text = reference.excerpt.trim() || reference.title.trim();
+    if (!text) {
+      return;
+    }
+    setSubmitting(true);
+    void onParkIdea({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      sourceStage: snapshot.activeStage,
+      sourceQuestionId: "legacy_reference",
+      sourcePrompt: `Legacy reference: ${reference.path}`,
+      text,
+      rationale: `Promoted from legacy Markdown reference ${reference.path}`,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const submitComposerFromKeyboard = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) {
       return;
@@ -1949,7 +1972,11 @@ export function PlanBuilderView({
             ) : null}
 
             {snapshot?.legacyReferences.length ? (
-              <LegacyReferencesPanel references={snapshot.legacyReferences} />
+              <LegacyReferencesPanel
+                references={snapshot.legacyReferences}
+                submitting={submitting}
+                onParkReference={parkLegacyReference}
+              />
             ) : null}
 
             <div className="plan-outline-card">
@@ -2600,7 +2627,15 @@ function PlanDashboard({
   );
 }
 
-function LegacyReferencesPanel({ references }: { readonly references: readonly LegacyReferenceRecord[] }) {
+function LegacyReferencesPanel({
+  references,
+  submitting,
+  onParkReference,
+}: {
+  readonly references: readonly LegacyReferenceRecord[];
+  readonly submitting: boolean;
+  readonly onParkReference: (reference: LegacyReferenceRecord) => void;
+}) {
   return (
     <section className="plan-legacy-references" data-testid="legacy-reference-list">
       <div className="plan-memory__title">Legacy references</div>
@@ -2611,6 +2646,14 @@ function LegacyReferencesPanel({ references }: { readonly references: readonly L
             <span>{reference.path}</span>
           </div>
           {reference.excerpt ? <p>{reference.excerpt}</p> : null}
+          <button
+            className="plan-inline-button"
+            disabled={submitting || (!reference.excerpt.trim() && !reference.title.trim())}
+            onClick={() => onParkReference(reference)}
+            type="button"
+          >
+            Park excerpt
+          </button>
         </article>
       ))}
     </section>

@@ -555,12 +555,24 @@ test("shows legacy GSD Markdown references and ignores generated projections", a
     await expect(references).toContainText(".gsd/legacy/BLUEPRINT.md");
     await expect(references).toContainText("Use prior planning notes as context, not canonical plan state.");
     await expect(references).not.toContainText("Generated Project");
+    await references.getByRole("button", { name: "Park excerpt" }).click();
+    const ideaPool = window.getByTestId("plan-idea-pool");
+    await expect(ideaPool).toContainText("Legacy reference: .gsd/legacy/BLUEPRINT.md");
+    await expect(ideaPool).toContainText("Use prior planning notes as context, not canonical plan state.");
 
     const state = await getDesktopState(window);
     const selectedPlan = state.planningByWorkspace[state.selectedWorkspaceId]?.selectedPlan;
     expect(selectedPlan?.legacyReferences).toHaveLength(1);
     expect(selectedPlan?.legacyReferences[0]?.path).toBe(".gsd/legacy/BLUEPRINT.md");
     expect(selectedPlan?.project.title).toBeUndefined();
+    const promotedIdea = selectedPlan?.parkedItems.find((item) =>
+      item.rationale.includes(".gsd/legacy/BLUEPRINT.md"),
+    );
+    expect(promotedIdea?.text).toBe("Use prior planning notes as context, not canonical plan state.");
+    expect(promotedIdea?.rationale).toContain("Promoted from legacy Markdown reference .gsd/legacy/BLUEPRINT.md");
+    await expect(readFile(join(workspacePath, ".gsd", "legacy", "BLUEPRINT.md"), "utf8")).resolves.toContain(
+      "Use prior planning notes as context, not canonical plan state.",
+    );
 
     await harness.close();
     harness = await launchDesktop(userDataDir, {
@@ -571,6 +583,9 @@ test("shows legacy GSD Markdown references and ignores generated projections", a
     await waitForWorkspaceByPath(reopenedWindow, workspacePath);
     await reopenedWindow.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(reopenedWindow.getByTestId("legacy-reference-list")).toContainText("Legacy Blueprint");
+    await expect(reopenedWindow.getByTestId("plan-idea-pool")).toContainText(
+      "Use prior planning notes as context, not canonical plan state.",
+    );
   } finally {
     await harness.close();
   }

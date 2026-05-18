@@ -4,11 +4,22 @@
 
 ## Tasks
 
-- [ ] Add reference action to park excerpt as an idea.
-- [ ] Preserve source path in the parked idea rationale.
-- [ ] Keep legacy Markdown read-only.
-- [ ] Cover promotion and restart in Electron.
+- [x] Add reference action to park excerpt as an idea.
+- [x] Preserve source path in the parked idea rationale.
+- [x] Keep legacy Markdown read-only.
+- [x] Cover promotion and restart in Electron.
 
 ## Acceptance
 
 - A promoted reference appears as a normal database-backed idea.
+
+## Evidence
+
+- `pnpm --filter @pi-gui/gsd-planning typecheck`
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "legacy GSD Markdown references"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:core`
+- `pnpm lint`
+- `pnpm run simplify`
+- `git diff --check`

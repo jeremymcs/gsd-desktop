@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Reference Promotion To Idea Pool** `risk:medium` `depends:[M033]`
+- [x] **S01: Reference Promotion To Idea Pool** `risk:medium` `depends:[M033]`
   > After this: legacy context can be deliberately moved into planning memory.
