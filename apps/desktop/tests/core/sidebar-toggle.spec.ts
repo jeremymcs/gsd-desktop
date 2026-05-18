@@ -36,6 +36,17 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     const toggle = window.getByTestId("sidebar-toggle");
     await expect(toggle).toBeVisible();
     await expect(window.locator(".sidebar")).toBeVisible();
+    const toggleBox = await toggle.boundingBox();
+    const shellBox = await window.locator(".shell").boundingBox();
+    const mainBox = await window.locator(".main").boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(shellBox).not.toBeNull();
+    expect(mainBox).not.toBeNull();
+    const toggleCenterX = (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0) / 2;
+    const toggleCenterY = (toggleBox?.y ?? 0) + (toggleBox?.height ?? 0) / 2;
+    const shellCenterY = (shellBox?.y ?? 0) + (shellBox?.height ?? 0) / 2;
+    expect(Math.abs(toggleCenterX - (mainBox?.x ?? 0))).toBeLessThanOrEqual(2);
+    expect(Math.abs(toggleCenterY - shellCenterY)).toBeLessThanOrEqual(2);
     const expandedMainBox = await window.locator(".main").boundingBox();
     expect(expandedMainBox).not.toBeNull();
 
