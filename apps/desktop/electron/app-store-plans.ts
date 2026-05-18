@@ -10,10 +10,18 @@ import {
   type PlanSnapshot,
   type PlanningStore,
   type RequirementRecord,
+  type TaskSessionLinkExecutionModelRecord,
   type WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
-import { normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
+import {
+  normalizeWorkflowPhaseModelPreferences,
+  resolveWorkflowPhaseModel,
+  workflowPhaseModelSourceLabel,
+  workflowPhaseModelValueLabel,
+  type ResolvedWorkflowPhaseModel,
+} from "../src/planning-phase-models";
 import { sessionKey } from "@pi-gui/pi-sdk-driver";
+import type { CreateSessionOptions } from "@pi-gui/session-driver";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import type {
@@ -1391,14 +1399,22 @@ export async function linkPlanningTaskSession(
       }
 
       const createOptions = (await store.buildCreateSessionOptions(workspace.id)) ?? {};
+      const executionModel = resolveWorkflowPhaseModel({
+        phase: "execute",
+        projectOverrides: snapshot.workflowPreferences?.models.phaseOverrides,
+        globalPhaseModels: store.state.globalPlanningPreferences.phaseModels,
+        sessionDefault: createOptions.initialModel
+          ? { providerId: createOptions.initialModel.provider, modelId: createOptions.initialModel.modelId }
+          : undefined,
+      });
       const session = await store.driver.createSession(workspaceRef, {
-        ...createOptions,
+        ...createOptionsWithResolvedModel(createOptions, executionModel),
         title: buildTaskSessionTitle(input),
       });
       const key = sessionKey(session.ref);
       store.sessionState.transcriptCache.set(key, []);
       store.sessionState.loadedTranscriptKeys.add(key);
-      store.sessionState.composerDraftsBySession.set(key, buildTaskExecutionBrief(snapshot, taskContext));
+      store.sessionState.composerDraftsBySession.set(key, buildTaskExecutionBrief(snapshot, taskContext, executionModel));
       store.updateSessionConfig(session.ref, session.config);
       await store.refreshState({
         selectedWorkspaceId: store.state.selectedWorkspaceId,
@@ -1419,6 +1435,7 @@ export async function linkPlanningTaskSession(
             workspaceId: session.ref.workspaceId,
             sessionId: session.ref.sessionId,
             title: buildTaskSessionTitle(input),
+            executionModel: toTaskSessionExecutionModelRecord(executionModel),
           },
         },
       });
@@ -2155,7 +2172,38 @@ function buildTaskSessionTitle(input: LinkPlanningTaskSessionInput): string {
   return title.length > 90 ? `${title.slice(0, 87)}...` : title;
 }
 
-function buildTaskExecutionBrief(snapshot: PlanSnapshot, context: AcceptedPlanTaskContext): string {
+function createOptionsWithResolvedModel(
+  createOptions: CreateSessionOptions,
+  executionModel: ResolvedWorkflowPhaseModel,
+): CreateSessionOptions {
+  if (!executionModel.providerId || !executionModel.modelId) {
+    return createOptions;
+  }
+
+  return {
+    ...createOptions,
+    initialModel: {
+      provider: executionModel.providerId,
+      modelId: executionModel.modelId,
+    },
+  };
+}
+
+function toTaskSessionExecutionModelRecord(
+  executionModel: ResolvedWorkflowPhaseModel,
+): TaskSessionLinkExecutionModelRecord {
+  return {
+    source: executionModel.source,
+    ...(executionModel.providerId ? { providerId: executionModel.providerId } : {}),
+    ...(executionModel.modelId ? { modelId: executionModel.modelId } : {}),
+  };
+}
+
+function buildTaskExecutionBrief(
+  snapshot: PlanSnapshot,
+  context: AcceptedPlanTaskContext,
+  executionModel: ResolvedWorkflowPhaseModel,
+): string {
   const requirementsById = new Map<string, RequirementRecord>(
     getPlanningRequirementRows(snapshot).map((requirement) => [requirement.id, requirement]),
   );
@@ -2178,6 +2226,11 @@ function buildTaskExecutionBrief(snapshot: PlanSnapshot, context: AcceptedPlanTa
     `- Slice: ${context.slice.id} - ${context.slice.title}`,
     `- Task: ${context.task.id} - ${context.task.title}`,
     `- Dependencies: ${formatExecutionBriefList(context.task.dependencies)}`,
+    "",
+    "## Execution Model",
+    "",
+    `- Source: ${workflowPhaseModelSourceLabel(executionModel.source)}`,
+    `- Model: ${workflowPhaseModelValueLabel(executionModel)}`,
     "",
     "## Acceptance",
     "",

@@ -393,6 +393,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           workspaceId: payload.link.workspaceId,
           sessionId: payload.link.sessionId,
           title: payload.link.title,
+          ...(payload.link.executionModel ? { executionModel: payload.link.executionModel } : {}),
           createdAt: event.createdAt,
         });
         break;

@@ -122,6 +122,52 @@ async function reachShipFromComposer(window: Page, planName: string): Promise<vo
   await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
 }
 
+test("uses global EXECUTE model when the project has no override", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-global-execute-model");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.evaluate(async () => {
+      const app = window.piApp;
+      if (!app) {
+        throw new Error("piApp IPC bridge is unavailable");
+      }
+      await app.setGlobalPlanningPhaseModels({
+        phaseModels: {
+          execute: { providerId: "openai", modelId: "gpt-5" },
+        },
+      });
+    });
+
+    await createAcceptedPlanFromComposer(window, "Global fallback plan");
+    await window.getByTestId("start-execution-button").click();
+    const task = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
+    await task.getByTestId("link-task-session-button").click();
+    await expect(task.getByTestId("execution-task-link")).toContainText("Execution model: global default (openai/gpt-5)");
+
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Global fallback plan")
+        ?.selectedPlan;
+      return plan?.taskSessionLinks.find((link) => link.taskId === "T1")?.executionModel;
+    }).toEqual({
+      source: "global-default",
+      providerId: "openai",
+      modelId: "gpt-5",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };
@@ -1417,13 +1463,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("global-phase-model-select-discuss")).toBeVisible();
     await window.getByTestId("global-phase-model-select-discuss").selectOption("openai:gpt-5");
     await window.getByTestId("global-phase-model-select-research").selectOption("openai:gpt-4o");
+    await window.getByTestId("global-phase-model-select-execute").selectOption("openai:gpt-5");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       return [
         state.globalPlanningPreferences.phaseModels.discuss?.modelId,
         state.globalPlanningPreferences.phaseModels.research?.modelId,
+        state.globalPlanningPreferences.phaseModels.execute?.modelId,
       ].join(":");
-    }).toBe("gpt-5:gpt-4o");
+    }).toBe("gpt-5:gpt-4o:gpt-5");
 
     await window.getByRole("button", { name: "Back to app", exact: true }).click();
     await window.getByRole("button", { name: "Plans", exact: true }).click();
@@ -1762,6 +1810,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const primaryExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
     await primaryExecutionTask.getByTestId("link-task-session-button").click();
     await expect(primaryExecutionTask.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
+    await expect(primaryExecutionTask.getByTestId("execution-task-link")).toContainText(
+      "Execution model: project override (openai/gpt-4o)",
+    );
     let linkedSessionId = "";
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -1775,6 +1826,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
     await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T1: Implement and verify the slice/);
     await expect(window.getByTestId("composer")).toHaveValue(/Dependencies: None/);
+    await expect(window.getByTestId("composer")).toHaveValue(/Source: project override/);
+    await expect(window.getByTestId("composer")).toHaveValue(/Model: openai\/gpt-4o/);
     await expect(window.getByTestId("composer")).toHaveValue(/R001 \(active, functional\): First useful version capabilities/);
     await expect(window.getByTestId("composer")).toHaveValue(/Evidence should prove: No lost answers/);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
@@ -1875,6 +1928,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       return (
         state.globalPlanningPreferences.phaseModels.discuss?.modelId === "gpt-5" &&
         state.globalPlanningPreferences.phaseModels.research?.modelId === "gpt-4o" &&
+        state.globalPlanningPreferences.phaseModels.execute?.modelId === "gpt-5" &&
         Object.values(state.planningByWorkspace).some(
           (entry) =>
             entry.selectedPlan?.name === "Launch plan" &&
@@ -1937,7 +1991,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Drop onboarding banner" && item.reviewStatus === "dismissed",
           ) &&
-          entry.selectedPlan.taskSessionLinks.some((link) => link.taskId === "T1" && link.sessionId.length > 0) &&
+          entry.selectedPlan.taskSessionLinks.some(
+            (link) =>
+              link.taskId === "T1" &&
+              link.sessionId.length > 0 &&
+              link.executionModel?.source === "project-override" &&
+              link.executionModel.modelId === "gpt-4o",
+          ) &&
           entry.selectedPlan.taskExecutions.some(
             (task) =>
               task.taskId === "T1" &&

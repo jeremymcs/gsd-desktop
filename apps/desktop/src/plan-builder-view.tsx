@@ -105,6 +105,8 @@ import {
   phaseModelPreferenceFromValue,
   phaseModelPreferenceToValue,
   planningPhaseModelOptions,
+  workflowPhaseModelSourceLabel,
+  workflowPhaseModelValueLabel,
 } from "./planning-phase-models";
 
 const planPhases: readonly { readonly id: PlanPhase; readonly label: string }[] = [
@@ -3476,6 +3478,9 @@ function PlanExecutionQueue({
                               <>
                                 <span className="plan-execution-task__link" data-testid="execution-task-link">
                                   Linked session: {linkedSession.title}
+                                  {linkedSession.executionModel
+                                    ? ` · Execution model: ${formatTaskSessionExecutionModel(linkedSession)}`
+                                    : ""}
                                 </span>
                                 <button
                                   className="plan-secondary-button plan-secondary-button--compact"
@@ -4694,6 +4699,13 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
     case "done":
       return "Done";
   }
+}
+
+function formatTaskSessionExecutionModel(link: TaskSessionLinkRecord): string {
+  if (!link.executionModel) {
+    return "not configured";
+  }
+  return `${workflowPhaseModelSourceLabel(link.executionModel.source)} (${workflowPhaseModelValueLabel(link.executionModel)})`;
 }
 
 function formatTaskVerificationStatus(status: TaskVerificationStatus | undefined): string {

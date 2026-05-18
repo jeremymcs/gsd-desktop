@@ -83,7 +83,20 @@ export interface TaskSessionLinkRecord {
   readonly workspaceId: string;
   readonly sessionId: string;
   readonly title: string;
+  readonly executionModel?: TaskSessionLinkExecutionModelRecord;
   readonly createdAt: string;
+}
+
+export type TaskSessionLinkExecutionModelSource =
+  | "project-override"
+  | "global-default"
+  | "session-default"
+  | "not-configured";
+
+export interface TaskSessionLinkExecutionModelRecord {
+  readonly source: TaskSessionLinkExecutionModelSource;
+  readonly providerId?: string;
+  readonly modelId?: string;
 }
 
 export type TaskExecutionStatus = "not-started" | "in-progress" | "blocked" | "done";

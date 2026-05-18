@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Resolve project EXECUTE override before global fallback.
-- [ ] Include resolved model metadata in the task handoff state.
-- [ ] Keep UI labels provider-neutral.
-- [ ] Cover global and project override cases.
+- [x] Resolve project EXECUTE override before global fallback.
+- [x] Include resolved model metadata in the task handoff state.
+- [x] Keep UI labels provider-neutral.
+- [x] Cover global and project override cases.
 
 ## Acceptance
 

@@ -15,7 +15,7 @@
 - [x] **S01: Task Execution Brief** `risk:high` `depends:[M024]`
   > After this: opening a task session creates a concise execution brief from accepted plan state and linked requirements.
 
-- [ ] **S02: Phase Model Handoff** `risk:medium` `depends:[S01]`
+- [x] **S02: Phase Model Handoff** `risk:medium` `depends:[S01]`
   > After this: task execution handoff can resolve the effective EXECUTE phase model from project override or global default.
 
 - [ ] **S03: Evidence Back-Link** `risk:medium` `depends:[S01,S02]`

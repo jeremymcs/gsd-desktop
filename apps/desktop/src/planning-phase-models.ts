@@ -1,5 +1,6 @@
 import type {
   PlanPhase,
+  TaskSessionLinkExecutionModelSource,
   WorkflowPhaseModelPreference,
   WorkflowPhaseModelPreferences,
 } from "@pi-gui/gsd-planning";
@@ -49,4 +50,64 @@ export function phaseModelPreferenceFromValue(value: string): WorkflowPhaseModel
     return undefined;
   }
   return { providerId, modelId };
+}
+
+export interface ResolvedWorkflowPhaseModel {
+  readonly source: TaskSessionLinkExecutionModelSource;
+  readonly providerId?: string;
+  readonly modelId?: string;
+}
+
+export function resolveWorkflowPhaseModel({
+  phase,
+  projectOverrides,
+  globalPhaseModels,
+  sessionDefault,
+}: {
+  readonly phase: PlanPhase;
+  readonly projectOverrides?: WorkflowPhaseModelPreferences;
+  readonly globalPhaseModels?: WorkflowPhaseModelPreferences;
+  readonly sessionDefault?: WorkflowPhaseModelPreference;
+}): ResolvedWorkflowPhaseModel {
+  const projectOverride = normalizeWorkflowPhaseModelPreference(projectOverrides?.[phase]);
+  if (projectOverride) {
+    return { source: "project-override", ...projectOverride };
+  }
+
+  const globalDefault = normalizeWorkflowPhaseModelPreference(globalPhaseModels?.[phase]);
+  if (globalDefault) {
+    return { source: "global-default", ...globalDefault };
+  }
+
+  const fallback = normalizeWorkflowPhaseModelPreference(sessionDefault);
+  if (fallback) {
+    return { source: "session-default", ...fallback };
+  }
+
+  return { source: "not-configured" };
+}
+
+export function workflowPhaseModelSourceLabel(source: TaskSessionLinkExecutionModelSource): string {
+  switch (source) {
+    case "project-override":
+      return "project override";
+    case "global-default":
+      return "global default";
+    case "session-default":
+      return "session default";
+    case "not-configured":
+      return "not configured";
+  }
+}
+
+export function workflowPhaseModelValueLabel(model: ResolvedWorkflowPhaseModel): string {
+  return model.providerId && model.modelId ? `${model.providerId}/${model.modelId}` : "None";
+}
+
+function normalizeWorkflowPhaseModelPreference(
+  preference: WorkflowPhaseModelPreference | undefined,
+): WorkflowPhaseModelPreference | undefined {
+  const providerId = preference?.providerId.trim() ?? "";
+  const modelId = preference?.modelId.trim() ?? "";
+  return providerId && modelId ? { providerId, modelId } : undefined;
 }
