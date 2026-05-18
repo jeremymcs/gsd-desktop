@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { flushSync } from "react-dom";
 import type {
   NavigateSessionTreeOptions,
   SessionTreeNodeKind,
@@ -101,6 +102,13 @@ export function TreeModal({
     if (autoScrollRequest !== 0) {
       setAutoScrollRequest(0);
     }
+  };
+
+  const selectTreeRow = (nodeId: string) => {
+    cancelAutoScroll();
+    flushSync(() => {
+      setSelectedId(nodeId);
+    });
   };
 
   useEffect(() => {
@@ -346,12 +354,10 @@ export function TreeModal({
                         title={buildTreeRowLine(row, currentLeafId)}
                         type="button"
                         onClick={() => {
-                          cancelAutoScroll();
-                          setSelectedId(row.node.id);
+                          selectTreeRow(row.node.id);
                         }}
                         onDoubleClick={() => {
-                          cancelAutoScroll();
-                          setSelectedId(row.node.id);
+                          selectTreeRow(row.node.id);
                           if (row.node.id !== currentLeafId) {
                             setStep("summary");
                           }
