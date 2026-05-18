@@ -105,6 +105,7 @@ export interface TaskProjection {
   readonly id: string;
   readonly title: string;
   readonly status?: "pending" | "active" | "done";
+  readonly requirementIds?: readonly string[];
   readonly description: string;
   readonly goal: string;
   readonly mustHaves: {
@@ -129,7 +130,7 @@ export function generatePlanningProjections(input: GeneratePlanningProjectionsIn
     {
       kind: "requirements",
       path: ".gsd/REQUIREMENTS.md",
-      content: withHeader(header, renderRequirements(input.plan.requirements)),
+      content: withHeader(header, renderRequirements(input.plan.requirements, milestones)),
     },
     {
       kind: "state",
@@ -257,7 +258,10 @@ function renderProject(
   ].join("\n");
 }
 
-function renderRequirements(requirements: readonly RequirementRecord[]): string {
+function renderRequirements(
+  requirements: readonly RequirementRecord[],
+  milestones: readonly MilestoneProjection[],
+): string {
   const sections: Array<{ readonly title: string; readonly status: RequirementStatus }> = [
     { title: "Active", status: "active" },
     { title: "Validated", status: "validated" },
@@ -278,6 +282,25 @@ function renderRequirements(requirements: readonly RequirementRecord[]): string 
   lines.push("|---|---|---|---|");
   for (const requirement of requirements) {
     lines.push(`| ${requirement.id} | ${requirement.owner} | ${requirement.source} | ${requirement.validationStatus} |`);
+  }
+  if (requirements.length === 0) {
+    lines.push("| _None_ | _None_ | _None_ | _None_ |");
+  }
+  lines.push("");
+  lines.push("## Plan Coverage", "");
+  lines.push("| ID | Status | Coverage | Plan Items |");
+  lines.push("|---|---|---|---|");
+  const coverageMap = buildRequirementCoverageMap(milestones);
+  for (const requirement of requirements) {
+    const planItems = coverageMap.get(requirement.id) ?? [];
+    lines.push(
+      [
+        requirement.id,
+        requirement.status,
+        formatRequirementCoverage(requirement, planItems),
+        planItems.length > 0 ? planItems.join(", ") : "_None_",
+      ].map(escapeTableCell).join(" | ").replace(/^/, "| ").concat(" |"),
+    );
   }
   if (requirements.length === 0) {
     lines.push("| _None_ | _None_ | _None_ | _None_ |");
@@ -488,8 +511,10 @@ function derivePhasesFromMilestones(milestones: readonly MilestoneProjection[]):
 }
 
 function renderSliceLine(slice: SliceProjection): string {
+  const requirementIds = getSliceRequirementIds(slice);
+  const requirementLabel = requirementIds.length > 0 ? ` \`reqs:[${requirementIds.join(",")}]\`` : "";
   return [
-    `- [${slice.status === "done" ? "x" : " "}] **${slice.id}: ${slice.title}** \`risk:${slice.risk}\` \`depends:[${slice.depends.join(",")}]\``,
+    `- [${slice.status === "done" ? "x" : " "}] **${slice.id}: ${slice.title}** \`risk:${slice.risk}\` \`depends:[${slice.depends.join(",")}]\`${requirementLabel}`,
     `  > After this: ${slice.demo}`,
   ].join("\n");
 }
@@ -572,10 +597,7 @@ function renderSlicePlan(slice: SliceProjection): string {
     "",
     "## Tasks",
     "",
-    slice.tasks.map((task) => [
-      `- [${task.status === "done" ? "x" : " "}] **${task.id}: ${task.title}**`,
-      `  ${task.description}`,
-    ].join("\n")).join("\n\n") || "_No tasks planned._",
+    slice.tasks.map(renderSliceTaskLine).join("\n\n") || "_No tasks planned._",
     "",
     "## Files Likely Touched",
     renderBullets(slice.filesLikelyTouched ?? []),
@@ -588,6 +610,7 @@ function renderTaskPlan(milestone: MilestoneProjection, slice: SliceProjection, 
     "",
     `**Slice:** ${slice.id}`,
     `**Milestone:** ${milestone.id}`,
+    `**Requirements:** ${formatRequirementRefs(task.requirementIds ?? [])}`,
     "",
     "## Goal",
     "",
@@ -620,12 +643,64 @@ function renderNumbered(items: readonly string[]): string {
   return items.length > 0 ? items.map((item, index) => `${index + 1}. ${item}`).join("\n") : "1. No steps recorded.";
 }
 
+function unique(values: readonly string[]): readonly string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 function renderIndentedLines(items: readonly string[]): string {
   return items.length > 0 ? items.map((item) => `  ${item}`).join("\n") : "  nothing";
 }
 
 function countRequirements(requirements: readonly RequirementRecord[], status: RequirementStatus): number {
   return requirements.filter((requirement) => requirement.status === status).length;
+}
+
+function buildRequirementCoverageMap(milestones: readonly MilestoneProjection[]): Map<string, string[]> {
+  const coverage = new Map<string, string[]>();
+  for (const milestone of milestones) {
+    for (const slice of milestone.slices) {
+      for (const task of slice.tasks) {
+        const taskPath = `${milestone.id}/${slice.id}/${task.id}`;
+        for (const requirementId of unique(task.requirementIds ?? [])) {
+          const entries = coverage.get(requirementId) ?? [];
+          entries.push(taskPath);
+          coverage.set(requirementId, entries);
+        }
+      }
+    }
+  }
+  return coverage;
+}
+
+function formatRequirementCoverage(requirement: RequirementRecord, planItems: readonly string[]): string {
+  if (requirement.status === "deferred") {
+    return "deferred";
+  }
+  if (requirement.status === "out-of-scope") {
+    return "out-of-scope";
+  }
+  return planItems.length > 0 ? "covered" : "uncovered";
+}
+
+function getSliceRequirementIds(slice: SliceProjection): readonly string[] {
+  return unique(slice.tasks.flatMap((task) => task.requirementIds ?? []));
+}
+
+function renderSliceTaskLine(task: TaskProjection): string {
+  const lines = [
+    `- [${task.status === "done" ? "x" : " "}] **${task.id}: ${task.title}**`,
+    `  ${task.description}`,
+  ];
+  const requirementIds = task.requirementIds ?? [];
+  if (requirementIds.length > 0) {
+    lines.push(`  Reqs: ${formatRequirementRefs(requirementIds)}`);
+  }
+  return lines.join("\n");
+}
+
+function formatRequirementRefs(requirementIds: readonly string[]): string {
+  const refs = unique(requirementIds);
+  return refs.length > 0 ? refs.join(", ") : "None";
 }
 
 function formatActive(id: string | undefined, title: string | undefined): string {

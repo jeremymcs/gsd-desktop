@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add coverage tables to generated requirement or roadmap projections.
-- [ ] Include covered, uncovered, and deferred states.
-- [ ] Keep projection writes stable and atomic.
-- [ ] Cover projection output in package tests.
+- [x] Add coverage tables to generated requirement or roadmap projections.
+- [x] Include covered, uncovered, and deferred states.
+- [x] Keep projection writes stable and atomic.
+- [x] Cover projection output in package tests.
 
 ## Acceptance
 

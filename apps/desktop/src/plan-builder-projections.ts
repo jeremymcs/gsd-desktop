@@ -134,6 +134,7 @@ function toTaskProjection(
     id: fallbackId(task.id, "T", index),
     title,
     status: "pending",
+    requirementIds: unique(task.requirementIds),
     description: title,
     goal: acceptance,
     mustHaves: {

@@ -1735,10 +1735,14 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(requirementsProjection).toContain("Create a plan, ask focused questions, save answers, and resume after restart.");
     expect(requirementsProjection).toContain("### R002: Quality bar");
     expect(requirementsProjection).toContain("| R001 | M1/none yet | user | unvalidated |");
+    expect(requirementsProjection).toContain("## Plan Coverage");
+    expect(requirementsProjection).toContain("| R001 | active | covered | M1/S1/T1 |");
+    expect(requirementsProjection).toContain("| R003 | active | uncovered | _None_ |");
     expect(requirementsProjection).toContain("Active: 4");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
     expect(roadmapProjection).toContain("**Phase:** P2 - Hardening");
+    expect(roadmapProjection).toContain("`reqs:[R001,R002]`");
     expect(projectProjection).toContain("## Phase Sequence");
     expect(projectProjection).toContain("P2: Hardening");
     const milestoneContextProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-CONTEXT.md"), "utf8");
@@ -1748,6 +1752,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(sliceProjection).not.toContain("Review integration impact");
     const primaryTaskProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "tasks", "T1-PLAN.md"), "utf8");
     expect(primaryTaskProjection).toContain("No lost answers, projection state, and change-control persistence are verified.");
+    expect(primaryTaskProjection).toContain("**Requirements:** R001, R002");
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");

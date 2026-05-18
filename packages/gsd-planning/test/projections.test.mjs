@@ -43,12 +43,19 @@ test("renders the planning-phase projection file set with generated ownership he
       assert.match(file.content, /do-not-edit: true/);
     }
 
-    assert.match(files.find((file) => file.path === ".gsd/REQUIREMENTS.md")?.content ?? "", /### R001: Persist every answer/);
+    const requirements = files.find((file) => file.path === ".gsd/REQUIREMENTS.md")?.content ?? "";
+    assert.match(requirements, /### R001: Persist every answer/);
+    assert.match(requirements, /## Plan Coverage/);
+    assert.match(requirements, /\| R001 \| active \| covered \| M001\/S01\/T01 \|/);
+    assert.match(requirements, /\| R002 \| active \| uncovered \| _None_ \|/);
+    assert.match(requirements, /\| R003 \| deferred \| deferred \| _None_ \|/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Phase Sequence/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /P01: Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
+    assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /### Key Links/);
+    assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /\*\*Requirements:\*\* R001/);
 
     store.close();
   } finally {
@@ -355,6 +362,42 @@ function seedSnapshot(store) {
       },
     },
   });
+  snapshot = store.appendEvent({
+    planId: snapshot.id,
+    expectedRevision: snapshot.revision,
+    event: {
+      type: "requirement.upserted",
+      requirement: {
+        id: "R002",
+        title: "Review generated coverage",
+        class: "quality",
+        status: "active",
+        description: "Generated Markdown makes uncovered active requirements obvious.",
+        why: "Coverage should be reviewable without opening the database.",
+        source: "user",
+        owner: "M001/S01",
+        validationStatus: "missing",
+      },
+    },
+  });
+  snapshot = store.appendEvent({
+    planId: snapshot.id,
+    expectedRevision: snapshot.revision,
+    event: {
+      type: "requirement.upserted",
+      requirement: {
+        id: "R003",
+        title: "Deferred integration",
+        class: "integration",
+        status: "deferred",
+        description: "A later integration can wait until the next milestone.",
+        why: "The current milestone can ship without it.",
+        source: "user",
+        owner: "M002",
+        validationStatus: "partial",
+      },
+    },
+  });
   return snapshot;
 }
 
@@ -364,6 +407,7 @@ function makeProjectionInput(snapshot, options = {}) {
       id: "T01",
       title: "Package scaffold",
       status: "done",
+      requirementIds: ["R001"],
       description: "Create package metadata and types.",
       goal: "Expose a narrow package contract.",
       mustHaves: {
@@ -380,6 +424,7 @@ function makeProjectionInput(snapshot, options = {}) {
       id: "T02",
       title: "Second generated task",
       status: "pending",
+      requirementIds: [],
       description: "Create a removable generated task.",
       goal: "Prove stale generated files are removed.",
       mustHaves: {

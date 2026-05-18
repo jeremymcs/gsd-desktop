@@ -18,7 +18,7 @@
 - [x] **S02: Coverage Validation Gate** `risk:medium` `depends:[S01]`
   > After this: users see unknown and uncovered requirement warnings before accepting or executing a plan.
 
-- [ ] **S03: Coverage Projection** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Coverage Projection** `risk:medium` `depends:[S01,S02]`
   > After this: generated requirement and roadmap projections show which plan items cover each active requirement.
 
 ## Boundary Map
