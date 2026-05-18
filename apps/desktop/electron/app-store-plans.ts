@@ -623,6 +623,7 @@ export async function approvePlanningChangeProposal(
     title: input.taskTitle.trim(),
     acceptance: input.taskAcceptance.trim(),
     dependencies: input.dependencies.map((dependency) => dependency.trim()).filter(Boolean),
+    requirementIds: [],
   };
   if (!targetMilestoneId || !targetSliceId || !task.id || !task.title || !task.acceptance) {
     return store.withError("Approved changes need a target slice, task id, title, and acceptance");
@@ -1936,6 +1937,7 @@ function restoreTaskToAcceptedPlan(
               title: injection.title,
               acceptance: injection.acceptance,
               dependencies: injection.dependencies,
+              requirementIds: [],
             },
           ],
         };

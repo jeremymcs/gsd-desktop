@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Requirement References In PLAN** `risk:high` `depends:[M023]`
+- [x] **S01: Requirement References In PLAN** `risk:high` `depends:[M023]`
   > After this: PLAN task or slice rows can reference requirement IDs and accepted plan output persists those references.
 
 - [ ] **S02: Coverage Validation Gate** `risk:medium` `depends:[S01]`

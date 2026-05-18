@@ -76,7 +76,7 @@ import {
   buildPlanProposalDraft,
   nextPlanId,
   parsePlanProposal,
-  splitDependencies,
+  splitCommaSeparatedReferences,
   validatePlanProposal,
 } from "./plan-builder-plan";
 import { buildRequirementDrafts } from "./plan-builder-requirements";
@@ -763,7 +763,7 @@ export function PlanBuilderView({
       taskId: draft.taskId,
       taskTitle: draft.taskTitle,
       taskAcceptance: draft.taskAcceptance,
-      dependencies: splitDependencies(draft.dependencies),
+      dependencies: splitCommaSeparatedReferences(draft.dependencies),
     }).finally(() => {
       setSubmitting(false);
     });
@@ -782,7 +782,7 @@ export function PlanBuilderView({
       taskPath: draft.taskPath,
       taskTitle: draft.taskTitle,
       taskAcceptance: draft.taskAcceptance,
-      dependencies: splitDependencies(draft.dependencies),
+      dependencies: splitCommaSeparatedReferences(draft.dependencies),
     }).finally(() => {
       setSubmitting(false);
     });
@@ -1198,6 +1198,7 @@ export function PlanBuilderView({
                     title: "New task",
                     acceptance: "Define the acceptance signal.",
                     dependencies: [],
+                    requirementIds: [],
                   },
                 ],
               },
@@ -1274,6 +1275,7 @@ export function PlanBuilderView({
                       title: "New task",
                       acceptance: "Define the acceptance signal.",
                       dependencies: [],
+                      requirementIds: [],
                     },
                   ],
                 };
@@ -2792,11 +2794,28 @@ function PlanProposalEditor({
                           }
                           onChange={(event) =>
                             onUpdateTask(milestoneIndex, sliceIndex, taskIndex, {
-                              dependencies: splitDependencies(event.target.value),
+                              dependencies: splitCommaSeparatedReferences(event.target.value),
                             })
                           }
                           placeholder="T1, T2"
                           value={task.dependencies.join(", ")}
+                        />
+                      </label>
+                      <label className="plan-roadmap-form__field">
+                        <span>Requirement refs</span>
+                        <input
+                          data-testid={
+                            milestoneIndex === 0 && sliceIndex === 0 && taskIndex === 0
+                              ? "plan-task-requirements-input"
+                              : undefined
+                          }
+                          onChange={(event) =>
+                            onUpdateTask(milestoneIndex, sliceIndex, taskIndex, {
+                              requirementIds: splitCommaSeparatedReferences(event.target.value),
+                            })
+                          }
+                          placeholder="R001, R002"
+                          value={task.requirementIds.join(", ")}
                         />
                       </label>
                     </div>
@@ -3883,9 +3902,18 @@ function PlanProposalPreview({ proposal }: { readonly proposal: PlanningPlanProp
           </strong>
           <span>{milestone.outcome}</span>
           {milestone.slices.map((slice) => (
-            <span key={slice.id}>
-              {slice.id}: {slice.title} · {slice.tasks.length} task{slice.tasks.length === 1 ? "" : "s"}
-            </span>
+            <div className="plan-roadmap-preview__slice" key={slice.id}>
+              <span>
+                {slice.id}: {slice.title} · {slice.tasks.length} task{slice.tasks.length === 1 ? "" : "s"}
+              </span>
+              {slice.tasks
+                .filter((task) => task.requirementIds.length > 0)
+                .map((task) => (
+                  <span key={task.id}>
+                    {task.id}: Reqs {task.requirementIds.join(", ")}
+                  </span>
+                ))}
+            </div>
           ))}
         </div>
       ))}

@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Extend plan proposal task or slice records with requirement references.
-- [ ] Add UI controls for requirement ID selection or entry.
-- [ ] Persist accepted references in plan output events.
-- [ ] Cover replay and restart behavior.
+- [x] Extend plan proposal task or slice records with requirement references.
+- [x] Add UI controls for requirement ID selection or entry.
+- [x] Persist accepted references in plan output events.
+- [x] Cover replay and restart behavior.
 
 ## Acceptance
 

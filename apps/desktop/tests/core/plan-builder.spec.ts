@@ -1606,11 +1606,14 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(draftPlan).toContainText("Unknown dependency T404");
     await expect(draftPlan.getByRole("button", { name: "Accept plan" })).toBeDisabled();
     await window.getByTestId("plan-task-dependencies-input").fill("");
+    await window.getByTestId("plan-task-requirements-input").fill("R001, R002");
+    await expect(window.getByTestId("plan-task-requirements-input")).toHaveValue("R001, R002");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
     await window.getByRole("button", { name: "Stage plan" }).click();
     const proposedPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Proposed" });
     await proposedPlan.getByRole("button", { name: "Accept plan" }).click();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Reqs R001, R002");
     await expect(window.getByTestId("projection-summary")).toContainText("Projections");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "REQUIREMENTS.md"));
@@ -1940,6 +1943,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               output.status === "accepted" &&
               output.title === "Plan proposal" &&
               output.content.includes("\"phases\"") &&
+              output.content.includes("\"requirementIds\"") &&
+              output.content.includes("\"R001\"") &&
+              output.content.includes("\"R002\"") &&
               output.content.includes("Hardening"),
           ) &&
           entry.selectedPlan.generatedOutputs.some(

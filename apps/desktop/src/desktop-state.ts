@@ -369,6 +369,7 @@ export interface PlanningTaskDraft {
   readonly title: string;
   readonly acceptance: string;
   readonly dependencies: readonly string[];
+  readonly requirementIds: readonly string[];
 }
 
 export interface PlanningPhaseDraft {

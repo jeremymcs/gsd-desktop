@@ -2864,6 +2864,11 @@
   color: #f4f4f5;
 }
 
+.plan-roadmap-preview__slice {
+  display: grid;
+  gap: 2px;
+}
+
 .plan-research-form__field input {
   min-height: 42px;
   padding: 0 12px;

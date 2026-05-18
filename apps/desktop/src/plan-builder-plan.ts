@@ -55,6 +55,7 @@ export function buildPlanProposalDraft(
                 title: "Implement and verify the slice",
                 acceptance: qualityBar,
                 dependencies: [],
+                requirementIds: [],
               },
             ],
           },
@@ -216,10 +217,10 @@ export function nextPlanId(prefix: string, existingIds: readonly string[]): stri
   return `${prefix}${index}`;
 }
 
-export function splitDependencies(value: string): readonly string[] {
+export function splitCommaSeparatedReferences(value: string): readonly string[] {
   return value
     .split(",")
-    .map((dependency) => dependency.trim())
+    .map((reference) => reference.trim())
     .filter(Boolean);
 }
 
@@ -284,6 +285,9 @@ function normalizeTask(value: Partial<PlanningTaskDraft>): PlanningTaskDraft {
     acceptance: typeof value.acceptance === "string" ? value.acceptance : "",
     dependencies: Array.isArray(value.dependencies)
       ? value.dependencies.filter((dependency): dependency is string => typeof dependency === "string")
+      : [],
+    requirementIds: Array.isArray(value.requirementIds)
+      ? value.requirementIds.filter((requirementId): requirementId is string => typeof requirementId === "string")
       : [],
   };
 }
