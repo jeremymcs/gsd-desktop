@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add validation for unknown requirement IDs.
-- [ ] Summarize active requirements with no coverage.
-- [ ] Keep unknown references as blocking errors.
-- [ ] Treat uncovered active requirements as explicit warnings before EXECUTE.
+- [x] Add validation for unknown requirement IDs.
+- [x] Summarize active requirements with no coverage.
+- [x] Keep unknown references as blocking errors.
+- [x] Treat uncovered active requirements as explicit warnings before EXECUTE.
 
 ## Acceptance
 

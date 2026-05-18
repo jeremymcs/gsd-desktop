@@ -1606,8 +1606,21 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(draftPlan).toContainText("Unknown dependency T404");
     await expect(draftPlan.getByRole("button", { name: "Accept plan" })).toBeDisabled();
     await window.getByTestId("plan-task-dependencies-input").fill("");
-    await window.getByTestId("plan-task-requirements-input").fill("R001, R002");
-    await expect(window.getByTestId("plan-task-requirements-input")).toHaveValue("R001, R002");
+    const requirementRefs = window.getByTestId("plan-task-requirements-input");
+    await requirementRefs.fill("R999");
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Unknown requirement R999");
+    await window.getByRole("button", { name: "Stage plan" }).click();
+    const blockedRequirementPlan = window
+      .getByTestId("plan-output-proposed")
+      .locator(".plan-research-output")
+      .filter({ hasText: "Unknown requirement R999" });
+    await expect(blockedRequirementPlan).toContainText("Draft");
+    await expect(blockedRequirementPlan.getByRole("button", { name: "Accept plan" })).toBeDisabled();
+    await requirementRefs.fill("R001");
+    await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
+    await expect(window.getByTestId("plan-coverage-warnings").first()).toContainText("R002");
+    await requirementRefs.fill("R001, R002");
+    await expect(requirementRefs).toHaveValue("R001, R002");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
     await window.getByRole("button", { name: "Stage plan" }).click();
     const proposedPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Proposed" });

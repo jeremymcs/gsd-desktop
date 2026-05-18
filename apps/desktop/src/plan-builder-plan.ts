@@ -1,4 +1,4 @@
-import type { AnswerRecord, GeneratedOutputRecord, PlanSnapshot } from "@pi-gui/gsd-planning";
+import type { AnswerRecord, GeneratedOutputRecord, PlanSnapshot, RequirementRecord } from "@pi-gui/gsd-planning";
 import type {
   PlanningMilestoneDraft,
   PlanningPhaseDraft,
@@ -88,10 +88,14 @@ export function parsePlanProposal(content: string): PlanningPlanProposalDraft | 
   }
 }
 
-export function validatePlanProposal(proposal: PlanningPlanProposalDraft): readonly PlanningValidationIssue[] {
+export function validatePlanProposal(
+  proposal: PlanningPlanProposalDraft,
+  requirements: readonly RequirementRecord[] = [],
+): readonly PlanningValidationIssue[] {
   const issues: PlanningValidationIssue[] = [];
   const taskIds = new Set<string>();
   const dependencyGraph = new Map<string, readonly string[]>();
+  const requirementIds = new Set<string>(requirements.map((requirement) => requirement.id));
 
   if (!proposal.boundaryMap.trim()) {
     issues.push(issue("boundary", "Boundary map", "Boundary map is required before approval."));
@@ -185,6 +189,17 @@ export function validatePlanProposal(proposal: PlanningPlanProposalDraft): reado
           issues.push(issue(`task-${taskId || taskIndex}-acceptance`, taskPath, "Task acceptance is required."));
         }
         dependencyGraph.set(taskId, task.dependencies.map((dependency) => dependency.trim()).filter(Boolean));
+        for (const requirementId of task.requirementIds.map((entry) => entry.trim()).filter(Boolean)) {
+          if (!requirementIds.has(requirementId)) {
+            issues.push(
+              issue(
+                `requirement-${taskId || taskIndex}-${requirementId}`,
+                taskPath,
+                `Unknown requirement ${requirementId}.`,
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -206,6 +221,29 @@ export function validatePlanProposal(proposal: PlanningPlanProposalDraft): reado
   }
 
   return issues;
+}
+
+export function getPlanRequirementCoverageWarnings(
+  proposal: PlanningPlanProposalDraft,
+  requirements: readonly RequirementRecord[],
+): readonly PlanningValidationIssue[] {
+  const coveredRequirementIds = new Set(
+    proposal.milestones.flatMap((milestone) =>
+      milestone.slices.flatMap((slice) =>
+        slice.tasks.flatMap((task) => task.requirementIds.map((requirementId) => requirementId.trim()).filter(Boolean)),
+      ),
+    ),
+  );
+
+  return requirements
+    .filter((requirement) => requirement.status === "active" && !coveredRequirementIds.has(requirement.id))
+    .map((requirement) =>
+      issue(
+        `requirement-${requirement.id}-uncovered`,
+        "Requirement coverage",
+        `${requirement.id}: ${requirement.title} has no plan task coverage.`,
+      ),
+    );
 }
 
 export function nextPlanId(prefix: string, existingIds: readonly string[]): string {

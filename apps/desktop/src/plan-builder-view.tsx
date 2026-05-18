@@ -38,6 +38,7 @@ import type {
   PlanningProjectionSummary,
   PlanningSliceDraft,
   PlanningTaskDraft,
+  PlanningValidationIssue,
   ProposePlanningPlanInput,
   ProposePlanningResearchInput,
   RecordPlanningAnswerInput,
@@ -74,6 +75,7 @@ import {
 } from "./plan-builder-follow-ups";
 import {
   buildPlanProposalDraft,
+  getPlanRequirementCoverageWarnings,
   nextPlanId,
   parsePlanProposal,
   splitCommaSeparatedReferences,
@@ -327,7 +329,18 @@ export function PlanBuilderView({
     () => buildPlanProposalDraft(snapshot, latestAnswers, acceptedResearchOutputs),
     [acceptedResearchOutputs, latestAnswers, snapshot],
   );
-  const planValidationIssues = useMemo(() => validatePlanProposal(planProposal), [planProposal]);
+  const planValidationIssues = useMemo(
+    () => validatePlanProposal(planProposal, requirementRows),
+    [planProposal, requirementRows],
+  );
+  const planCoverageWarnings = useMemo(
+    () => getPlanRequirementCoverageWarnings(planProposal, requirementRows),
+    [planProposal, requirementRows],
+  );
+  const acceptedPlanCoverageWarnings = useMemo(
+    () => (acceptedPlanProposal ? getPlanRequirementCoverageWarnings(acceptedPlanProposal, requirementRows) : []),
+    [acceptedPlanProposal, requirementRows],
+  );
   const changeProposalsBySource = useMemo(
     () =>
       new Map(
@@ -1645,11 +1658,14 @@ export function PlanBuilderView({
             ) : allDiscussConfirmed && planStarted ? (
               <PlanProposalEditor
                 acceptedPlanOutputs={acceptedPlanOutputs}
+                acceptedCoverageWarnings={acceptedPlanCoverageWarnings}
+                coverageWarnings={planCoverageWarnings}
                 lastError={lastError}
                 pendingPlanOutputs={pendingPlanOutputs}
                 planProposal={planProposal}
                 projectionSummary={planningState?.projectionSummary}
                 rejectedPlanOutputs={rejectedPlanOutputs}
+                requirements={requirementRows}
                 roadmapStatus={roadmapStage?.status}
                 submitting={submitting}
                 validationIssues={planValidationIssues}
@@ -2484,11 +2500,14 @@ function formatGuidanceRollupCount(item: GuidanceRollupItem): string {
 
 function PlanProposalEditor({
   acceptedPlanOutputs,
+  acceptedCoverageWarnings,
+  coverageWarnings,
   lastError,
   pendingPlanOutputs,
   planProposal,
   projectionSummary,
   rejectedPlanOutputs,
+  requirements,
   roadmapStatus,
   submitting,
   validationIssues,
@@ -2512,11 +2531,14 @@ function PlanProposalEditor({
   onUpdateTask,
 }: {
   readonly acceptedPlanOutputs: readonly GeneratedOutputRecord[];
+  readonly acceptedCoverageWarnings: readonly PlanningValidationIssue[];
+  readonly coverageWarnings: readonly PlanningValidationIssue[];
   readonly lastError?: string;
   readonly pendingPlanOutputs: readonly GeneratedOutputRecord[];
   readonly planProposal: PlanningPlanProposalDraft;
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly rejectedPlanOutputs: readonly GeneratedOutputRecord[];
+  readonly requirements: readonly RequirementRecord[];
   readonly roadmapStatus?: StageStatus;
   readonly submitting: boolean;
   readonly validationIssues: readonly { readonly id: string; readonly path: string; readonly message: string }[];
@@ -2559,35 +2581,38 @@ function PlanProposalEditor({
       </div>
 
       {acceptedPlanOutputs.length > 0 ? (
-        <div
-          className={`plan-projection-card ${
-            projectionSummary?.conflicts.length ? "plan-projection-card--blocked" : ""
-          }`}
-          data-testid="projection-summary"
-        >
-          <div>
-            <strong>Projections</strong>
-            <span>{projectionStatus}</span>
+        <>
+          <div
+            className={`plan-projection-card ${
+              projectionSummary?.conflicts.length ? "plan-projection-card--blocked" : ""
+            }`}
+            data-testid="projection-summary"
+          >
+            <div>
+              <strong>Projections</strong>
+              <span>{projectionStatus}</span>
+            </div>
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              data-testid="regenerate-projections-button"
+              disabled={submitting}
+              onClick={onRegenerateProjections}
+              type="button"
+            >
+              Regenerate projections
+            </button>
+            <button
+              className="plan-action-button plan-action-button--compact"
+              data-testid="start-execution-button"
+              disabled={submitting || Boolean(projectionSummary?.conflicts.length)}
+              onClick={onStartExecution}
+              type="button"
+            >
+              Start execute
+            </button>
           </div>
-          <button
-            className="plan-secondary-button plan-secondary-button--compact"
-            data-testid="regenerate-projections-button"
-            disabled={submitting}
-            onClick={onRegenerateProjections}
-            type="button"
-          >
-            Regenerate projections
-          </button>
-          <button
-            className="plan-action-button plan-action-button--compact"
-            data-testid="start-execution-button"
-            disabled={submitting || Boolean(projectionSummary?.conflicts.length)}
-            onClick={onStartExecution}
-            type="button"
-          >
-            Start execute
-          </button>
-        </div>
+          <CoverageWarningPanel warnings={acceptedCoverageWarnings} />
+        </>
       ) : null}
 
       <form className="plan-roadmap-form" onSubmit={onProposePlan}>
@@ -2847,6 +2872,7 @@ function PlanProposalEditor({
         </button>
 
         <ValidationPanel issues={validationIssues} />
+        <CoverageWarningPanel warnings={coverageWarnings} />
         {lastError ? <div className="plan-error">{lastError}</div> : null}
 
         <button className="plan-action-button" disabled={submitting} type="submit">
@@ -2858,7 +2884,13 @@ function PlanProposalEditor({
         <div className="plan-research-list" data-testid="plan-output-proposed">
           <div className="plan-memory__title">Pending plan review</div>
           {pendingPlanOutputs.map((output) => (
-            <PlanOutputCard key={output.id} output={output} submitting={submitting} onReviewPlan={onReviewPlan} />
+            <PlanOutputCard
+              key={output.id}
+              output={output}
+              requirements={requirements}
+              submitting={submitting}
+              onReviewPlan={onReviewPlan}
+            />
           ))}
         </div>
       ) : null}
@@ -2867,7 +2899,13 @@ function PlanProposalEditor({
         <div className="plan-research-list" data-testid="plan-output-accepted">
           <div className="plan-memory__title">Accepted plan</div>
           {acceptedPlanOutputs.map((output) => (
-            <PlanOutputCard key={output.id} output={output} submitting={submitting} onReviewPlan={onReviewPlan} />
+            <PlanOutputCard
+              key={output.id}
+              output={output}
+              requirements={requirements}
+              submitting={submitting}
+              onReviewPlan={onReviewPlan}
+            />
           ))}
         </div>
       ) : null}
@@ -2876,7 +2914,13 @@ function PlanProposalEditor({
         <div className="plan-research-list" data-testid="plan-output-rejected">
           <div className="plan-memory__title">Rejected plan</div>
           {rejectedPlanOutputs.map((output) => (
-            <PlanOutputCard key={output.id} output={output} submitting={submitting} onReviewPlan={onReviewPlan} />
+            <PlanOutputCard
+              key={output.id}
+              output={output}
+              requirements={requirements}
+              submitting={submitting}
+              onReviewPlan={onReviewPlan}
+            />
           ))}
         </div>
       ) : null}
@@ -3843,19 +3887,39 @@ function ValidationPanel({
   );
 }
 
+function CoverageWarningPanel({ warnings }: { readonly warnings: readonly PlanningValidationIssue[] }) {
+  if (warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="plan-validation plan-validation--warning" data-testid="plan-coverage-warnings">
+      <strong>Coverage gaps</strong>
+      {warnings.map((warning) => (
+        <span key={warning.id}>
+          {warning.path}: {warning.message}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function PlanOutputCard({
   output,
+  requirements,
   submitting,
   onReviewPlan,
 }: {
   readonly output: GeneratedOutputRecord;
+  readonly requirements: readonly RequirementRecord[];
   readonly submitting: boolean;
   readonly onReviewPlan: (output: GeneratedOutputRecord, status: "accepted" | "rejected") => void;
 }) {
   const proposal = parsePlanProposal(output.content);
-  const issues = proposal ? validatePlanProposal(proposal) : [
+  const issues = proposal ? validatePlanProposal(proposal, requirements) : [
     { id: "parse", path: output.title, message: "Plan proposal content is invalid." },
   ];
+  const coverageWarnings = proposal ? getPlanRequirementCoverageWarnings(proposal, requirements) : [];
   const canAccept = output.status === "proposed" && issues.length === 0;
   return (
     <article className="plan-research-output">
@@ -3887,6 +3951,7 @@ function PlanOutputCard({
       </div>
       {proposal ? <PlanProposalPreview proposal={proposal} /> : <p>{output.content}</p>}
       {issues.length > 0 ? <ValidationPanel issues={issues} /> : null}
+      <CoverageWarningPanel warnings={coverageWarnings} />
     </article>
   );
 }

@@ -2839,6 +2839,12 @@
   color: #a9d8b1;
 }
 
+.plan-validation--warning {
+  border: 1px solid rgba(215, 178, 105, 0.34);
+  background: rgba(215, 178, 105, 0.08);
+  color: #d7b269;
+}
+
 .plan-roadmap-preview {
   display: grid;
   gap: 8px;
@@ -4210,6 +4216,12 @@
 .canvas--plans .plan-execution-task__status--passed,
 .canvas--plans .plan-execution-evidence span {
   color: var(--plan-success-text);
+}
+
+.canvas--plans .plan-validation--warning {
+  border-color: var(--plan-accent-border);
+  background: var(--plan-accent-bg);
+  color: var(--plan-accent);
 }
 
 .canvas--plans .plan-execution-evidence span {

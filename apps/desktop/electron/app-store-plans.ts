@@ -61,6 +61,7 @@ import {
   validatePlanProposal,
 } from "../src/plan-builder-plan";
 import { buildPlanningProjectionInput } from "../src/plan-builder-projections";
+import { buildRequirementDrafts } from "../src/plan-builder-requirements";
 import {
   discussStageOrder,
   getDiscussQuestionsForStage,
@@ -650,7 +651,7 @@ export async function approvePlanningChangeProposal(
       }
 
       const nextPlan = injectTaskIntoAcceptedPlan(acceptedPlan, targetMilestoneId, targetSliceId, task);
-      const validationIssues = validatePlanProposal(nextPlan);
+      const validationIssues = validatePlanProposal(nextPlan, getPlanningRequirementRows(snapshot));
       if (validationIssues.length > 0) {
         throw new Error(`Change approval blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
       }
@@ -754,7 +755,7 @@ export async function approvePlanningTaskModification(
         acceptance: taskAcceptance,
         dependencies,
       });
-      const validationIssues = validatePlanProposal(modified.proposal);
+      const validationIssues = validatePlanProposal(modified.proposal, getPlanningRequirementRows(snapshot));
       if (validationIssues.length > 0) {
         throw new Error(`Task modification blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
       }
@@ -853,7 +854,7 @@ export async function hidePlanningTask(
       }
 
       const hidden = hideTaskFromAcceptedPlan(acceptedPlan, taskPath);
-      const validationIssues = validatePlanProposal(hidden.proposal);
+      const validationIssues = validatePlanProposal(hidden.proposal, getPlanningRequirementRows(snapshot));
       if (validationIssues.length > 0) {
         throw new Error(`Task removal blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
       }
@@ -951,7 +952,7 @@ export async function restorePlanningTask(
       }
 
       const restored = restoreTaskToAcceptedPlan(acceptedPlan, injection);
-      const validationIssues = validatePlanProposal(restored);
+      const validationIssues = validatePlanProposal(restored, getPlanningRequirementRows(snapshot));
       if (validationIssues.length > 0) {
         throw new Error(`Task restore blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
       }
@@ -1236,7 +1237,7 @@ export async function proposePlanningPlan(
     return withPlanningStore(workspace.path, (planningStore) => {
       let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       assertAcceptedResearch(snapshot);
-      const validationIssues = validatePlanProposal(input.proposal);
+      const validationIssues = validatePlanProposal(input.proposal, getPlanningRequirementRows(snapshot));
 
       snapshot = planningStore.appendEvent({
         planId: input.planId,
@@ -1284,7 +1285,7 @@ export async function reviewPlanningPlan(
 
       if (input.status === "accepted") {
         const proposal = parsePlanProposal(output.content);
-        const validationIssues = proposal ? validatePlanProposal(proposal) : [
+        const validationIssues = proposal ? validatePlanProposal(proposal, getPlanningRequirementRows(snapshot)) : [
           { id: "plan-output", path: output.title, message: "Plan proposal content is invalid." },
         ];
         if (validationIssues.length > 0) {
@@ -1753,6 +1754,10 @@ const requirementValidationStatuses = new Set<RequirementRecord["validationStatu
   "missing",
 ]);
 
+function getPlanningRequirementRows(snapshot: PlanSnapshot): readonly RequirementRecord[] {
+  return snapshot.requirements.length > 0 ? snapshot.requirements : buildRequirementDrafts(snapshot);
+}
+
 function normalizeRequirement(requirement: RequirementRecord): RequirementRecord {
   const id = requirement.id.trim() as RequirementRecord["id"];
   const title = requirement.title.trim();
@@ -2043,7 +2048,7 @@ function assertAcceptedPlan(snapshot: PlanSnapshot): void {
     throw new Error("Accepted PLAN is required before EXECUTE can start");
   }
   const proposal = parsePlanProposal(acceptedPlan.content);
-  const validationIssues = proposal ? validatePlanProposal(proposal) : [
+  const validationIssues = proposal ? validatePlanProposal(proposal, getPlanningRequirementRows(snapshot)) : [
     { id: "plan-output", path: acceptedPlan.title, message: "Plan proposal content is invalid." },
   ];
   if (validationIssues.length > 0) {
