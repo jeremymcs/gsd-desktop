@@ -36,8 +36,17 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     await expect.poll(() => logo.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
     await expect(window.getByText("GSD will guide you from DISCUSS through SHIP.")).toBeVisible();
-    await expect(window.getByRole("button", { name: /Talk through the idea/ })).toBeVisible();
+    const discussAction = window.getByRole("button", { name: /Talk through the idea/ });
+    await expect(discussAction).toBeVisible();
     await expect(window.getByRole("button", { name: /Create the guided plan/ })).toBeVisible();
+    await expect(window.getByTestId("quick-action-phase-discuss")).toContainText("DISCUSS");
+    await expect(window.getByTestId("quick-action-phase-research")).toContainText("RESEARCH");
+    await expect(window.getByTestId("quick-action-phase-plan")).toContainText("PLAN");
+    const actionCopyBox = await discussAction.locator(".new-thread__quick-action-copy").boundingBox();
+    const actionPhaseBox = await window.getByTestId("quick-action-phase-discuss").boundingBox();
+    expect(actionCopyBox).not.toBeNull();
+    expect(actionPhaseBox).not.toBeNull();
+    expect(actionPhaseBox?.x ?? 0).toBeGreaterThan((actionCopyBox?.x ?? 0) + (actionCopyBox?.width ?? 0));
     const flowFontFamily = await window.locator(".topbar__flow").evaluate((node) => getComputedStyle(node).fontFamily);
     expect(flowFontFamily).not.toMatch(/mono/i);
     const sidebarFlowFontFamily = await window

@@ -2,7 +2,7 @@ import { useEffect, useRef, type ClipboardEvent, type DragEvent, type KeyboardEv
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import gsdLogoUrl from "./assets/gsd-logo-transparent.svg";
 import type { ComposerAttachment, NewThreadEnvironment, WorkspaceRecord } from "./desktop-state";
-import { ArrowUpIcon, PlanIcon, PlusIcon, SparkIcon, StatusIcon } from "./icons";
+import { ArrowUpIcon, ChevronRightIcon, PlanIcon, PlusIcon, SparkIcon, StatusIcon } from "./icons";
 import {
   MODEL_OPTIONS_EMPTY_TITLE,
   type ComposerSlashCommand,
@@ -171,6 +171,11 @@ export function NewThreadView({
               <span className="new-thread__quick-action-title">Talk through the idea</span>
               <small>Capture goals, users, constraints, and open questions.</small>
             </span>
+            <span aria-hidden="true" className="new-thread__quick-action-phase" data-testid="quick-action-phase-discuss">
+              <span>01</span>
+              <strong>DISCUSS</strong>
+              <ChevronRightIcon />
+            </span>
           </button>
           <button
             className="new-thread__quick-action"
@@ -185,12 +190,22 @@ export function NewThreadView({
               <span className="new-thread__quick-action-title">Learn from this workspace</span>
               <small>Use the current codebase as context before planning.</small>
             </span>
+            <span aria-hidden="true" className="new-thread__quick-action-phase" data-testid="quick-action-phase-research">
+              <span>02</span>
+              <strong>RESEARCH</strong>
+              <ChevronRightIcon />
+            </span>
           </button>
           <button aria-label="Create the guided plan" className="new-thread__quick-action" type="button" onClick={onNewPlan}>
             <PlanIcon />
             <span className="new-thread__quick-action-copy">
               <span className="new-thread__quick-action-title">Create the guided plan</span>
               <small>Shape milestones, phases, slices, and tasks.</small>
+            </span>
+            <span aria-hidden="true" className="new-thread__quick-action-phase" data-testid="quick-action-phase-plan">
+              <span>03</span>
+              <strong>PLAN</strong>
+              <ChevronRightIcon />
             </span>
           </button>
         </div>
