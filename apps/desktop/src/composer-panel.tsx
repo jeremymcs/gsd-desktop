@@ -154,7 +154,7 @@ export function ComposerPanel({
           onSelectMention={onSelectMention}
           textareaLabel="Composer"
           textareaTestId="composer"
-          textareaPlaceholder="Ask pi to inspect the repo, run a fix, or continue the current thread..."
+          textareaPlaceholder="Ask GSD to inspect the repo, run a fix, or continue the current thread..."
           extensionDock={extensionDock}
           extensionDockExpanded={extensionDockExpanded}
           onToggleExtensionDock={onToggleExtensionDock}

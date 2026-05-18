@@ -1015,7 +1015,7 @@ export class SessionSupervisor {
       },
       getAllThemes: () => [],
       getTheme: () => undefined,
-      setTheme: () => ({ success: false, error: "Theme switching not supported in pi-gui host UI" }),
+      setTheme: () => ({ success: false, error: "Theme switching is not supported in GSD host UI" }),
       getToolsExpanded: () => false,
       setToolsExpanded: () => {},
     };

@@ -693,8 +693,8 @@ export async function writeProjectExtension(
 
 export async function initGitRepo(workspacePath: string): Promise<void> {
   await execFileAsync("git", ["init", "-b", "main"], { cwd: workspacePath });
-  await execFileAsync("git", ["config", "user.name", "Pi App Tests"], { cwd: workspacePath });
-  await execFileAsync("git", ["config", "user.email", "pi-gui-tests@example.com"], { cwd: workspacePath });
+  await execFileAsync("git", ["config", "user.name", "GSD App Tests"], { cwd: workspacePath });
+  await execFileAsync("git", ["config", "user.email", "gsd-tests@example.com"], { cwd: workspacePath });
 }
 
 export async function commitAllInGitRepo(workspacePath: string, message: string): Promise<void> {

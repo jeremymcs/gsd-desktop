@@ -395,7 +395,7 @@ export function TreeModal({
         {!loading && tree && step === "summary" ? (
           <div className="tree-modal__summary-step" data-testid="tree-summary-step">
             <div className="tree-modal__summary-copy">
-              You&apos;re leaving the current branch. Choose whether pi should summarize the abandoned path before switching.
+              You&apos;re leaving the current branch. Choose whether GSD should summarize the abandoned path before switching.
             </div>
             <div className="tree-summary-options">
               <button

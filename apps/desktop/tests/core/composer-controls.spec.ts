@@ -53,6 +53,10 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     await expect(window.locator(".topbar__session")).toHaveText("Controls session");
 
     const composer = window.getByTestId("composer");
+    await expect(composer).toHaveAttribute(
+      "placeholder",
+      "Ask GSD to inspect the repo, run a fix, or continue the current thread...",
+    );
 
     await window.keyboard.press(desktopShortcut(","));
     await expect(window.getByTestId("settings-surface")).toBeVisible();

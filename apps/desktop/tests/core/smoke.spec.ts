@@ -28,7 +28,7 @@ test("boots an existing workspace and starts a new thread through the real UI", 
     const prompt = window.getByLabel("New thread prompt");
     await expect(prompt).toBeVisible();
     await expect(prompt).toBeFocused();
-    await expect(window.getByRole("heading", { name: "Let's build" })).toBeVisible();
+    await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
     await prompt.fill(promptText);
 
     await window.getByRole("button", { name: "Start thread" }).click();

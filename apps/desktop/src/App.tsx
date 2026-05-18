@@ -1306,7 +1306,7 @@ export default function App() {
     return (
       <div className="shell shell--loading">
         <main className="loading-card">
-          <div className="loading-card__eyebrow">pi-gui</div>
+          <div className="loading-card__eyebrow">GSD</div>
           <h1>Loading sessions</h1>
           <p>The desktop shell is restoring folder and thread state from the main process.</p>
         </main>

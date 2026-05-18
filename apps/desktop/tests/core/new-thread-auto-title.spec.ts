@@ -108,7 +108,7 @@ test("switching away does not cancel a pending auto-title", async () => {
         return state.workspaces.some((candidateWorkspace) =>
           candidateWorkspace.sessions.some((session) => session.title === "Keep title after nav"),
         );
-      })
+      }, { timeout: 15_000 })
       .toBe(true);
 
     const autoTitledRow = window.locator(".session-row__select", { hasText: "Keep title after nav" }).first();

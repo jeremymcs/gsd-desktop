@@ -1409,7 +1409,7 @@ export class DesktopAppStore implements AppStoreInternals {
     const key = sessionKey(sessionRef);
     const pending = this.pendingRuntimeCommandsBySession.get(key);
     if (pending) {
-      const message = `/${pending.command.name} requires terminal-only ${formatCapabilityLabel(issue.capability)} and is not supported in pi-gui yet. Use pi in the terminal for this command.`;
+      const message = `/${pending.command.name} requires terminal-only ${formatCapabilityLabel(issue.capability)} and is not supported in GSD yet. Use the terminal workflow for this command.`;
       pending.blockedMessage = message;
       recordLearnedCommandCompatibility(this.extensionCommandCompatibilityByWorkspace, sessionRef.workspaceId, {
         commandName: pending.command.name,
