@@ -318,8 +318,19 @@ test("shows next work ordering and updates after dependency completion", async (
     );
     await expect(panel.getByTestId("next-work-item").nth(2).getByRole("button", { name: "Create session" })).toBeDisabled();
 
-    await panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Create session" }).click();
+    await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T1");
+    await panel.getByTestId("start-next-work-button").click();
+    await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
+    await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T1: Build foundation/);
+    const linkedSessionId = (await getDesktopState(window)).selectedSessionId;
+    expect(linkedSessionId).not.toBe("");
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open session" })).toBeVisible();
+    await expect(panel.getByTestId("start-next-work-button")).toHaveText("Open M1/S1/T1");
+    await panel.getByTestId("start-next-work-button").click();
+    await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
 
     const foundationTask = window.getByTestId("execution-task").filter({ hasText: "Build foundation" });
     await foundationTask.getByTestId("task-status-select").selectOption("done");
@@ -328,6 +339,7 @@ test("shows next work ordering and updates after dependency completion", async (
     await foundationTask.getByTestId("update-task-execution-button").click();
 
     await expect(panel).toContainText("2 ready / 0 blocked");
+    await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T2");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
   } finally {
@@ -341,6 +353,7 @@ test("shows next work ordering and updates after dependency completion", async (
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     const panel = window.getByTestId("next-work-panel");
     await expect(panel).toContainText("2 ready / 0 blocked");
+    await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T2");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
   } finally {

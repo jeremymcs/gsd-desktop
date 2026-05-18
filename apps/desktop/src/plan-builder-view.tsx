@@ -983,6 +983,39 @@ export function PlanBuilderView({
     });
   };
 
+  const startTaskSession = (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+
+    const openLinkedSession = (link: TaskSessionLinkRecord) =>
+      onOpenTaskSession({
+        workspaceId: link.workspaceId,
+        sessionId: link.sessionId,
+      });
+
+    const action = existingLink
+      ? openLinkedSession(existingLink)
+      : onLinkTaskSession({
+          workspaceId: workspace.id,
+          planId: snapshot.id,
+          expectedRevision: snapshot.revision,
+          taskId: task.id,
+          taskPath,
+          taskTitle: task.title,
+        }).then((nextState) => {
+          const createdLink = nextState.planningByWorkspace[workspace.id]?.selectedPlan?.taskSessionLinks.find(
+            (link) => link.taskId === task.id,
+          );
+          return createdLink ? openLinkedSession(createdLink) : nextState;
+        });
+
+    void action.finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const openTaskSession = (link: TaskSessionLinkRecord) => {
     if (submitting) {
       return;
@@ -1656,6 +1689,7 @@ export function PlanBuilderView({
                 taskVerifications={snapshot.taskVerifications ?? []}
                 onLinkTaskSession={linkTaskSession}
                 onStartVerify={startVerify}
+                onStartTaskSession={startTaskSession}
                 onUpdateTaskExecution={updateTaskExecution}
                 onOpenTaskSession={openTaskSession}
                 onRegenerateProjections={regenerateProjections}
@@ -3302,6 +3336,7 @@ function PlanExecutionQueue({
   taskVerifications,
   onLinkTaskSession,
   onStartVerify,
+  onStartTaskSession,
   onUpdateTaskExecution,
   onOpenTaskSession,
   onRegenerateProjections,
@@ -3314,6 +3349,7 @@ function PlanExecutionQueue({
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
   readonly onStartVerify: () => void;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
   readonly onUpdateTaskExecution: (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => void;
   readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
   readonly onRegenerateProjections: () => void;
@@ -3439,6 +3475,7 @@ function PlanExecutionQueue({
           taskLinks={taskLinks}
           onLinkTaskSession={onLinkTaskSession}
           onOpenTaskSession={onOpenTaskSession}
+          onStartTaskSession={onStartTaskSession}
         />
       ) : null}
 
@@ -3608,6 +3645,7 @@ function NextWorkPanel({
   taskLinks,
   onLinkTaskSession,
   onOpenTaskSession,
+  onStartTaskSession,
 }: {
   readonly items: readonly NextWorkQueueItem[];
   readonly submitting: boolean;
@@ -3615,15 +3653,36 @@ function NextWorkPanel({
   readonly taskLinks: ReadonlyMap<string, TaskSessionLinkRecord>;
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
   readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
 }) {
   const readyCount = items.filter((item) => item.state === "ready").length;
   const blockedCount = items.length - readyCount;
+  const firstReadyItem = items.find((item) => item.state === "ready");
+  const firstReadyEntry = firstReadyItem ? taskEntryMap.get(firstReadyItem.taskId) : undefined;
+  const firstReadyLink = firstReadyItem ? taskLinks.get(firstReadyItem.taskId) : undefined;
 
   return (
     <section className="plan-projection-card plan-next-work" data-testid="next-work-panel">
       <div className="plan-next-work__header">
-        <strong>Next work</strong>
-        <span>{items.length > 0 ? `${readyCount} ready / ${blockedCount} blocked` : "No pending execution work"}</span>
+        <div>
+          <strong>Next work</strong>
+          <span>
+            {items.length > 0 ? `${readyCount} ready / ${blockedCount} blocked` : "No pending execution work"}
+          </span>
+        </div>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="start-next-work-button"
+          disabled={submitting || !firstReadyItem || (!firstReadyEntry && !firstReadyLink)}
+          onClick={() => {
+            if (firstReadyItem && firstReadyEntry) {
+              onStartTaskSession(firstReadyEntry.task, firstReadyEntry.taskPath, firstReadyLink);
+            }
+          }}
+          type="button"
+        >
+          {firstReadyItem ? `${firstReadyLink ? "Open" : "Start"} ${firstReadyItem.taskPath}` : "No ready work"}
+        </button>
       </div>
       {items.length > 0 ? (
         <div className="plan-next-work__list">

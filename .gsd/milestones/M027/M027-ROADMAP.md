@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Primary Queue Start Action** `risk:medium` `depends:[M026]`
+- [x] **S01: Primary Queue Start Action** `risk:medium` `depends:[M026]`
   > After this: the Plan Builder next-work panel can start or open the first ready task.
 
 ## Boundary Map
@@ -24,4 +24,3 @@ Produces:
 
 Consumes:
   linked session state -> open existing or create new session
-
