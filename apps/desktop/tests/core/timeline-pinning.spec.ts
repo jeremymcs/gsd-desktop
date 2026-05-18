@@ -472,6 +472,8 @@ test("keeps a reopened virtualized long transcript stable", async () => {
           : `Virtualized stable row ${index} `.repeat(8),
     });
     const finalRow = window.locator(".timeline-item--assistant", { hasText: finalMarker });
+    await jumpTimelineToBottom(window);
+    await expect.poll(async () => (await getTimelineScrollMetrics(window)).remainingFromBottom).toBeLessThanOrEqual(16);
     const preReopenBaseline = await waitForStableVirtualizedBottom(window, finalRow);
 
     await harness.close();
@@ -482,6 +484,8 @@ test("keeps a reopened virtualized long transcript stable", async () => {
     const reopenedFinalRow = window.locator(".timeline-item--assistant", { hasText: finalMarker });
 
     await expectNoTimelineCollapseWindow(window, preReopenBaseline);
+    await jumpTimelineToBottom(window);
+    await expect.poll(async () => (await getTimelineScrollMetrics(window)).remainingFromBottom).toBeLessThanOrEqual(16);
     const baseline = await waitForStableVirtualizedBottom(window, reopenedFinalRow);
     await expectStableTimelineWindow(window, reopenedFinalRow, baseline);
 
@@ -499,6 +503,8 @@ test("keeps a reopened virtualized long transcript stable", async () => {
     ]);
     const streamedRow = window.locator(".timeline-item--assistant", { hasText: pinnedStream.fullText });
     await expect(streamedRow).toBeVisible();
+    await jumpTimelineToBottom(window);
+    await expect.poll(async () => (await getTimelineScrollMetrics(window)).remainingFromBottom).toBeLessThanOrEqual(16);
     const streamedBaseline = await waitForStableVirtualizedBottom(window, streamedRow);
     await expectStableTimelineWindow(window, streamedRow, streamedBaseline);
   } finally {

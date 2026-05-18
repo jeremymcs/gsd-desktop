@@ -1610,6 +1610,7 @@ export function PlanBuilderView({
                 preferences={snapshot.workflowPreferences}
                 globalPlanningPreferences={globalPlanningPreferences}
                 modelOptions={modelOptions}
+                runtime={runtime}
                 submitting={submitting}
                 onApply={applyWorkflowPreferences}
                 onUpdatePhaseOverrides={updateWorkflowPhaseOverrides}
@@ -3595,6 +3596,7 @@ function WorkflowPreferencesCard({
   preferences,
   globalPlanningPreferences,
   modelOptions,
+  runtime,
   submitting,
   onApply,
   onUpdatePhaseOverrides,
@@ -3602,12 +3604,17 @@ function WorkflowPreferencesCard({
   readonly preferences: WorkflowPreferencesRecord | undefined;
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly modelOptions: readonly ComposerModelOption[];
+  readonly runtime: RuntimeSnapshot | undefined;
   readonly submitting: boolean;
   readonly onApply: () => void;
   readonly onUpdatePhaseOverrides: (phaseOverrides: WorkflowPhaseModelPreferences) => void;
 }) {
   const saved = Boolean(preferences?.capturedAt);
   const phaseOverrides = preferences?.models.phaseOverrides ?? {};
+  const sessionDefault =
+    runtime?.settings.defaultProvider && runtime.settings.defaultModelId
+      ? { providerId: runtime.settings.defaultProvider, modelId: runtime.settings.defaultModelId }
+      : undefined;
   return (
     <div className="plan-projection-card" data-testid="workflow-preferences-card">
       <div className="plan-workflow-preferences">
@@ -3621,11 +3628,32 @@ function WorkflowPreferencesCard({
             {planningPhaseModelOptions.map((phase) => {
               const globalPreference = globalPlanningPreferences.phaseModels[phase.id];
               const overridePreference = phaseOverrides[phase.id];
+              const resolvedModel = resolveWorkflowPhaseModel({
+                phase: phase.id,
+                projectOverrides: phaseOverrides,
+                globalPhaseModels: globalPlanningPreferences.phaseModels,
+                sessionDefault,
+              });
               return (
-                <label className="plan-phase-model-row" key={phase.id}>
+                <label
+                  className="plan-phase-model-row"
+                  data-testid={`phase-model-policy-row-${phase.id}`}
+                  key={phase.id}
+                >
                   <span>
                     <strong>{phase.label}</strong>
-                    <small>Global: {formatPhaseModelPreference(globalPreference, modelOptions)}</small>
+                    <small data-testid={`phase-model-global-${phase.id}`}>
+                      Global: {formatPhaseModelPreference(globalPreference, modelOptions, "Not set")}
+                    </small>
+                    <small data-testid={`phase-model-project-${phase.id}`}>
+                      Project: {formatPhaseModelPreference(overridePreference, modelOptions, "Use global default")}
+                    </small>
+                    <small
+                      className={resolvedModel.source === "not-configured" ? "plan-phase-model-row__missing" : ""}
+                      data-testid={`phase-model-resolved-${phase.id}`}
+                    >
+                      Resolved: {formatResolvedPhaseModel(resolvedModel)}
+                    </small>
                   </span>
                   <select
                     className="settings-select plan-phase-model-row__select"
@@ -3691,15 +3719,23 @@ function buildWorkflowPreferenceUpdate(
 function formatPhaseModelPreference(
   preference: WorkflowPhaseModelPreferences[PlanPhase] | undefined,
   modelOptions: readonly ComposerModelOption[],
+  fallbackLabel = "Default model",
 ): string {
   if (!preference) {
-    return "Default model";
+    return fallbackLabel;
   }
   return (
     modelOptions.find(
       (option) => option.providerId === preference.providerId && option.modelId === preference.modelId,
     )?.label ?? `${preference.providerId}:${preference.modelId}`
   );
+}
+
+function formatResolvedPhaseModel(model: ResolvedWorkflowPhaseModel): string {
+  if (model.source === "not-configured") {
+    return "Missing route - set a project override or global default";
+  }
+  return `${workflowPhaseModelValueLabel(model)} (${workflowPhaseModelSourceLabel(model.source)})`;
 }
 
 function formatAutonomousRunPolicy(preferences: WorkflowPreferencesRecord | undefined): string {
@@ -4357,7 +4393,11 @@ function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRou
           <article className="plan-model-routing__row" data-testid="phase-model-routing-row" key={row.phase}>
             <span>{row.label}</span>
             <strong>{workflowPhaseModelValueLabel(row.model)}</strong>
-            <small>{workflowPhaseModelSourceLabel(row.model.source)}</small>
+            <small className={row.model.source === "not-configured" ? "plan-model-routing__missing" : ""}>
+              {row.model.source === "not-configured"
+                ? "Missing route: set a project override or global default"
+                : workflowPhaseModelSourceLabel(row.model.source)}
+            </small>
           </article>
         ))}
       </div>

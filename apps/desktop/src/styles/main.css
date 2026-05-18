@@ -2841,6 +2841,11 @@
   font-size: 11px;
 }
 
+.plan-projection-card .plan-phase-model-row__missing,
+.plan-model-routing__missing {
+  color: #f1a5a5;
+}
+
 .plan-phase-model-row__select {
   min-height: 34px;
   padding: 7px 10px;
@@ -4601,6 +4606,16 @@
 .canvas--plans .plan-execution-task__footer small,
 .canvas--plans .plan-projection-card .plan-phase-model-row small {
   color: var(--plan-soft-text);
+}
+
+.canvas--plans .plan-projection-card .plan-phase-model-row__missing,
+.canvas--plans .plan-model-routing__missing {
+  color: #b42318;
+}
+
+.theme-dark .canvas--plans .plan-projection-card .plan-phase-model-row__missing,
+.theme-dark .canvas--plans .plan-model-routing__missing {
+  color: #f1a5a5;
 }
 
 .canvas--plans .plan-create__field input,

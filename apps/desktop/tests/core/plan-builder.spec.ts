@@ -2138,7 +2138,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Models", exact: true }).click();
     await expect(window.getByTestId("global-phase-model-select-discuss")).toBeVisible();
     await window.getByTestId("global-phase-model-select-discuss").selectOption("openai:gpt-5");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      return state.globalPlanningPreferences.phaseModels.discuss?.modelId ?? "";
+    }).toBe("gpt-5");
     await window.getByTestId("global-phase-model-select-research").selectOption("openai:gpt-4o");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      return state.globalPlanningPreferences.phaseModels.research?.modelId ?? "";
+    }).toBe("gpt-4o");
     await window.getByTestId("global-phase-model-select-execute").selectOption("openai:gpt-5");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -2164,8 +2172,20 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await expect(window.getByTestId("phase-model-global-discuss")).toContainText("GPT-5");
+    await expect(window.getByTestId("phase-model-project-discuss")).toHaveText("Project: Use global default");
+    await expect(window.getByTestId("phase-model-resolved-discuss")).toHaveText(
+      "Resolved: openai/gpt-5 (global default)",
+    );
+    await expect(window.getByTestId("phase-model-global-plan")).toHaveText("Global: Not set");
+    await expect(window.getByTestId("phase-model-project-plan")).toHaveText("Project: Use global default");
+    await expect(window.getByTestId("phase-model-resolved-plan")).toContainText("Resolved:");
     await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
     await window.getByTestId("phase-model-select-execute").selectOption("openai:gpt-4o");
+    await expect(window.getByTestId("phase-model-project-execute")).toContainText("GPT-4o");
+    await expect(window.getByTestId("phase-model-resolved-execute")).toHaveText(
+      "Resolved: openai/gpt-4o (project override)",
+    );
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
