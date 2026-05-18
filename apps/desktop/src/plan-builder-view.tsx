@@ -1528,6 +1528,13 @@ export function PlanBuilderView({
       : composerCanParkIdea && composerHasDraft
         ? submitting
         : !composerPhaseAction || composerPhaseAction.disabled;
+  const composerSubmitLabel = activeQuestion
+    ? "Save answer"
+    : composerCanRecordShipSummary
+      ? "Save summary"
+      : composerCanParkIdea && composerHasDraft
+        ? "Park note"
+        : "Continue";
   const submitComposerAction = () => {
     if (activeQuestion) {
       recordAnswer(true);
@@ -1935,7 +1942,7 @@ export function PlanBuilderView({
           ) : null}
 
           <form
-            className="plan-composer"
+            className={`plan-composer ${composerInputEnabled ? "plan-composer--active" : "plan-composer--status"}`}
             aria-label="Plan prompt composer"
             onSubmit={(event) => {
               event.preventDefault();
@@ -1945,60 +1952,69 @@ export function PlanBuilderView({
             <div className={`plan-composer__field ${composerInputEnabled ? "plan-composer__field--active" : ""}`}>
               {composerInputEnabled ? (
                 <>
-                  <div className="plan-composer__question" data-testid="plan-composer-question">
-                    {activeQuestion ? (
-                      <span data-testid="plan-composer-prompt">{composerQuestion}</span>
-                    ) : (
-                      composerQuestion
-                    )}
+                  <div className="plan-composer__question-frame" data-testid="plan-composer-question-frame">
+                    <span className="plan-composer__label">Question</span>
+                    <div className="plan-composer__question" data-testid="plan-composer-question">
+                      {activeQuestion ? (
+                        <span data-testid="plan-composer-prompt">{composerQuestion}</span>
+                      ) : (
+                        composerQuestion
+                      )}
+                    </div>
                   </div>
-                  <textarea
-                    aria-label={
-                      activeQuestion
-                        ? "Answer current planning question"
-                        : composerCanRecordShipSummary
-                          ? "Write SHIP handoff summary"
-                          : "Park planning note"
-                    }
-                    data-testid="plan-composer-textarea"
-                    onChange={(event) => setAnswerDraft(event.target.value)}
-                    onKeyDown={submitComposerFromKeyboard}
-                    placeholder={composerPlaceholder}
-                    ref={composerTextareaRef}
-                    value={answerDraft}
-                  />
+                  <label className="plan-composer__answer-frame" data-testid="plan-composer-answer-frame">
+                    <span className="plan-composer__label">Answer</span>
+                    <textarea
+                      aria-label={
+                        activeQuestion
+                          ? "Answer current planning question"
+                          : composerCanRecordShipSummary
+                            ? "Write SHIP handoff summary"
+                            : "Park planning note"
+                      }
+                      data-testid="plan-composer-textarea"
+                      onChange={(event) => setAnswerDraft(event.target.value)}
+                      onKeyDown={submitComposerFromKeyboard}
+                      placeholder={composerPlaceholder}
+                      ref={composerTextareaRef}
+                      value={answerDraft}
+                    />
+                  </label>
                 </>
               ) : (
-                <span>{composerStatus}</span>
+                <span className="plan-composer__status-text">{composerStatus}</span>
               )}
             </div>
-            {activeQuestion ? (
+            <div className="plan-composer__actions" data-testid="plan-composer-actions">
               <button
-                className="plan-composer__park"
-                type="button"
-                disabled={answerActionDisabled}
-                aria-label="Move composer draft to idea pool"
-                onClick={() => recordAnswer(false)}
+                className="plan-composer__send"
+                type="submit"
+                disabled={composerSubmitDisabled}
+                aria-label={
+                  activeQuestion
+                    ? "Submit composer answer"
+                    : composerCanRecordShipSummary
+                      ? "Record composer ship summary"
+                      : composerCanParkIdea && composerHasDraft
+                        ? "Park composer idea"
+                        : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
+                }
               >
-                Park
+                <span>{composerSubmitLabel}</span>
+                <ArrowUpIcon />
               </button>
-            ) : null}
-            <button
-              className="plan-composer__send"
-              type="submit"
-              disabled={composerSubmitDisabled}
-              aria-label={
-                activeQuestion
-                  ? "Submit composer answer"
-                  : composerCanRecordShipSummary
-                    ? "Record composer ship summary"
-                    : composerCanParkIdea && composerHasDraft
-                      ? "Park composer idea"
-                      : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
-              }
-            >
-              <ArrowUpIcon />
-            </button>
+              {activeQuestion ? (
+                <button
+                  className="plan-composer__park"
+                  type="button"
+                  disabled={answerActionDisabled}
+                  aria-label="Move composer draft to idea pool"
+                  onClick={() => recordAnswer(false)}
+                >
+                  Park for later
+                </button>
+              ) : null}
+            </div>
           </form>
         </div>
 

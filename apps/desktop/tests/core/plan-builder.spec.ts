@@ -1125,6 +1125,15 @@ test("keeps the active DISCUSS question visible inside the Plan Builder composer
     await window.getByTestId("plan-name-input").fill("Composer question context plan");
     await window.getByRole("button", { name: "Create plan" }).click();
     await expectActivePromptOnlyInComposer(window, "What should we call this project?");
+    await expect(window.getByTestId("plan-composer-question-frame")).toBeVisible();
+    await expect(window.getByTestId("plan-composer-answer-frame")).toBeVisible();
+    await expect(window.getByLabel("Submit composer answer")).toContainText("Save answer");
+    await expect(window.getByLabel("Move composer draft to idea pool")).toContainText("Park for later");
+    const composerActionLabels = await window
+      .getByTestId("plan-composer-actions")
+      .locator("button")
+      .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
+    expect(composerActionLabels).toEqual(["Submit composer answer", "Move composer draft to idea pool"]);
     await window.getByTestId("plan-composer-textarea").fill("Question Stays Visible");
     await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await window.getByLabel("Submit composer answer").click();
