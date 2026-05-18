@@ -6,3 +6,6 @@ packages:
 onlyBuiltDependencies:
   - better-sqlite3
   - electron
+
+patchedDependencies:
+  '@earendil-works/pi-coding-agent@0.74.0': patches/@earendil-works__pi-coding-agent@0.74.0.patch

@@ -1,0 +1,14 @@
+diff --git a/dist/utils/clipboard-native.js b/dist/utils/clipboard-native.js
+index 0eb4b6fa57459eb0ddd45641d962c36a0c730380..88520b6a91e09ad19c2c6843d04b1f3323c78d57 100644
+--- a/dist/utils/clipboard-native.js
++++ b/dist/utils/clipboard-native.js
+@@ -2,7 +2,8 @@ import { createRequire } from "module";
+ const require = createRequire(import.meta.url);
+ let clipboard = null;
+ const hasDisplay = process.platform !== "linux" || Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
+-if (!process.env.TERMUX_VERSION && hasDisplay) {
++const runningInElectron = Boolean(process.versions?.electron);
++if (!process.env.TERMUX_VERSION && hasDisplay && !runningInElectron) {
+     try {
+         clipboard = require("@mariozechner/clipboard");
+     }
