@@ -2290,8 +2290,9 @@
 
 .plan-builder__body--wizard {
   align-content: start;
-  gap: 18px;
-  padding-block: 28px;
+  justify-items: stretch;
+  gap: 14px;
+  padding-block: 18px;
 }
 
 .plan-builder__mark {
@@ -3620,6 +3621,18 @@
   background: #17181c;
 }
 
+.plan-builder__body--wizard .plan-phase-strip,
+.plan-builder__body--wizard .plan-guidance-card,
+.plan-builder__body--wizard .plan-research,
+.plan-builder__body--wizard .plan-roadmap,
+.plan-builder__body--wizard .plan-execution {
+  width: min(980px, 100%);
+}
+
+.plan-builder__body--wizard .plan-depth-card {
+  width: 100%;
+}
+
 .plan-guidance-card__main {
   min-width: 0;
   display: grid;
@@ -4343,8 +4356,12 @@
 }
 
 .canvas--plans .plan-builder__body--wizard {
-  gap: 16px;
-  padding-block: 24px;
+  gap: 12px;
+  padding: 18px min(4vw, 44px);
+}
+
+.canvas--plans .plan-builder__body--wizard .plan-builder__mark {
+  display: none;
 }
 
 .canvas--plans .plan-builder__mark {
@@ -4360,6 +4377,14 @@
 .canvas--plans .plan-builder__copy {
   max-width: 680px;
   gap: 8px;
+}
+
+.canvas--plans .plan-builder__body--wizard .plan-builder__copy {
+  width: min(980px, 100%);
+  max-width: none;
+  justify-items: start;
+  gap: 5px;
+  text-align: left;
 }
 
 .canvas--plans .plan-builder__eyebrow,
@@ -4413,6 +4438,11 @@
   line-height: 1.08;
 }
 
+.canvas--plans .plan-builder__body--wizard .plan-builder__copy h1 {
+  font-size: 24px;
+  line-height: 1.18;
+}
+
 .canvas--plans .plan-question-card h2,
 .canvas--plans .plan-depth-card h2 {
   font-size: var(--plan-font-title);
@@ -4460,6 +4490,11 @@
   max-width: 560px;
   font-size: var(--plan-font-lg);
   line-height: var(--plan-line-body);
+}
+
+.canvas--plans .plan-builder__body--wizard .plan-builder__copy p {
+  max-width: 720px;
+  font-size: var(--plan-font-md);
 }
 
 .canvas--plans .plan-question-card p,
@@ -4520,9 +4555,18 @@
   padding: 13px;
 }
 
+.canvas--plans .plan-builder__body--wizard .plan-guidance-card {
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+}
+
 .canvas--plans .plan-phase {
   gap: 4px;
   padding: 10px 11px;
+}
+
+.canvas--plans .plan-builder__body--wizard .plan-phase {
+  min-height: 54px;
+  padding: 8px 10px;
 }
 
 .canvas--plans .plan-phase__label {
