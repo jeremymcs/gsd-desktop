@@ -30,6 +30,11 @@ export interface RegenerateProjectionsInput {
   readonly allowLegacyOverwrite?: boolean;
 }
 
+export interface CompareProjectionFilesInput {
+  readonly workspaceRoot: string;
+  readonly files: readonly ProjectionFile[];
+}
+
 export interface WriteWorkflowPreferenceFilesInput {
   readonly workspaceRoot: string;
   readonly plan: PlanSnapshot;
@@ -45,6 +50,17 @@ export interface ProjectionWriteEntry {
 export interface ProjectionWriteConflict {
   readonly path: string;
   readonly reason: "legacy-file";
+}
+
+export interface ProjectionDriftEntry {
+  readonly path: string;
+}
+
+export interface ProjectionDriftResult {
+  readonly missing: readonly ProjectionDriftEntry[];
+  readonly stale: readonly ProjectionDriftEntry[];
+  readonly current: readonly ProjectionDriftEntry[];
+  readonly conflicts: readonly ProjectionWriteConflict[];
 }
 
 export interface ProjectionWriteResult {
@@ -70,6 +86,42 @@ export async function regenerateProjections(input: RegenerateProjectionsInput): 
     files: generatePlanningProjections(input.projectionInput),
     allowLegacyOverwrite: input.allowLegacyOverwrite,
   });
+}
+
+export async function compareGeneratedProjections(input: RegenerateProjectionsInput): Promise<ProjectionDriftResult> {
+  return await compareProjectionFiles({
+    workspaceRoot: input.workspaceRoot,
+    files: generatePlanningProjections(input.projectionInput),
+  });
+}
+
+export async function compareProjectionFiles(input: CompareProjectionFilesInput): Promise<ProjectionDriftResult> {
+  const workspaceRoot = resolve(input.workspaceRoot);
+  const entries = await Promise.all(
+    input.files.map(async (file) => {
+      const targetPath = resolveProjectionPath(workspaceRoot, file.path);
+      const existing = await readExisting(targetPath);
+      return { file, existing };
+    }),
+  );
+  const missing: ProjectionDriftEntry[] = [];
+  const stale: ProjectionDriftEntry[] = [];
+  const current: ProjectionDriftEntry[] = [];
+  const conflicts: ProjectionWriteConflict[] = [];
+
+  for (const entry of entries) {
+    if (entry.existing === undefined) {
+      missing.push({ path: entry.file.path });
+    } else if (!hasGeneratedProjectionHeader(entry.existing)) {
+      conflicts.push({ path: entry.file.path, reason: "legacy-file" });
+    } else if (projectionContentMatches(entry.existing, entry.file.content)) {
+      current.push({ path: entry.file.path });
+    } else {
+      stale.push({ path: entry.file.path });
+    }
+  }
+
+  return { missing, stale, current, conflicts };
 }
 
 export async function writeWorkflowPreferenceFiles(input: WriteWorkflowPreferenceFilesInput): Promise<void> {
@@ -111,7 +163,7 @@ export async function writeProjectionFiles(input: WriteProjectionFilesInput): Pr
   const skipped: ProjectionWriteEntry[] = [];
 
   for (const entry of writePlan) {
-    if (entry.existing === entry.file.content) {
+    if (entry.existing !== undefined && projectionContentMatches(entry.existing, entry.file.content)) {
       skipped.push({ path: entry.file.path, status: "skipped" });
       continue;
     }
@@ -146,6 +198,16 @@ async function readExisting(path: string): Promise<string | undefined> {
     }
     throw error;
   }
+}
+
+function projectionContentMatches(existing: string, next: string): boolean {
+  return existing === next || ignoreGeneratedMetadata(existing) === ignoreGeneratedMetadata(next);
+}
+
+function ignoreGeneratedMetadata(content: string): string {
+  return content
+    .replace(/^generated-at: .+$/m, "generated-at: <ignored>")
+    .replace(/^plan-revision: .+$/m, "plan-revision: <ignored>");
 }
 
 async function atomicWriteFile(path: string, content: string): Promise<void> {

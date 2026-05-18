@@ -940,7 +940,7 @@ export function PlanBuilderView({
     });
   };
 
-  const regenerateProjections = () => {
+  const regenerateProjections = (allowLegacyOverwrite = false) => {
     if (!snapshot || submitting) {
       return;
     }
@@ -948,6 +948,7 @@ export function PlanBuilderView({
     void onRegenerateProjections({
       workspaceId: workspace.id,
       planId: snapshot.id,
+      ...(allowLegacyOverwrite ? { allowLegacyOverwrite: true } : {}),
     }).finally(() => {
       setSubmitting(false);
     });
@@ -2590,7 +2591,7 @@ function PlanProposalEditor({
   readonly onBoundaryMapChange: (value: string) => void;
   readonly onIdeaPoolChange: (value: string) => void;
   readonly onProposePlan: (event: FormEvent<HTMLFormElement>) => void;
-  readonly onRegenerateProjections: () => void;
+  readonly onRegenerateProjections: (allowLegacyOverwrite?: boolean) => void;
   readonly onStartExecution: () => void;
   readonly onRemoveMilestone: (milestoneIndex: number) => void;
   readonly onRemovePhase: (phaseIndex: number) => void;
@@ -2608,9 +2609,7 @@ function PlanProposalEditor({
   ) => void;
 }) {
   const projectionStatus = projectionSummary
-    ? projectionSummary.conflicts.length > 0
-      ? `${projectionSummary.conflicts.length} legacy file conflict${projectionSummary.conflicts.length === 1 ? "" : "s"}`
-      : `${projectionSummary.written} written / ${projectionSummary.skipped} unchanged`
+    ? formatProjectionSummary(projectionSummary)
     : "Ready to regenerate generated Markdown files";
 
   return (
@@ -2637,11 +2636,22 @@ function PlanProposalEditor({
               className="plan-secondary-button plan-secondary-button--compact"
               data-testid="regenerate-projections-button"
               disabled={submitting}
-              onClick={onRegenerateProjections}
+              onClick={() => onRegenerateProjections()}
               type="button"
             >
               Regenerate projections
             </button>
+            {projectionSummary?.conflicts.length ? (
+              <button
+                className="plan-secondary-button plan-secondary-button--compact"
+                data-testid="overwrite-legacy-projections-button"
+                disabled={submitting}
+                onClick={() => onRegenerateProjections(true)}
+                type="button"
+              >
+                Overwrite legacy files
+              </button>
+            ) : null}
             <button
               className="plan-action-button plan-action-button--compact"
               data-testid="start-execution-button"
@@ -3220,6 +3230,17 @@ function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidanc
   );
 }
 
+function formatProjectionSummary(summary: PlanningProjectionSummary): string {
+  if (summary.conflicts.length > 0) {
+    return `${summary.conflicts.length} legacy file conflict${summary.conflicts.length === 1 ? "" : "s"}`;
+  }
+  const driftCount = summary.missing + summary.stale;
+  const driftStatus = driftCount > 0
+    ? `${driftCount} drift repaired (${summary.missing} missing / ${summary.stale} stale)`
+    : `${summary.current} current`;
+  return `${driftStatus} · ${summary.written} written / ${summary.skipped} unchanged`;
+}
+
 function WorkflowPreferencesCard({
   preferences,
   globalPlanningPreferences,
@@ -3376,7 +3397,7 @@ function PlanExecutionQueue({
   readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
   readonly onUpdateTaskExecution: (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => void;
   readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
-  readonly onRegenerateProjections: () => void;
+  readonly onRegenerateProjections: (allowLegacyOverwrite?: boolean) => void;
 }) {
   const [taskDrafts, setTaskDrafts] = useState<Record<string, TaskExecutionDraft>>({});
   const taskCount = acceptedPlanProposal?.milestones.reduce(
@@ -3472,14 +3493,14 @@ function PlanExecutionQueue({
           <strong>Projection state</strong>
           <span>
             {projectionSummary
-              ? `${projectionSummary.written} written / ${projectionSummary.skipped} unchanged`
+              ? formatProjectionSummary(projectionSummary)
               : "Generated files are available from the accepted plan"}
           </span>
         </div>
         <button
           className="plan-secondary-button plan-secondary-button--compact"
           disabled={submitting}
-          onClick={onRegenerateProjections}
+          onClick={() => onRegenerateProjections()}
           type="button"
         >
           Regenerate projections

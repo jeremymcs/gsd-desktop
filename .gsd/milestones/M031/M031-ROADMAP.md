@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Projection Drift Status** `risk:high` `depends:[M030]`
+- [x] **S01: Projection Drift Status** `risk:high` `depends:[M030]`
   > After this: Plan Builder can report and repair generated projection drift.
-

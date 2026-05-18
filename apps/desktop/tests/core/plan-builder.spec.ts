@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
@@ -1980,17 +1980,35 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await nameMemory.getByRole("button", { name: "Save revision" }).click();
     await expect(nameMemory).toContainText("Launch Control Revised");
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
+    const projectProjectionPath = join(workspacePath, ".gsd", "PROJECT.md");
+    const staleProjectProjection = await readFile(projectProjectionPath, "utf8");
+    await writeFile(
+      projectProjectionPath,
+      staleProjectProjection.replace("# Project: Launch Control", "# Project: Stale Launch Control"),
+      "utf8",
+    );
+    await rm(join(workspacePath, ".gsd", "NEXT.md"), { force: true });
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("written");
+    await expect(window.getByTestId("projection-summary")).toContainText("drift repaired");
+    await expect(window.getByTestId("projection-summary")).toContainText("1 missing / 2 stale");
 
-    const projectProjection = await readFile(join(workspacePath, ".gsd", "PROJECT.md"), "utf8");
+    const projectProjection = await readFile(projectProjectionPath, "utf8");
     expect(projectProjection).toContain("pi-gui-plan-builder-generated");
     expect(projectProjection).toContain("# Project: Launch Control Revised");
     expect(projectProjection).toContain("**Complexity:** complex");
     expect(projectProjection).toContain(
       "**Why:** complex - database-backed planning, projections, and execution lifecycle state.",
     );
-    const requirementsProjection = await readFile(join(workspacePath, ".gsd", "REQUIREMENTS.md"), "utf8");
+    const requirementsProjectionPath = join(workspacePath, ".gsd", "REQUIREMENTS.md");
+    await writeFile(requirementsProjectionPath, "# Hand-written requirements\n", "utf8");
+    await window.getByTestId("regenerate-projections-button").click();
+    await expect(window.getByTestId("projection-summary")).toContainText("1 legacy file conflict");
+    await expect(window.getByTestId("start-execution-button")).toBeDisabled();
+    await window.getByTestId("overwrite-legacy-projections-button").click();
+    await expect(window.getByTestId("projection-summary")).not.toContainText("legacy file conflict");
+    await expect(window.getByTestId("start-execution-button")).toBeEnabled();
+    const requirementsProjection = await readFile(requirementsProjectionPath, "utf8");
     expect(requirementsProjection).toContain("### R001: First useful version capabilities");
     expect(requirementsProjection).toContain("Create a plan, ask focused questions, save answers, and resume after restart.");
     expect(requirementsProjection).toContain("### R002: Quality bar");

@@ -181,6 +181,9 @@ export interface PlanningProjectionSummary {
   readonly generatedAt: string;
   readonly written: number;
   readonly skipped: number;
+  readonly missing: number;
+  readonly stale: number;
+  readonly current: number;
   readonly conflicts: readonly string[];
 }
 

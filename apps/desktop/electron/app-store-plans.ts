@@ -1,6 +1,7 @@
 import {
   openPlanningStore,
   planningDatabasePath,
+  compareGeneratedProjections,
   ProjectionWriteConflictError,
   regenerateProjections,
   writeWorkflowPreferenceFiles,
@@ -2318,10 +2319,15 @@ async function writePlanningProjections(
   allowLegacyOverwrite?: boolean,
 ): Promise<PlanningProjectionSummary> {
   const generatedAt = new Date().toISOString();
+  const projectionInput = buildPlanningProjectionInput(snapshot, generatedAt);
+  const drift = await compareGeneratedProjections({
+    workspaceRoot: workspacePath,
+    projectionInput,
+  });
   try {
     const result = await regenerateProjections({
       workspaceRoot: workspacePath,
-      projectionInput: buildPlanningProjectionInput(snapshot, generatedAt),
+      projectionInput,
       ...(allowLegacyOverwrite !== undefined ? { allowLegacyOverwrite } : {}),
     });
 
@@ -2329,7 +2335,10 @@ async function writePlanningProjections(
       generatedAt,
       written: result.written.length,
       skipped: result.skipped.length,
-      conflicts: result.conflicts.map((conflict) => conflict.path),
+      missing: drift.missing.length,
+      stale: drift.stale.length,
+      current: drift.current.length,
+      conflicts: allowLegacyOverwrite ? [] : result.conflicts.map((conflict) => conflict.path),
     };
   } catch (error) {
     if (error instanceof ProjectionWriteConflictError) {
@@ -2337,6 +2346,9 @@ async function writePlanningProjections(
         generatedAt,
         written: 0,
         skipped: 0,
+        missing: drift.missing.length,
+        stale: drift.stale.length,
+        current: drift.current.length,
         conflicts: error.conflicts.map((conflict) => conflict.path),
       };
     }

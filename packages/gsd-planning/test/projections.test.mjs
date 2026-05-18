@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  compareProjectionFiles,
   generatePlanningProjections,
   openPlanningStore,
   ProjectionWriteConflictError,
@@ -380,6 +381,49 @@ test("writes workflow preference projections and runtime research decision", asy
     assert.equal(decision.decision, "skip");
     assert.equal(decision.source, "workflow-preferences");
     assert.equal(decision.reason, "deterministic-default");
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("detects missing, stale, and legacy projection drift", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    const snapshot = seedSnapshot(store);
+    const files = generatePlanningProjections(makeProjectionInput(snapshot));
+    await writeProjectionFiles({ workspaceRoot, files });
+
+    await rm(join(workspaceRoot, ".gsd/NEXT.md"), { force: true });
+    const project = await readFile(join(workspaceRoot, ".gsd/PROJECT.md"), "utf8");
+    await writeFile(
+      join(workspaceRoot, ".gsd/PROJECT.md"),
+      project.replace("# Project: Database-backed Plan Builder", "# Project: Stale"),
+      "utf8",
+    );
+    await writeFile(join(workspaceRoot, ".gsd/REQUIREMENTS.md"), "# Legacy requirements\n", "utf8");
+
+    const drift = await compareProjectionFiles({ workspaceRoot, files });
+
+    assert.deepEqual(drift.missing.map((entry) => entry.path), [".gsd/NEXT.md"]);
+    assert.deepEqual(drift.stale.map((entry) => entry.path), [".gsd/PROJECT.md"]);
+    assert.deepEqual(drift.conflicts.map((entry) => entry.path), [".gsd/REQUIREMENTS.md"]);
+    assert.equal(drift.current.length, files.length - 3);
+
+    await assert.rejects(
+      () => writeProjectionFiles({ workspaceRoot, files }),
+      (error) => error instanceof ProjectionWriteConflictError
+        && error.conflicts.some((conflict) => conflict.path === ".gsd/REQUIREMENTS.md"),
+    );
+
+    const repaired = await writeProjectionFiles({ workspaceRoot, files, allowLegacyOverwrite: true });
+    assert.equal(repaired.conflicts.length, 1);
+    assert.equal(repaired.written.some((entry) => entry.path === ".gsd/NEXT.md"), true);
+    assert.equal(repaired.written.some((entry) => entry.path === ".gsd/PROJECT.md"), true);
+    assert.equal(repaired.written.some((entry) => entry.path === ".gsd/REQUIREMENTS.md"), true);
 
     store.close();
   } finally {
