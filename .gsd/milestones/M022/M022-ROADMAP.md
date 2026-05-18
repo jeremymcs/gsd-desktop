@@ -15,7 +15,7 @@
 - [x] **S01: Update Parked Idea Text** `risk:medium` `depends:[M021]`
   > After this: a parked idea can be edited in the idea pool and the revised text survives restart.
 
-- [ ] **S02: Restore Dismissed Ideas** `risk:medium` `depends:[S01]`
+- [x] **S02: Restore Dismissed Ideas** `risk:medium` `depends:[S01]`
   > After this: a dismissed parked idea can be restored to parked status and prepared for promotion again.
 
 - [ ] **S03: Draft From Latest Idea Text** `risk:low` `depends:[S01,S02]`

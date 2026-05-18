@@ -1100,6 +1100,74 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
   }
 });
 
+test("restores a dismissed composer draft idea after restart", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-composer-idea-restore");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+  const ideaText = "Revisit naming after research";
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Composer restore plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await window.getByTestId("plan-composer-textarea").fill(ideaText);
+    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Parked");
+    await idea.getByRole("button", { name: "Dismiss" }).click();
+    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
+    await expect(idea.getByRole("button", { name: "Restore" })).toBeVisible();
+    await expect(idea.getByRole("button", { name: "Keep" })).toHaveCount(0);
+    await expect(idea.getByRole("button", { name: "Prepare" })).toHaveCount(0);
+    await idea.getByRole("button", { name: "Restore" }).click();
+    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Parked");
+    await expect(idea.getByRole("button", { name: "Prepare" })).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Composer restore plan",
+      )?.selectedPlan;
+      const item = plan?.parkedItems.find((entry) => entry.text === ideaText);
+      return {
+        reviewStatus: item?.reviewStatus ?? "",
+        reviewNote: item?.reviewNote ?? "",
+      };
+    }).toEqual({
+      reviewStatus: "parked",
+      reviewNote: "Parked for later review",
+    });
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer restore plan");
+    const restoredIdea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await expect(restoredIdea.getByTestId("plan-idea-status")).toHaveText("Parked");
+    await restoredIdea.getByRole("button", { name: "Prepare" }).click();
+    await expect(restoredIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+  } finally {
+    await harness.close();
+  }
+});
+
 test("restores composer-submitted answers and parked drafts across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-restart");

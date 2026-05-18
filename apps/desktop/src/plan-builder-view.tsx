@@ -1698,51 +1698,64 @@ export function PlanBuilderView({
                 {formatIdeaReviewStatus(composerReviewItem.reviewStatus)}
               </small>
               <div className="plan-composer-review__actions">
-                <button
-                  className="plan-inline-button"
-                  disabled={submitting || composerReviewItem.reviewStatus === "kept"}
-                  onClick={() => reviewIdea(composerReviewItem.id, "kept")}
-                  type="button"
-                >
-                  Keep
-                </button>
-                <button
-                  className="plan-inline-button"
-                  disabled={submitting || composerReviewItem.reviewStatus === "promotion-ready"}
-                  onClick={() => reviewIdea(composerReviewItem.id, "promotion-ready")}
-                  type="button"
-                >
-                  Prepare
-                </button>
-                <button
-                  className="plan-inline-button"
-                  disabled={submitting || composerReviewItem.reviewStatus === "dismissed"}
-                  onClick={() => reviewIdea(composerReviewItem.id, "dismissed")}
-                  type="button"
-                >
-                  Dismiss
-                </button>
-                {composerReviewItem.reviewStatus === "promotion-ready" ? (
-                  composerReviewProposal ? (
+                {composerReviewItem.reviewStatus === "dismissed" ? (
+                  <button
+                    className="plan-inline-button"
+                    disabled={submitting}
+                    onClick={() => reviewIdea(composerReviewItem.id, "parked")}
+                    type="button"
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="plan-inline-button"
+                      disabled={submitting || composerReviewItem.reviewStatus === "kept"}
+                      onClick={() => reviewIdea(composerReviewItem.id, "kept")}
+                      type="button"
+                    >
+                      Keep
+                    </button>
+                    <button
+                      className="plan-inline-button"
+                      disabled={submitting || composerReviewItem.reviewStatus === "promotion-ready"}
+                      onClick={() => reviewIdea(composerReviewItem.id, "promotion-ready")}
+                      type="button"
+                    >
+                      Prepare
+                    </button>
                     <button
                       className="plan-inline-button"
                       disabled={submitting}
-                      onClick={() => focusChangeProposal(composerReviewProposal)}
+                      onClick={() => reviewIdea(composerReviewItem.id, "dismissed")}
                       type="button"
                     >
-                      Review proposal
+                      Dismiss
                     </button>
-                  ) : (
-                    <button
-                      className="plan-inline-button"
-                      disabled={submitting}
-                      onClick={() => startDraftChangeProposal(composerReviewItem)}
-                      type="button"
-                    >
-                      Draft change
-                    </button>
-                  )
-                ) : null}
+                    {composerReviewItem.reviewStatus === "promotion-ready" ? (
+                      composerReviewProposal ? (
+                        <button
+                          className="plan-inline-button"
+                          disabled={submitting}
+                          onClick={() => focusChangeProposal(composerReviewProposal)}
+                          type="button"
+                        >
+                          Review proposal
+                        </button>
+                      ) : (
+                        <button
+                          className="plan-inline-button"
+                          disabled={submitting}
+                          onClick={() => startDraftChangeProposal(composerReviewItem)}
+                          type="button"
+                        >
+                          Draft change
+                        </button>
+                      )
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           ) : null}
@@ -2073,51 +2086,64 @@ export function PlanBuilderView({
                           >
                             Edit idea
                           </button>
-                          <button
-                            className="plan-inline-button"
-                            disabled={submitting || item.reviewStatus === "kept"}
-                            onClick={() => reviewIdea(item.id, "kept")}
-                            type="button"
-                          >
-                            Keep
-                          </button>
-                          <button
-                            className="plan-inline-button"
-                            disabled={submitting || item.reviewStatus === "promotion-ready"}
-                            onClick={() => reviewIdea(item.id, "promotion-ready")}
-                            type="button"
-                          >
-                            Prepare
-                          </button>
-                          <button
-                            className="plan-inline-button"
-                            disabled={submitting || item.reviewStatus === "dismissed"}
-                            onClick={() => reviewIdea(item.id, "dismissed")}
-                            type="button"
-                          >
-                            Dismiss
-                          </button>
-                          {item.reviewStatus === "promotion-ready" ? (
-                            proposal ? (
+                          {item.reviewStatus === "dismissed" ? (
+                            <button
+                              className="plan-inline-button"
+                              disabled={submitting}
+                              onClick={() => reviewIdea(item.id, "parked")}
+                              type="button"
+                            >
+                              Restore
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting || item.reviewStatus === "kept"}
+                                onClick={() => reviewIdea(item.id, "kept")}
+                                type="button"
+                              >
+                                Keep
+                              </button>
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting || item.reviewStatus === "promotion-ready"}
+                                onClick={() => reviewIdea(item.id, "promotion-ready")}
+                                type="button"
+                              >
+                                Prepare
+                              </button>
                               <button
                                 className="plan-inline-button"
                                 disabled={submitting}
-                                onClick={() => focusChangeProposal(proposal)}
+                                onClick={() => reviewIdea(item.id, "dismissed")}
                                 type="button"
                               >
-                                Review proposal
+                                Dismiss
                               </button>
-                            ) : (
-                              <button
-                                className="plan-inline-button"
-                                disabled={submitting}
-                                onClick={() => startDraftChangeProposal(item)}
-                                type="button"
-                              >
-                                Draft change
-                              </button>
-                            )
-                          ) : null}
+                              {item.reviewStatus === "promotion-ready" ? (
+                                proposal ? (
+                                  <button
+                                    className="plan-inline-button"
+                                    disabled={submitting}
+                                    onClick={() => focusChangeProposal(proposal)}
+                                    type="button"
+                                  >
+                                    Review proposal
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="plan-inline-button"
+                                    disabled={submitting}
+                                    onClick={() => startDraftChangeProposal(item)}
+                                    type="button"
+                                  >
+                                    Draft change
+                                  </button>
+                                )
+                              ) : null}
+                            </>
+                          )}
                         </div>
                       ) : null}
                       {isDraftingProposal && !isEditingIdea ? (

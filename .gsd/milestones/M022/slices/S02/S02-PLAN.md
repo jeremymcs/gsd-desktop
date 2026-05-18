@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add a restore action for dismissed parked ideas.
-- [ ] Reuse append-only review/status events where possible.
-- [ ] Show restore only when the idea is dismissed.
-- [ ] Cover restored status after restart.
+- [x] Add a restore action for dismissed parked ideas.
+- [x] Reuse append-only review/status events where possible.
+- [x] Show restore only when the idea is dismissed.
+- [x] Cover restored status after restart.
 
 ## Acceptance
 

@@ -798,6 +798,65 @@ test("replays parked idea updates without changing source metadata or review sta
   }
 });
 
+test("replays dismissed parked idea restoration", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Restore Parked Idea" });
+    const parked = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "idea.parked",
+        item: {
+          id: "parked-idea-1",
+          sourceType: "composer",
+          sourceStage: "task",
+          sourceQuestionId: "composer_execute",
+          sourcePrompt: "Composer note captured during EXECUTE",
+          text: "Review a late integration concern.",
+          rationale: "Parked from the Plan Builder composer",
+        },
+      },
+    });
+    const dismissed = store.appendEvent({
+      planId: created.id,
+      expectedRevision: parked.revision,
+      event: {
+        type: "idea.reviewed",
+        itemId: "parked-idea-1",
+        status: "dismissed",
+        note: "Dismissed after review.",
+      },
+    });
+    const restored = store.appendEvent({
+      planId: created.id,
+      expectedRevision: dismissed.revision,
+      event: {
+        type: "idea.reviewed",
+        itemId: "parked-idea-1",
+        status: "parked",
+        note: "Parked for later review",
+      },
+    });
+
+    assert.equal(restored.parkedItems[0]?.reviewStatus, "parked");
+    assert.equal(restored.parkedItems[0]?.reviewNote, "Parked for later review");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.parkedItems[0]?.reviewStatus, "parked");
+    assert.equal(reopened.parkedItems[0]?.reviewNote, "Parked for later review");
+    assert.equal(reopened.events.length, 3);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 async function makeWorkspace() {
   return await mkdtemp(join(tmpdir(), "pi-gsd-planning-"));
 }
