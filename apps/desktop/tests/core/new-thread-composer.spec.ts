@@ -60,7 +60,15 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     );
 
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
+    const thinkingBadge = window.locator(".new-thread__hint .model-selector__badge").nth(1);
     await expect(modelBadge).toBeVisible();
+    await expect(modelBadge).toHaveText("openai/gpt-5");
+    await expect(thinkingBadge).toHaveText("think/medium");
+    const environmentBox = await window.locator(".new-thread__environment-group").boundingBox();
+    const selectorBox = await window.locator(".new-thread__hint .model-selector").boundingBox();
+    expect(environmentBox).not.toBeNull();
+    expect(selectorBox).not.toBeNull();
+    expect(selectorBox?.x ?? 0).toBeGreaterThan((environmentBox?.x ?? 0) + (environmentBox?.width ?? 0));
     await expect(window.locator('.new-thread input[type="file"]')).toBeHidden();
 
     await composer.fill("/stat");
@@ -133,9 +141,13 @@ test("new thread hides the onboarding notice after picking a thread model", asyn
     const dropdown = window.locator(".new-thread__hint .model-selector__dropdown").first();
     await expect(dropdown).toContainText("GPT-5");
     await expect(dropdown).toContainText("GPT-4o");
+    await dropdown.getByLabel("Filter models").fill("4o");
+    await expect(dropdown).toContainText("openai/gpt-4o");
+    await expect(dropdown).not.toContainText("openai/gpt-5");
+    await dropdown.getByLabel("Filter models").fill("");
     await dropdown.getByRole("button", { name: /GPT-5/ }).click();
 
-    await expect(modelBadge).toHaveText("openai:gpt-5");
+    await expect(modelBadge).toHaveText("openai/gpt-5");
     await expect(startButton).toBeEnabled();
     await expect(notice).toHaveCount(0);
 

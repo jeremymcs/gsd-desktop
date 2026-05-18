@@ -327,7 +327,6 @@ function NewThreadComposerFooter({
                 <span>Worktree</span>
               </button>
             </div>
-            <span className="new-thread__hint-separator">·</span>
             <ModelSelector
               runtime={runtime}
               provider={provider}

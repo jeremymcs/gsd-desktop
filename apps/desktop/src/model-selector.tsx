@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import {
   buildModelOptions,
-  MODEL_OPTIONS_EMPTY_DESCRIPTION,
   MODEL_OPTIONS_EMPTY_TITLE,
   THINKING_OPTIONS,
   type ComposerModelOption,
@@ -37,17 +36,30 @@ export function ModelSelector({
   unselectedModelLabel = "Choose model",
   emptyModelLabel = "Choose model",
   emptyModelTitle = MODEL_OPTIONS_EMPTY_TITLE,
-  emptyModelDescription = MODEL_OPTIONS_EMPTY_DESCRIPTION,
   onSetModel,
   onSetThinking,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState<OpenDropdown>("none");
+  const [modelQuery, setModelQuery] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const groupedModels = useMemo(() => groupByProvider(buildModelOptions(runtime)), [runtime]);
+  const filteredGroupedModels = useMemo(
+    () => filterGroupedModels(groupedModels, modelQuery),
+    [groupedModels, modelQuery],
+  );
+  const selectedModelOption = groupedModels
+    .flatMap((group) => group.items)
+    .find((option) => option.providerId === provider && option.modelId === modelId);
   const hasModelControl = Boolean(provider && modelId) || groupedModels.length > 0;
   const shouldRenderModelControl = hasModelControl || showEmptyModelControl;
-  const modelBadgeLabel = provider && modelId ? `${provider}:${modelId}` : groupedModels.length > 0 ? unselectedModelLabel : emptyModelLabel;
+  const modelBadgeLabel = selectedModelOption
+    ? formatModelOptionLabel(selectedModelOption)
+    : provider && modelId
+      ? `${provider}/${modelId}`
+      : groupedModels.length > 0
+        ? unselectedModelLabel
+        : emptyModelLabel;
 
   useEffect(() => {
     if (open === "none") return undefined;
@@ -72,6 +84,12 @@ export function ModelSelector({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open !== "model") {
+      setModelQuery("");
+    }
+  }, [open]);
+
   if (!shouldRenderModelControl && !thinkingLevel) {
     return null;
   }
@@ -90,35 +108,52 @@ export function ModelSelector({
           </button>
           {open === "model" ? (
             <div
-              className={`model-selector__dropdown ${dropdownPlacement === "below" ? "model-selector__dropdown--below" : ""}`}
+              className={`model-selector__dropdown model-selector__dropdown--models ${dropdownPlacement === "below" ? "model-selector__dropdown--below" : ""}`}
               onWheel={(event) => event.stopPropagation()}
             >
-              {groupedModels.map((group) => (
+              {groupedModels.length > 0 ? (
+                <div className="model-selector__search">
+                  <input
+                    aria-label="Filter models"
+                    placeholder="Filter models..."
+                    type="search"
+                    value={modelQuery}
+                    onChange={(event) => setModelQuery(event.target.value)}
+                  />
+                </div>
+              ) : null}
+              {filteredGroupedModels.map((group) => (
                 <div key={group.provider}>
                   <div className="model-selector__group-title">{group.provider}</div>
-                  {group.items.map((option) => {
-                    const isActive = option.providerId === provider && option.modelId === modelId;
-                    return (
-                      <button
-                        className={`model-selector__item${isActive ? " model-selector__item--active" : ""}`}
-                        key={`${option.providerId}:${option.modelId}`}
-                        type="button"
-                        onClick={() => {
-                          if (!isActive) {
-                            onSetModel(option.providerId, option.modelId);
-                          }
-                          setOpen("none");
-                        }}
-                      >
-                        <span className="model-selector__item-label">{option.label}</span>
-                        {isActive ? <span className="model-selector__item-meta">active</span> : null}
-                      </button>
-                    );
-                  })}
+                  <div className="model-selector__group-items">
+                    {group.items.map((option) => {
+                      const isActive = option.providerId === provider && option.modelId === modelId;
+                      return (
+                        <button
+                          className={`model-selector__item${isActive ? " model-selector__item--active" : ""}`}
+                          key={`${option.providerId}:${option.modelId}`}
+                          type="button"
+                          onClick={() => {
+                            if (!isActive) {
+                              onSetModel(option.providerId, option.modelId);
+                            }
+                            setOpen("none");
+                          }}
+                        >
+                          <span className="model-selector__item-label">{formatModelOptionLabel(option)}</span>
+                          <span className="model-selector__item-meta">
+                            {isActive ? `${option.label} · active` : option.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
               {groupedModels.length === 0 ? (
                 <div className="model-selector__group-title">{emptyModelTitle}</div>
+              ) : filteredGroupedModels.length === 0 ? (
+                <div className="model-selector__empty">No models match "{modelQuery}".</div>
               ) : null}
             </div>
           ) : null}
@@ -132,7 +167,7 @@ export function ModelSelector({
             disabled={disabled}
             onClick={() => setOpen(open === "thinking" ? "none" : "thinking")}
           >
-            {thinkingLevel}
+            {`think/${thinkingLevel}`}
           </button>
           {open === "thinking" ? (
             <div
@@ -183,4 +218,25 @@ function groupByProvider(options: readonly ComposerModelOption[]): readonly Mode
     }
   }
   return Array.from(groups.entries()).map(([provider, items]) => ({ provider, items }));
+}
+
+function filterGroupedModels(groups: readonly ModelGroup[], query: string): readonly ModelGroup[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return groups;
+  }
+  return groups
+    .map((group) => ({
+      provider: group.provider,
+      items: group.items.filter((option) =>
+        [option.providerId, option.modelId, option.label, option.description, formatModelOptionLabel(option)].some((value) =>
+          value.toLowerCase().includes(normalized),
+        ),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+function formatModelOptionLabel(option: ComposerModelOption): string {
+  return `${option.providerId}/${option.modelId}`;
 }
