@@ -171,6 +171,17 @@ export interface RunRecoverySummaryRecord {
   readonly createdAt: string;
 }
 
+export type RunActivityKind = "resume-attempted" | "stop-updated";
+
+export interface RunActivityRecord {
+  readonly id: string;
+  readonly kind: RunActivityKind;
+  readonly task: RunRecoveryTaskTargetRecord;
+  readonly summary: string;
+  readonly detail?: string;
+  readonly createdAt: string;
+}
+
 export type WorkflowCommitPolicy = "per-task";
 export type WorkflowBranchModel = "single";
 export type WorkflowResearchMode = "skip" | "research";
@@ -502,6 +513,13 @@ export type PlanEvent =
       };
     }
   | {
+      readonly type: "run.activity-recorded";
+      readonly activity: Omit<RunActivityRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+        readonly createdAt?: string;
+      };
+    }
+  | {
       readonly type: "idea.parked";
       readonly item: Omit<ParkedItemRecord, "id" | "createdAt" | "reviewStatus" | "reviewNote" | "reviewedAt"> & {
         readonly id?: string;
@@ -608,6 +626,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly legacyReferences: readonly LegacyReferenceRecord[];
   readonly runRecoverySummary?: RunRecoverySummaryRecord;
+  readonly runActivity: readonly RunActivityRecord[];
   readonly workflowPreferences?: WorkflowPreferencesRecord;
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];

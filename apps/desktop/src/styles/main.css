@@ -2453,6 +2453,30 @@
   white-space: normal;
 }
 
+.plan-run-activity {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.plan-run-activity__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.plan-run-activity__list li {
+  display: grid;
+  gap: 3px;
+}
+
+.plan-run-activity__list span,
+.plan-run-activity__list strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .plan-evidence-ledger {
   align-items: stretch;
   flex-direction: column;

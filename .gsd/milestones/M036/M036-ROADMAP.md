@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Run Activity Events** `risk:high` `depends:[M035]`
+- [x] **S01: Run Activity Events** `risk:high` `depends:[M035]`
   > After this: users can inspect the recent autonomous run trail.

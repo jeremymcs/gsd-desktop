@@ -399,12 +399,20 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(recovery).toContainText("Stop detail: Waiting on credentials.");
     await expect(recovery).toContainText("Resume target: M1/S1/T3: Independent check");
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
+    const activity = window.getByTestId("run-activity-ledger");
+    await expect(activity.getByTestId("run-activity-entry")).toHaveCount(1);
+    await expect(activity).toContainText("Stop updated");
+    await expect(activity).toContainText("M1/S1/T1: Build foundation");
+    await expect(activity).toContainText("Waiting on credentials.");
 
     const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
     expect(nextProjection).toContain("## Recovery Summary");
     expect(nextProjection).toContain("Last attempted task: M1/S1/T1: Build foundation");
     expect(nextProjection).toContain("Stop reason: Task blocked");
     expect(nextProjection).toContain("Resume target: M1/S1/T3: Independent check");
+    expect(nextProjection).toContain("## Run Activity");
+    expect(nextProjection).toContain("Stop updated: M1/S1/T1: Build foundation");
+    expect(nextProjection).toContain("Waiting on credentials.");
   } finally {
     await harness.close();
   }
@@ -416,6 +424,9 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     const recovery = window.getByTestId("run-recovery-summary");
     await expect(recovery).toContainText("Waiting on credentials.");
+    const activity = window.getByTestId("run-activity-ledger");
+    await expect(activity).toContainText("Stop updated");
+    await expect(activity).toContainText("M1/S1/T1: Build foundation");
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
     await recovery.getByTestId("resume-recovery-target-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
@@ -424,9 +435,14 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     expect(resumedSessionId).not.toBe("");
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(activity.getByTestId("run-activity-entry")).toHaveCount(2);
+    await expect(activity).toContainText("Resume attempted");
+    await expect(activity).toContainText("M1/S1/T3: Independent check");
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Open M1/S1/T3");
     await recovery.getByTestId("resume-recovery-target-button").click();
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(resumedSessionId);
+    const resumedProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
+    expect(resumedProjection).toContain("Resume attempted: M1/S1/T3: Independent check");
   } finally {
     await harness.close();
   }

@@ -13,6 +13,7 @@ import type {
   PlanSnapshot,
   PlanStage,
   RequirementRecord,
+  RunActivityRecord,
   RunRecoverySummaryRecord,
   ShipSummaryRecord,
   StageStatus,
@@ -1690,6 +1691,7 @@ export function PlanBuilderView({
                 projectionSummary={planningState?.projectionSummary}
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
+                runActivity={snapshot.runActivity ?? []}
                 runRecoverySummary={snapshot.runRecoverySummary}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
                 taskVerifications={snapshot.taskVerifications ?? []}
@@ -3449,6 +3451,7 @@ function PlanExecutionQueue({
   projectionSummary,
   submitting,
   taskExecutions,
+  runActivity,
   runRecoverySummary,
   taskSessionLinks,
   taskVerifications,
@@ -3464,6 +3467,7 @@ function PlanExecutionQueue({
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
+  readonly runActivity: readonly RunActivityRecord[];
   readonly runRecoverySummary?: RunRecoverySummaryRecord;
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
@@ -3608,6 +3612,8 @@ function PlanExecutionQueue({
         onOpenTaskSession={onOpenTaskSession}
         onStartTaskSession={onStartTaskSession}
       />
+
+      <RunActivityLedgerCard activity={runActivity} />
 
       {acceptedPlanProposal ? (
         <NextWorkPanel
@@ -3882,6 +3888,35 @@ function RunRecoverySummaryCard({
             : `${resumeLink ? "Open" : "Resume"} ${resumeTarget.taskPath}`
           : "No resume target"}
       </button>
+    </section>
+  );
+}
+
+function RunActivityLedgerCard({ activity }: { readonly activity: readonly RunActivityRecord[] }) {
+  const recentActivity = activity.slice(-5).reverse();
+
+  return (
+    <section className="plan-projection-card plan-run-activity" data-testid="run-activity-ledger">
+      <div>
+        <strong>Run activity</strong>
+        <span>
+          {recentActivity.length > 0
+            ? `${recentActivity.length} recent event${recentActivity.length === 1 ? "" : "s"}`
+            : "No autonomous run activity recorded yet."}
+        </span>
+      </div>
+      {recentActivity.length > 0 ? (
+        <ol className="plan-run-activity__list">
+          {recentActivity.map((entry) => (
+            <li data-testid="run-activity-entry" key={entry.id}>
+              <strong>{formatRunActivityKind(entry.kind)}</strong>
+              <span>{formatRunRecoveryTarget(entry.task)}</span>
+              <span>{entry.summary}</span>
+              {entry.detail ? <span>{entry.detail}</span> : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
     </section>
   );
 }
@@ -5111,6 +5146,15 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
 
 function formatRunRecoveryTarget(target: RunRecoverySummaryRecord["lastAttemptedTask"]): string {
   return `${target.taskPath}: ${target.title}`;
+}
+
+function formatRunActivityKind(kind: RunActivityRecord["kind"]): string {
+  switch (kind) {
+    case "resume-attempted":
+      return "Resume attempted";
+    case "stop-updated":
+      return "Stop updated";
+  }
 }
 
 function formatRunRecoveryStopReason(reason: RunRecoverySummaryRecord["stopReason"]): string {

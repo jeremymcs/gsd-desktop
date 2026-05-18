@@ -6,6 +6,7 @@ import type {
   PlanSnapshot,
   RequirementRecord,
   RequirementStatus,
+  RunActivityRecord,
   TaskEvidenceRecord,
   TaskExecutionRecord,
   TaskSessionLinkRecord,
@@ -416,6 +417,10 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
     "",
     renderRunRecoverySummary(plan),
     "",
+    "## Run Activity",
+    "",
+    renderRunActivityLedger(plan.runActivity),
+    "",
     "## Ready",
     "",
     queue.ready.length > 0
@@ -495,6 +500,29 @@ function renderRunRecoverySummary(plan: PlanSnapshot): string {
     `Resume target: ${summary.resumeTarget ? formatRecoveryTarget(summary.resumeTarget) : "No safe resume target"}`,
     `Captured at: ${summary.createdAt}`,
   ]);
+}
+
+function renderRunActivityLedger(activity: readonly RunActivityRecord[]): string {
+  const recent = activity.slice(-5).reverse();
+  if (recent.length === 0) {
+    return "_No autonomous run activity recorded._";
+  }
+
+  return recent
+    .map((entry) => {
+      const detail = entry.detail ? ` - ${entry.detail}` : "";
+      return `- ${formatRunActivityKind(entry.kind)}: ${formatRecoveryTarget(entry.task)} - ${entry.summary}${detail} (${entry.createdAt})`;
+    })
+    .join("\n");
+}
+
+function formatRunActivityKind(kind: RunActivityRecord["kind"]): string {
+  switch (kind) {
+    case "resume-attempted":
+      return "Resume attempted";
+    case "stop-updated":
+      return "Stop updated";
+  }
 }
 
 function formatRecoveryTarget(target: { readonly taskPath: string; readonly title: string }): string {

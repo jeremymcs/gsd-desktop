@@ -1453,8 +1453,17 @@ export async function linkPlanningTaskSession(
           },
         },
       });
+      snapshot = appendRunActivity(planningStore, snapshot, {
+        kind: "resume-attempted",
+        task: toRunRecoveryTarget(taskContext.task, taskContext.taskPath),
+        summary: "Linked execution session",
+        detail: `Linked execution session: ${buildTaskSessionTitle(input)}`,
+      });
 
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
     });
   });
 }
@@ -1821,13 +1830,38 @@ function appendRunRecoverySummary(
   explicitResumeTarget?: RunRecoveryTaskTargetRecord,
 ): PlanSnapshot {
   const resumeTarget = explicitResumeTarget ?? resolveRunRecoveryResumeTarget(snapshot);
-  return appendEvent(planningStore, snapshot, {
+  const updated = appendRunActivity(planningStore, snapshot, {
+    kind: "stop-updated",
+    task: lastAttemptedTask,
+    summary: formatRunRecoveryStopReason(stopReason),
+    detail: stopDetail,
+  });
+  return appendEvent(planningStore, updated, {
     type: "run.recovery-updated",
     summary: {
       lastAttemptedTask,
       stopReason,
       stopDetail,
       ...(resumeTarget ? { resumeTarget } : {}),
+      createdAt: new Date().toISOString(),
+    },
+  });
+}
+
+function appendRunActivity(
+  planningStore: PlanningStore,
+  snapshot: PlanSnapshot,
+  activity: {
+    readonly kind: "resume-attempted" | "stop-updated";
+    readonly task: RunRecoveryTaskTargetRecord;
+    readonly summary: string;
+    readonly detail?: string;
+  },
+): PlanSnapshot {
+  return appendEvent(planningStore, snapshot, {
+    type: "run.activity-recorded",
+    activity: {
+      ...activity,
       createdAt: new Date().toISOString(),
     },
   });
@@ -1869,6 +1903,23 @@ function executionStopReason(status: UpdatePlanningTaskExecutionInput["status"])
       return "task-blocked";
     case "done":
       return "task-completed";
+  }
+}
+
+function formatRunRecoveryStopReason(reason: RunRecoveryStopReason): string {
+  switch (reason) {
+    case "task-not-started":
+      return "Task not started";
+    case "task-in-progress":
+      return "Task in progress";
+    case "task-blocked":
+      return "Task blocked";
+    case "task-completed":
+      return "Task completed";
+    case "verification-failed":
+      return "Verification failed";
+    case "verification-passed":
+      return "Verification passed";
   }
 }
 
