@@ -31,6 +31,13 @@ const discussAnswers = [
 const projectDepthGatePrompt = "What constraints should shape every decision?";
 const requirementsDepthGatePrompt = "How should we know the requirements are complete enough to plan?";
 
+async function expectActivePromptOnlyInComposer(window: Page, prompt: string): Promise<void> {
+  await expect(window.getByTestId("plan-composer-question")).toHaveText(prompt);
+  await expect(window.getByText(prompt, { exact: true })).toHaveCount(1);
+  await expect(window.getByTestId("workflow-guidance-next-action")).not.toContainText(prompt);
+  await expect(window.getByTestId("plan-question-card")).toHaveCount(0);
+}
+
 async function completeDiscussFromComposer(window: Page): Promise<void> {
   for (const [prompt, answer] of discussAnswers) {
     await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
@@ -334,13 +341,13 @@ test("saves the active DISCUSS answer from the Plan Builder composer", async () 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer answer plan");
     await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
-    await expect(window.getByTestId("plan-question-card")).toHaveCount(0);
+    await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Driven Plan");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("Composer Driven Plan");
     await window.getByLabel("Submit composer answer").click();
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expectActivePromptOnlyInComposer(
+      window,
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-answer-history")).toContainText("Composer Driven Plan");
@@ -381,12 +388,13 @@ test("keeps the active DISCUSS question visible inside the Plan Builder composer
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer question context plan");
     await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("plan-composer-question")).toHaveText("What should we call this project?");
+    await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Question Stays Visible");
-    await expect(window.getByTestId("plan-composer-question")).toHaveText("What should we call this project?");
+    await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await window.getByLabel("Submit composer answer").click();
 
-    await expect(window.getByTestId("plan-composer-question")).toHaveText(
+    await expectActivePromptOnlyInComposer(
+      window,
       "What are we building, and what outcome should it create?",
     );
   } finally {

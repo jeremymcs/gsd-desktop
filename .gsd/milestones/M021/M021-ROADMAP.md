@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Active Prompt Regression Guard** `risk:low` `depends:[]`
+- [x] **S01: Active Prompt Regression Guard** `risk:low` `depends:[]`
   > After this: the Electron Plan Builder spec proves the current active prompt is visible in one active input surface and does not reappear as a duplicate question form.
 
 - [ ] **S02: Prompt Context Cleanup** `risk:low` `depends:[S01]`

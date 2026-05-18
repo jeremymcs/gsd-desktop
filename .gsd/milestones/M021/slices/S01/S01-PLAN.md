@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add an Electron assertion that the active DISCUSS prompt is only presented in the composer input context.
-- [ ] Assert the workflow guidance card names the phase/artifact without duplicating the exact active prompt.
-- [ ] Keep saved memory prompt assertions intact.
-- [ ] Run the focused Plan Builder spec and the full Plan Builder spec.
+- [x] Add an Electron assertion that the active DISCUSS prompt is only presented in the composer input context.
+- [x] Assert the workflow guidance card names the phase/artifact without duplicating the exact active prompt.
+- [x] Keep saved memory prompt assertions intact.
+- [x] Run the focused Plan Builder spec and the full Plan Builder spec.
 
 ## Acceptance
 
