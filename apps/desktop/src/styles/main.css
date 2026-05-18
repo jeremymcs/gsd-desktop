@@ -2100,6 +2100,14 @@
 }
 
 .canvas--plans {
+  --plan-font-xs: 11px;
+  --plan-font-sm: 12px;
+  --plan-font-md: 13px;
+  --plan-font-lg: 14px;
+  --plan-font-title: 18px;
+  --plan-font-display: clamp(28px, 3.2vw, 42px);
+  --plan-line-body: 1.55;
+  --plan-line-compact: 1.35;
   --plan-canvas-bg: #f1f4f8;
   --plan-workbench-bg:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 249, 252, 0) 28%),
@@ -2123,7 +2131,7 @@
   --plan-secondary-bg: #f2f5fa;
   --plan-input-bg: #ffffff;
   --plan-input-border: #d9e0ec;
-  --plan-card-shadow: 0 18px 48px rgba(31, 38, 56, 0.08);
+  --plan-card-shadow: 0 10px 28px rgba(31, 38, 56, 0.06);
   --plan-success-text: #166534;
   --plan-success-bg: rgba(22, 101, 52, 0.08);
   --plan-success-border: rgba(22, 101, 52, 0.24);
@@ -2163,7 +2171,7 @@
   --plan-secondary-bg: #1b1d22;
   --plan-input-bg: #101114;
   --plan-input-border: #30343d;
-  --plan-card-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  --plan-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
   --plan-success-text: #a9d8b1;
   --plan-success-bg: rgba(128, 201, 141, 0.08);
   --plan-success-border: rgba(128, 201, 141, 0.34);
@@ -3793,6 +3801,31 @@
   color: var(--plan-accent);
 }
 
+.canvas--plans .plan-builder__body {
+  gap: 20px;
+  padding: 34px min(5vw, 64px);
+}
+
+.canvas--plans .plan-builder__body--wizard {
+  gap: 16px;
+  padding-block: 24px;
+}
+
+.canvas--plans .plan-builder__mark {
+  width: 58px;
+  height: 58px;
+}
+
+.canvas--plans .plan-builder__mark svg {
+  width: 28px;
+  height: 28px;
+}
+
+.canvas--plans .plan-builder__copy {
+  max-width: 680px;
+  gap: 8px;
+}
+
 .canvas--plans .plan-builder__eyebrow,
 .canvas--plans .plan-question-card__meta,
 .canvas--plans .plan-execution-milestone__header span,
@@ -3806,6 +3839,14 @@
 .canvas--plans .plan-inline-button,
 .canvas--plans .plan-memory__item-header small {
   color: var(--plan-accent);
+}
+
+.canvas--plans .plan-builder__eyebrow,
+.canvas--plans .plan-guidance-card__banner,
+.canvas--plans .plan-question-card__meta,
+.canvas--plans .plan-depth-card__eyebrow {
+  font-size: var(--plan-font-xs);
+  font-weight: 720;
 }
 
 .canvas--plans .plan-builder__copy h1,
@@ -3827,6 +3868,37 @@
   color: var(--plan-text);
 }
 
+.canvas--plans .plan-builder__copy h1 {
+  font-size: var(--plan-font-display);
+  font-weight: 670;
+  line-height: 1.08;
+}
+
+.canvas--plans .plan-question-card h2,
+.canvas--plans .plan-depth-card h2 {
+  font-size: var(--plan-font-title);
+  font-weight: 680;
+  line-height: 1.32;
+}
+
+.canvas--plans .plan-guidance-card strong,
+.canvas--plans .plan-outline-card__title,
+.canvas--plans .plan-research-output h3 {
+  font-size: var(--plan-font-lg);
+  line-height: var(--plan-line-compact);
+}
+
+.canvas--plans .plan-execution-milestone__header strong,
+.canvas--plans .plan-execution-slice__header strong,
+.canvas--plans .plan-execution-task__header strong {
+  font-size: var(--plan-font-md);
+}
+
+.canvas--plans .plan-outline-stat span {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
 .canvas--plans .plan-builder__copy p,
 .canvas--plans .plan-execution-milestone p,
 .canvas--plans .plan-execution-slice p,
@@ -3839,6 +3911,25 @@
 .canvas--plans .plan-requirements-contract__header p,
 .canvas--plans .plan-memory__item p {
   color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-builder__copy p {
+  max-width: 560px;
+  font-size: var(--plan-font-lg);
+  line-height: var(--plan-line-body);
+}
+
+.canvas--plans .plan-question-card p,
+.canvas--plans .plan-depth-card p,
+.canvas--plans .plan-guidance-card p,
+.canvas--plans .plan-roadmap-preview,
+.canvas--plans .plan-research-output p,
+.canvas--plans .plan-memory__item p,
+.canvas--plans .plan-execution-milestone p,
+.canvas--plans .plan-execution-slice p,
+.canvas--plans .plan-execution-task p {
+  font-size: var(--plan-font-md);
+  line-height: var(--plan-line-body);
 }
 
 .canvas--plans .plan-memory__item .plan-memory__question {
@@ -3864,6 +3955,66 @@
   border-color: var(--plan-pane-border);
   background: var(--plan-pane-subtle-bg);
   box-shadow: var(--plan-card-shadow);
+}
+
+.canvas--plans .plan-create,
+.canvas--plans .plan-question-card,
+.canvas--plans .plan-depth-card,
+.canvas--plans .plan-research-form,
+.canvas--plans .plan-roadmap-form {
+  gap: 13px;
+  padding: 16px;
+}
+
+.canvas--plans .plan-guidance-card {
+  gap: 12px;
+  padding: 13px;
+}
+
+.canvas--plans .plan-phase {
+  gap: 4px;
+  padding: 10px 11px;
+}
+
+.canvas--plans .plan-phase__label {
+  font-size: var(--plan-font-sm);
+  font-weight: 700;
+}
+
+.canvas--plans .plan-phase__status,
+.canvas--plans .plan-stage-list__item small,
+.canvas--plans .plan-outline-stat small,
+.canvas--plans .plan-outline-card__meta {
+  font-size: var(--plan-font-sm);
+}
+
+.canvas--plans .plan-side {
+  gap: 12px;
+  padding: 14px;
+}
+
+.canvas--plans .plan-outline-card {
+  padding: 12px;
+}
+
+.canvas--plans .plan-outline-stat {
+  min-height: 66px;
+  padding: 10px;
+}
+
+.canvas--plans .plan-stage-list {
+  gap: 7px;
+}
+
+.canvas--plans .plan-stage-list__item {
+  min-height: 42px;
+  padding-inline: 11px;
+}
+
+.canvas--plans .plan-stage-list__item span,
+.canvas--plans .plan-memory__title,
+.canvas--plans .plan-memory__item-header span {
+  font-size: var(--plan-font-sm);
 }
 
 .canvas--plans .plan-execution-slice,
@@ -3915,12 +4066,44 @@
   border-color: var(--plan-input-border);
   background: var(--plan-input-bg);
   color: var(--plan-text);
+  font-size: var(--plan-font-md);
+}
+
+.canvas--plans .plan-question-card textarea,
+.canvas--plans .plan-memory__editor textarea,
+.canvas--plans .plan-research-form__field input,
+.canvas--plans .plan-research-form__field textarea,
+.canvas--plans .plan-roadmap-form__field input,
+.canvas--plans .plan-roadmap-form__field textarea,
+.canvas--plans .plan-execution-task-editor__field textarea,
+.canvas--plans .plan-change-draft input,
+.canvas--plans .plan-change-draft textarea,
+.canvas--plans .plan-composer__field {
+  font-size: var(--plan-font-md);
+  line-height: var(--plan-line-body);
+}
+
+.canvas--plans .plan-question-card textarea {
+  min-height: 128px;
 }
 
 .canvas--plans .plan-action-button,
 .canvas--plans .plan-composer__send {
   background: var(--plan-primary-bg);
   color: var(--plan-primary-text);
+}
+
+.canvas--plans .plan-action-button,
+.canvas--plans .plan-secondary-button {
+  min-height: 38px;
+  font-size: var(--plan-font-md);
+  font-weight: 680;
+}
+
+.canvas--plans .plan-inline-button {
+  min-height: 30px;
+  font-size: var(--plan-font-sm);
+  font-weight: 660;
 }
 
 .canvas--plans .plan-secondary-button,
