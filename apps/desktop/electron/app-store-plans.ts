@@ -27,7 +27,9 @@ import type {
   HidePlanningTaskInput,
   LinkPlanningTaskSessionInput,
   ParkPlanningIdeaInput,
+  PlanningMilestoneDraft,
   PlanningPlanProposalDraft,
+  PlanningSliceDraft,
   PlanningTaskDraft,
   PlanningProjectionSummary,
   ProposePlanningPlanInput,
@@ -1378,7 +1380,7 @@ export async function linkPlanningTaskSession(
     return withPlanningStore(workspace.path, async (planningStore) => {
       let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       assertAcceptedPlan(snapshot);
-      assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      const taskContext = getAcceptedPlanTaskContext(snapshot, input.taskId, input.taskPath);
       if (snapshot.activePhase !== "execute") {
         throw new Error("EXECUTE must be active before linking a task session");
       }
@@ -1396,6 +1398,7 @@ export async function linkPlanningTaskSession(
       const key = sessionKey(session.ref);
       store.sessionState.transcriptCache.set(key, []);
       store.sessionState.loadedTranscriptKeys.add(key);
+      store.sessionState.composerDraftsBySession.set(key, buildTaskExecutionBrief(snapshot, taskContext));
       store.updateSessionConfig(session.ref, session.config);
       await store.refreshState({
         selectedWorkspaceId: store.state.selectedWorkspaceId,
@@ -2068,6 +2071,38 @@ function assertAcceptedPlanTask(
   return task;
 }
 
+interface AcceptedPlanTaskContext {
+  readonly milestone: PlanningMilestoneDraft;
+  readonly slice: PlanningSliceDraft;
+  readonly task: PlanningTaskDraft;
+  readonly taskPath: string;
+}
+
+function getAcceptedPlanTaskContext(
+  snapshot: PlanSnapshot,
+  taskId: string,
+  taskPath: string,
+): AcceptedPlanTaskContext {
+  const acceptedPlan = getLatestAcceptedPlanOutput(snapshot);
+  const proposal = acceptedPlan ? parsePlanProposal(acceptedPlan.content) : undefined;
+  if (!proposal) {
+    throw new Error("Accepted PLAN content is invalid");
+  }
+
+  for (const milestone of proposal.milestones) {
+    for (const slice of milestone.slices) {
+      for (const task of slice.tasks) {
+        const currentTaskPath = `${milestone.id}/${slice.id}/${task.id}`;
+        if (task.id === taskId && currentTaskPath === taskPath) {
+          return { milestone, slice, task, taskPath };
+        }
+      }
+    }
+  }
+
+  throw new Error(`Task ${taskId} is not part of the accepted PLAN`);
+}
+
 function assertReadyForVerify(snapshot: PlanSnapshot): void {
   for (const task of getAcceptedPlanTasks(snapshot)) {
     assertTaskReadyForVerification(snapshot, task.taskId);
@@ -2118,6 +2153,76 @@ function buildTaskSessionTitle(input: LinkPlanningTaskSessionInput): string {
   const taskTitle = input.taskTitle.trim();
   const title = taskTitle ? `Task ${input.taskId} - ${taskTitle}` : `Task ${input.taskId}`;
   return title.length > 90 ? `${title.slice(0, 87)}...` : title;
+}
+
+function buildTaskExecutionBrief(snapshot: PlanSnapshot, context: AcceptedPlanTaskContext): string {
+  const requirementsById = new Map<string, RequirementRecord>(
+    getPlanningRequirementRows(snapshot).map((requirement) => [requirement.id, requirement]),
+  );
+  const acceptedResearch = snapshot.generatedOutputs.filter(
+    (output) => output.stage === "research" && output.status === "accepted",
+  );
+  const linkedRequirements = context.task.requirementIds.flatMap((requirementId) => {
+    const requirement = requirementsById.get(requirementId);
+    return requirement ? [requirement] : [];
+  });
+
+  return [
+    `# Execute ${context.taskPath}: ${context.task.title}`,
+    "",
+    "This is a generated execution brief from the accepted plan. Edit it if needed, then send it when ready.",
+    "",
+    "## Task",
+    "",
+    `- Milestone: ${context.milestone.id} - ${context.milestone.title}`,
+    `- Slice: ${context.slice.id} - ${context.slice.title}`,
+    `- Task: ${context.task.id} - ${context.task.title}`,
+    `- Dependencies: ${formatExecutionBriefList(context.task.dependencies)}`,
+    "",
+    "## Acceptance",
+    "",
+    context.task.acceptance,
+    "",
+    "## Linked Requirements",
+    "",
+    renderExecutionBriefRequirements(linkedRequirements, context.task.requirementIds),
+    "",
+    "## Accepted Research",
+    "",
+    acceptedResearch.length > 0
+      ? acceptedResearch.map((output) => `- ${output.title}: ${firstLine(output.content)}`).join("\n")
+      : "- None",
+    "",
+    "## Verification Expectations",
+    "",
+    "- Update this task in the Plan Builder queue with execution status, notes, blockers, and evidence.",
+    `- Evidence should prove: ${context.task.acceptance}`,
+  ].join("\n");
+}
+
+function renderExecutionBriefRequirements(
+  requirements: readonly RequirementRecord[],
+  requirementIds: readonly string[],
+): string {
+  if (requirementIds.length === 0) {
+    return "- None";
+  }
+  const requirementLines = requirements.map((requirement) =>
+    `- ${requirement.id} (${requirement.status}, ${requirement.class}): ${requirement.title} - ${requirement.description}`,
+  );
+  const knownRequirementIds = new Set<string>(requirements.map((requirement) => requirement.id));
+  const missingRequirementLines = requirementIds
+    .filter((requirementId) => !knownRequirementIds.has(requirementId))
+    .map((requirementId) => `- ${requirementId}: Missing requirement record`);
+  return [...requirementLines, ...missingRequirementLines].join("\n") || "- None";
+}
+
+function formatExecutionBriefList(values: readonly string[]): string {
+  return values.length > 0 ? values.join(", ") : "None";
+}
+
+function firstLine(value: string): string {
+  return value.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? value.trim();
 }
 
 function advanceDiscussStageAfterAnswer(

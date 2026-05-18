@@ -1773,6 +1773,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("open-task-session-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
+    await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T1: Implement and verify the slice/);
+    await expect(window.getByTestId("composer")).toHaveValue(/Dependencies: None/);
+    await expect(window.getByTestId("composer")).toHaveValue(/R001 \(active, functional\): First useful version capabilities/);
+    await expect(window.getByTestId("composer")).toHaveValue(/Evidence should prove: No lost answers/);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await primaryExecutionTask.getByTestId("task-status-select").selectOption("blocked");

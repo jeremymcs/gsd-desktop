@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Build a deterministic execution brief from accepted plan task state.
-- [ ] Include acceptance criteria, dependencies, linked requirements, and relevant research.
-- [ ] Attach the brief to new task sessions through the existing session path.
-- [ ] Cover generated brief content without real provider calls.
+- [x] Build a deterministic execution brief from accepted plan task state.
+- [x] Include acceptance criteria, dependencies, linked requirements, and relevant research.
+- [x] Attach the brief to new task sessions through the existing session path.
+- [x] Cover generated brief content without real provider calls.
 
 ## Acceptance
 
