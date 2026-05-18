@@ -40,7 +40,7 @@ async function expectActivePromptOnlyInComposer(window: Page, prompt: string): P
 
 async function completeDiscussFromComposer(window: Page): Promise<void> {
   for (const [prompt, answer] of discussAnswers) {
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
     await window.getByTestId("plan-composer-textarea").fill(answer);
     await window.getByLabel("Submit composer answer").click();
 
@@ -288,7 +288,7 @@ test("resolves saved follow-up guidance through answer revision", async () => {
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Follow-up resolution plan");
     await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("not sure");
     await window.getByLabel("Submit composer answer").click();
 
@@ -421,14 +421,14 @@ test("keeps focus in the Plan Builder composer after submit and park", async () 
     await window.getByTestId("plan-composer-textarea").fill("Focus stays on composer");
     await window.getByLabel("Submit composer answer").click();
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-composer-textarea")).toBeFocused();
     await window.getByTestId("plan-composer-textarea").fill("Park this composer draft");
     await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-composer-textarea")).toBeFocused();
@@ -456,7 +456,7 @@ test("submits the active DISCUSS answer from the Plan Builder composer keyboard 
     await window.getByTestId("plan-composer-textarea").fill("Keyboard Shortcut Plan");
     await window.getByTestId("plan-composer-textarea").press("Control+Enter");
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-answer-history")).toContainText("Keyboard Shortcut Plan");
@@ -1056,12 +1056,12 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer park plan");
     await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Revisit naming after research");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("Revisit naming after research");
     await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
     await expect(window.getByTestId("plan-idea-pool")).toContainText("Revisit naming after research");
     await expect.poll(async () => {
@@ -1104,11 +1104,11 @@ test("restores composer-submitted answers and parked drafts across restart", asy
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer restart plan");
     await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Restart Plan");
     await window.getByLabel("Submit composer answer").click();
 
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await window.getByTestId("plan-composer-textarea").fill("Park restart-risk cleanup for later");
@@ -1132,7 +1132,7 @@ test("restores composer-submitted answers and parked drafts across restart", asy
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer restart plan");
     await expect(window.getByTestId("plan-answer-history")).toContainText("Composer Restart Plan");
     await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
@@ -1182,7 +1182,7 @@ test("labels weak requirements answers with requirement contract context", async
     await window.getByRole("button", { name: "Create plan" }).click();
 
     for (const [prompt, answer] of discussAnswers.slice(0, 7)) {
-      await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+      await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
       await window.getByLabel("Submit composer answer").click();
 
@@ -1193,7 +1193,7 @@ test("labels weak requirements answers with requirement contract context", async
     }
 
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("REQUIREMENTS");
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText(
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What must the first useful version be able to do?",
     );
     await window.getByTestId("plan-composer-textarea").fill("yes");
@@ -1246,7 +1246,7 @@ test("requires research override and repeats unresolved guidance before planning
     const savedAnswerCount = answersWithUnresolvedGuidance.length;
 
     for (const [prompt, answer] of answersWithUnresolvedGuidance) {
-      await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+      await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
       await window.getByLabel("Submit composer answer").click();
 
@@ -1336,7 +1336,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / project");
     await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("Answer the current Project question");
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-project.md");
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
@@ -1362,7 +1362,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     ) as { decision: string; source: string };
     expect(researchDecision.decision).toBe("skip");
     expect(researchDecision.source).toBe("workflow-preferences");
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("not sure");
     await expect(window.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
     await expect(window.getByTestId("adaptive-follow-up-severity")).toHaveText("High signal");
@@ -1389,7 +1389,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
       await expect(window.getByTestId("plan-idea-pool")).toContainText(idea);
     }
-    await expect(window.getByTestId("plan-question-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
     const keptIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Later automation follow-up" });
     await keptIdea.getByRole("button", { name: "Keep" }).click();
@@ -1428,7 +1428,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(dismissedIdea.getByTestId("plan-idea-status")).toHaveText("Dismissed");
 
     for (const [prompt, answer] of discussAnswers) {
-      await expect(window.getByTestId("plan-question-prompt")).toHaveText(prompt);
+      await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
       await window.getByLabel("Submit composer answer").click();
 

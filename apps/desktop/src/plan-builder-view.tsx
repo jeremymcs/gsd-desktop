@@ -1715,7 +1715,7 @@ export function PlanBuilderView({
                 <>
                   <div className="plan-composer__question" data-testid="plan-composer-question">
                     {activeQuestion ? (
-                      <span data-testid="plan-question-prompt">{composerQuestion}</span>
+                      <span data-testid="plan-composer-prompt">{composerQuestion}</span>
                     ) : (
                       composerQuestion
                     )}

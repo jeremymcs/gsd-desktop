@@ -15,7 +15,7 @@
 - [x] **S01: Active Prompt Regression Guard** `risk:low` `depends:[]`
   > After this: the Electron Plan Builder spec proves the current active prompt is visible in one active input surface and does not reappear as a duplicate question form.
 
-- [ ] **S02: Prompt Context Cleanup** `risk:low` `depends:[S01]`
+- [x] **S02: Prompt Context Cleanup** `risk:low` `depends:[S01]`
   > After this: Plan Builder copy and test ids distinguish active composer prompt, follow-up prompt, and saved memory prompt so future changes do not blur them.
 
 ## Boundary Map

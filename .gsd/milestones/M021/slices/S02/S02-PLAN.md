@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Audit Plan Builder prompt-related test ids and helper names.
-- [ ] Rename stale active-question form language where it no longer matches the UI.
-- [ ] Keep backwards-compatible test ids only where existing tests need them.
-- [ ] Verify Plan Builder tests still pass.
+- [x] Audit Plan Builder prompt-related test ids and helper names.
+- [x] Rename stale active-question form language where it no longer matches the UI.
+- [x] Keep backwards-compatible test ids only where existing tests need them.
+- [x] Verify Plan Builder tests still pass.
 
 ## Acceptance
 
