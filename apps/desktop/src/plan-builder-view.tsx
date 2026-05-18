@@ -4682,6 +4682,12 @@ function PlanVerifyGate({
       ) : null}
 
       {acceptedPlanProposal ? (
+        <PlanEvidenceReportCard
+          reportText={buildVerificationEvidenceReport(planTasks, taskExecutions, taskVerifications)}
+        />
+      ) : null}
+
+      {acceptedPlanProposal ? (
         <div className="plan-execution-list">
           {planTasks.map((entry) => {
             const execution = taskExecutionMap.get(entry.task.id);
@@ -4751,6 +4757,47 @@ function PlanVerifyGate({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PlanEvidenceReportCard({ reportText }: { readonly reportText: string }) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+
+  const copyReport = () => {
+    textareaRef.current?.select();
+    const write = navigator.clipboard?.writeText(reportText);
+    if (!write) {
+      setCopyState("failed");
+      return;
+    }
+    void write.then(() => setCopyState("copied")).catch(() => setCopyState("failed"));
+  };
+
+  return (
+    <section className="plan-projection-card plan-evidence-report" data-testid="verification-evidence-report">
+      <div className="plan-evidence-report__header">
+        <div>
+          <strong>Evidence report</strong>
+          <span>Copyable verification handoff from current task records.</span>
+        </div>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="copy-evidence-report-button"
+          onClick={copyReport}
+          type="button"
+        >
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy report"}
+        </button>
+      </div>
+      <textarea
+        aria-label="Verification evidence report"
+        data-testid="verification-evidence-report-text"
+        readOnly
+        ref={textareaRef}
+        value={reportText}
+      />
+    </section>
   );
 }
 
@@ -5696,6 +5743,76 @@ function getPlanSliceTargets(proposal: PlanningPlanProposalDraft | undefined): r
         })),
       )
     : [];
+}
+
+function buildVerificationEvidenceReport(
+  tasks: readonly PlanTaskEntry[],
+  taskExecutions: readonly TaskExecutionRecord[],
+  taskVerifications: readonly TaskVerificationRecord[],
+): string {
+  const executionMap = new Map(taskExecutions.map((execution) => [execution.taskId, execution]));
+  const acceptanceByTaskId = new Map(tasks.map((entry) => [entry.task.id, entry.acceptance]));
+  const verificationMap = new Map<string, TaskVerificationRecord>();
+  for (const verification of taskVerifications) {
+    if (acceptanceByTaskId.get(verification.taskId) === verification.acceptance) {
+      verificationMap.set(verification.taskId, verification);
+    }
+  }
+
+  const evidenceItemCount = tasks.reduce(
+    (count, entry) => count + (executionMap.get(entry.task.id)?.evidence.length ?? 0),
+    0,
+  );
+  const passedCount = tasks.filter(({ task }) => verificationMap.get(task.id)?.status === "passed").length;
+  const failedCount = tasks.filter(({ task }) => verificationMap.get(task.id)?.status === "failed").length;
+  const pendingCount = tasks.length - passedCount - failedCount;
+  let gapCount = 0;
+  const lines = [
+    "# Verification Evidence Report",
+    "",
+    `Summary: ${tasks.length} task${tasks.length === 1 ? "" : "s"} · ${evidenceItemCount} evidence item${
+      evidenceItemCount === 1 ? "" : "s"
+    } · ${passedCount} passed / ${failedCount} failed / ${pendingCount} pending`,
+    "",
+    "## Tasks",
+    "",
+  ];
+
+  for (const entry of tasks) {
+    const execution = executionMap.get(entry.task.id);
+    const verification = verificationMap.get(entry.task.id);
+    const executionStatus = execution?.status ?? "not-started";
+    const evidence = execution?.evidence ?? [];
+    const gaps: string[] = [];
+
+    if (executionStatus !== "done") {
+      gaps.push(`execution ${formatTaskExecutionStatus(executionStatus).toLowerCase()}`);
+    }
+    if (evidence.length === 0) {
+      gaps.push("missing execution evidence");
+    }
+    if (!verification) {
+      gaps.push("verification pending");
+    } else if (verification.status === "failed") {
+      gaps.push("verification failed");
+    }
+    gapCount += gaps.length;
+
+    lines.push(`- ${entry.taskPath}: ${entry.task.title}`);
+    lines.push(`  Acceptance: ${entry.acceptance}`);
+    lines.push(`  Execution: ${formatTaskExecutionStatus(executionStatus)}`);
+    lines.push(`  Evidence: ${evidence.length > 0 ? evidence.map((item) => item.text).join("; ") : "None"}`);
+    lines.push(`  Source: ${formatEvidenceLedgerSources(evidence)}`);
+    lines.push(
+      `  Verification: ${formatTaskVerificationStatus(verification?.status)}${
+        verification?.note ? ` - ${verification.note}` : ""
+      }`,
+    );
+    lines.push(`  Gaps: ${gaps.length > 0 ? gaps.join("; ") : "none"}`);
+  }
+
+  lines[2] = `${lines[2]} · ${gapCount} gap${gapCount === 1 ? "" : "s"}`;
+  return lines.join("\n");
 }
 
 function buildShipSummaryDraft(

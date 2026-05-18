@@ -1527,6 +1527,16 @@ test("starts VERIFY from the Plan Builder composer handoff", async () => {
     await window.getByLabel("Advance composer to VERIFY").click();
 
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect(window.getByTestId("verification-evidence-report")).toBeVisible();
+    await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(
+      /# Verification Evidence Report/,
+    );
+    await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(
+      /Evidence 1 saved from EXECUTE\./,
+    );
+    await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(/Verification: Pending/);
+    await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(/Gaps: verification pending/);
+    await expect(window.getByTestId("copy-evidence-report-button")).toHaveText("Copy report");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(

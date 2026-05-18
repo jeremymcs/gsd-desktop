@@ -12,5 +12,15 @@
 
 ## Slices
 
-- [ ] **S01: Copyable Evidence Report** `risk:low` `depends:[M030]`
+- [x] **S01: Copyable Evidence Report** `risk:low` `depends:[M030]`
   > After this: VERIFY has a copyable report of task evidence, verification state, and gaps.
+
+## Verification
+
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "starts VERIFY"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:core`
+- `pnpm lint`
+- `pnpm simplify`
+- `git diff --check`

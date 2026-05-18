@@ -2657,6 +2657,36 @@
   font: 12px/1.5 var(--font-mono);
 }
 
+.plan-evidence-report {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.plan-evidence-report__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-evidence-report__header > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.plan-evidence-report textarea {
+  min-height: 180px;
+  width: 100%;
+  border: 1px solid #30343d;
+  border-radius: 7px;
+  resize: vertical;
+  padding: 10px;
+  background: #101114;
+  color: #d9dce3;
+  font: 12px/1.5 var(--font-mono);
+}
+
 .plan-evidence-ledger {
   align-items: stretch;
   flex-direction: column;
@@ -4549,6 +4579,7 @@
 .canvas--plans .plan-change-draft select,
 .canvas--plans .plan-change-draft textarea,
 .canvas--plans .plan-handoff-bundle textarea,
+.canvas--plans .plan-evidence-report textarea,
 .canvas--plans .plan-phase-model-row__select,
 .canvas--plans .plan-side__workspace select {
   border-color: var(--plan-input-border);
@@ -4567,6 +4598,7 @@
 .canvas--plans .plan-change-draft input,
 .canvas--plans .plan-change-draft textarea,
 .canvas--plans .plan-handoff-bundle textarea,
+.canvas--plans .plan-evidence-report textarea,
 .canvas--plans .plan-composer__field {
   font-size: var(--plan-font-md);
   line-height: var(--plan-line-body);
