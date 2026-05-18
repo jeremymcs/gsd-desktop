@@ -311,6 +311,8 @@ test("shows next work ordering and updates after dependency completion", async (
     const panel = window.getByTestId("next-work-panel");
     await expect(window.getByTestId("run-policy-summary")).toContainText("captured: no");
     await expect(window.getByTestId("run-policy-summary")).toContainText("stop: tests-fail");
+    await expect(window.getByTestId("run-guardrails-summary")).toContainText("Tests fail");
+    await expect(window.getByTestId("run-guardrails-summary")).toContainText("Dirty worktree conflict");
     await expect(panel).toContainText("2 ready / 1 blocked");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T1: Build foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
@@ -1698,6 +1700,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(preferencesProjection).toContain("workflow_prefs_captured: true");
     expect(preferencesProjection).toContain("autonomous_run:");
     expect(preferencesProjection).toContain("milestone-complete");
+    expect(preferencesProjection).toContain("guardrails:");
+    expect(preferencesProjection).toContain("Dirty worktree conflict");
     expect(preferencesProjection).toContain("phase_overrides:");
     expect(preferencesProjection).toContain("execute:");
     expect(preferencesProjection).toContain("model: gpt-4o");

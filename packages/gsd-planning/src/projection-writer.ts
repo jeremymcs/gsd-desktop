@@ -235,6 +235,13 @@ function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: Workflow
     `  verification_required: ${autonomousRun.verificationRequired ? "true" : "false"}`,
     "  stop_conditions:",
     ...autonomousRun.stopConditions.map((condition) => `    - ${condition}`),
+    "  guardrails:",
+    ...autonomousRun.guardrails.flatMap((guardrail) => [
+      `    - condition: ${guardrail.condition}`,
+      `      action: ${guardrail.action}`,
+      `      label: ${guardrail.label}`,
+      `      description: ${guardrail.description}`,
+    ]),
     ...modelLines,
     "---",
     "",
@@ -263,6 +270,10 @@ function renderAutonomousRunPolicyBullets(policy: WorkflowAutonomousRunPolicy): 
     `- Commit cadence: ${policy.commitCadence}`,
     `- Verification required: ${policy.verificationRequired ? "true" : "false"}`,
     `- Stop conditions: ${policy.stopConditions.join(", ")}`,
+    "- Guardrails:",
+    ...policy.guardrails.map(
+      (guardrail) => `  - ${guardrail.condition}: ${guardrail.label} - ${guardrail.description}`,
+    ),
   ];
 }
 

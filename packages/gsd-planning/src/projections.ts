@@ -459,6 +459,9 @@ function renderAutonomousRunPolicy(plan: PlanSnapshot): string {
     `Commit cadence: ${policy.commitCadence}`,
     `Verification required: ${policy.verificationRequired ? "true" : "false"}`,
     `Stop conditions: ${formatAutonomousStopConditions(policy)}`,
+    ...policy.guardrails.map(
+      (guardrail) => `Guardrail ${guardrail.condition}: ${guardrail.label} - ${guardrail.description}`,
+    ),
   ]);
 }
 

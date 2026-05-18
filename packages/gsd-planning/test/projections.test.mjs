@@ -58,6 +58,8 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(nextWork, /## Autonomous Run Policy/);
     assert.match(nextWork, /Mode: supervised/);
     assert.match(nextWork, /Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete/);
+    assert.match(nextWork, /Guardrail tests-fail: Tests fail - Stop when a required typecheck, build, test, lint, or verification command fails/);
+    assert.match(nextWork, /Guardrail dirty-conflict: Dirty worktree conflict - Stop when unrelated local changes overlap/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
@@ -289,11 +291,14 @@ test("writes workflow preference projections and runtime research decision", asy
     assert.match(preferences, /workflow_prefs_captured: true/);
     assert.match(preferences, /autonomous_run:\n  mode: supervised\n  commit_cadence: per-task\n  verification_required: true/);
     assert.match(preferences, /stop_conditions:\n    - tests-fail\n    - scope-ambiguous\n    - destructive-action\n    - dirty-conflict\n    - milestone-complete/);
+    assert.match(preferences, /guardrails:\n    - condition: tests-fail\n      action: stop-and-report\n      label: Tests fail/);
+    assert.match(preferences, /condition: dirty-conflict\n      action: stop-and-report\n      label: Dirty worktree conflict/);
     assert.match(preferences, /models:\n  executor_class: balanced/);
     assert.match(preferences, /phase_overrides:\n    execute:\n      provider: openai\n      model: gpt-5/);
     assert.match(preferences, /verify:\n      provider: openai\n      model: gpt-4o/);
     assert.match(preferences, /## Autonomous Run Policy/);
     assert.match(preferences, /- Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete/);
+    assert.match(preferences, /  - destructive-action: Destructive action needed - Stop before deleting user data/);
     assert.match(preferences, /pi-gui-plan-builder-generated/);
 
     const decision = JSON.parse(await readFile(join(workspaceRoot, ".gsd/runtime/research-decision.json"), "utf8"));

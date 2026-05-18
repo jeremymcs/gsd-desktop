@@ -3342,6 +3342,13 @@ function formatAutonomousRunPolicy(preferences: WorkflowPreferencesRecord | unde
   ].join(" · ");
 }
 
+function formatAutonomousGuardrails(preferences: WorkflowPreferencesRecord | undefined): string {
+  const policy = preferences?.autonomousRun ?? defaultWorkflowAutonomousRunPolicy;
+  return policy.guardrails
+    .map((guardrail) => `${guardrail.label}: ${guardrail.description}`)
+    .join(" · ");
+}
+
 function PlanExecutionQueue({
   acceptedPlanProposal,
   projectionSummary,
@@ -3488,6 +3495,7 @@ function PlanExecutionQueue({
         <div>
           <strong>Autonomous run policy</strong>
           <span>{formatAutonomousRunPolicy(workflowPreferences)}</span>
+          <span data-testid="run-guardrails-summary">{formatAutonomousGuardrails(workflowPreferences)}</span>
         </div>
       </div>
 

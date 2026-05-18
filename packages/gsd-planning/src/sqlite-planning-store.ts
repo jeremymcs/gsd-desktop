@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { defaultWorkflowAutonomousRunPolicy } from "./types.js";
+import { normalizeWorkflowAutonomousRunPolicy } from "./types.js";
 import type {
   AnswerRecord,
   AppendPlanEventInput,
@@ -32,7 +32,6 @@ import type {
   TaskExecutionRecord,
   TaskSessionLinkRecord,
   TaskVerificationRecord,
-  WorkflowAutonomousRunPolicy,
   WorkflowPhaseModelPreferences,
   WorkflowPreferencesRecord,
 } from "./types.js";
@@ -455,7 +454,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           branchModel: payload.preferences.branchModel,
           uatDispatch: payload.preferences.uatDispatch,
           research: payload.preferences.research,
-          autonomousRun: normalizeAutonomousRunPolicy(payload.preferences.autonomousRun),
+          autonomousRun: normalizeWorkflowAutonomousRunPolicy(payload.preferences.autonomousRun),
           models: {
             executorClass: payload.preferences.models.executorClass,
             phaseOverrides: normalizeWorkflowPhaseModels(payload.preferences.models.phaseOverrides),
@@ -861,20 +860,6 @@ function normalizeWorkflowPhaseModels(
     }
   }
   return normalized;
-}
-
-function normalizeAutonomousRunPolicy(
-  policy: WorkflowAutonomousRunPolicy | undefined,
-): WorkflowAutonomousRunPolicy {
-  const validStopConditions = new Set(defaultWorkflowAutonomousRunPolicy.stopConditions);
-  const stopConditions = policy?.stopConditions.filter((condition) => validStopConditions.has(condition)) ?? [];
-  return {
-    mode: policy?.mode === "supervised" ? policy.mode : defaultWorkflowAutonomousRunPolicy.mode,
-    commitCadence:
-      policy?.commitCadence === "per-task" ? policy.commitCadence : defaultWorkflowAutonomousRunPolicy.commitCadence,
-    verificationRequired: policy?.verificationRequired ?? defaultWorkflowAutonomousRunPolicy.verificationRequired,
-    stopConditions: stopConditions.length > 0 ? stopConditions : defaultWorkflowAutonomousRunPolicy.stopConditions,
-  };
 }
 
 function buildProposalActivity(

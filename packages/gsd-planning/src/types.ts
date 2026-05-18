@@ -151,26 +151,106 @@ export type WorkflowAutonomousStopCondition =
   | "destructive-action"
   | "dirty-conflict"
   | "milestone-complete";
+export type WorkflowAutonomousGuardrailAction = "stop-and-report";
+
+export interface WorkflowAutonomousGuardrail {
+  readonly condition: WorkflowAutonomousStopCondition;
+  readonly label: string;
+  readonly action: WorkflowAutonomousGuardrailAction;
+  readonly description: string;
+}
 
 export interface WorkflowAutonomousRunPolicy {
   readonly mode: WorkflowAutonomousRunMode;
   readonly commitCadence: WorkflowAutonomousCommitCadence;
   readonly verificationRequired: boolean;
   readonly stopConditions: readonly WorkflowAutonomousStopCondition[];
+  readonly guardrails: readonly WorkflowAutonomousGuardrail[];
 }
+
+export const defaultWorkflowAutonomousGuardrails: readonly WorkflowAutonomousGuardrail[] = [
+  {
+    condition: "tests-fail",
+    label: "Tests fail",
+    action: "stop-and-report",
+    description: "Stop when a required typecheck, build, test, lint, or verification command fails.",
+  },
+  {
+    condition: "scope-ambiguous",
+    label: "Scope is ambiguous",
+    action: "stop-and-report",
+    description: "Stop when the next edit no longer clearly matches the accepted task or milestone.",
+  },
+  {
+    condition: "destructive-action",
+    label: "Destructive action needed",
+    action: "stop-and-report",
+    description: "Stop before deleting user data, rewriting history, or running a destructive command.",
+  },
+  {
+    condition: "dirty-conflict",
+    label: "Dirty worktree conflict",
+    action: "stop-and-report",
+    description: "Stop when unrelated local changes overlap the files needed for the current slice.",
+  },
+  {
+    condition: "milestone-complete",
+    label: "Milestone complete",
+    action: "stop-and-report",
+    description: "Stop after the active milestone is implemented, verified, simplified, and committed.",
+  },
+];
 
 export const defaultWorkflowAutonomousRunPolicy: WorkflowAutonomousRunPolicy = {
   mode: "supervised",
   commitCadence: "per-task",
   verificationRequired: true,
-  stopConditions: [
-    "tests-fail",
-    "scope-ambiguous",
-    "destructive-action",
-    "dirty-conflict",
-    "milestone-complete",
-  ],
+  stopConditions: defaultWorkflowAutonomousGuardrails.map((guardrail) => guardrail.condition),
+  guardrails: defaultWorkflowAutonomousGuardrails,
 };
+
+export function normalizeWorkflowAutonomousRunPolicy(
+  policy: WorkflowAutonomousRunPolicy | undefined,
+): WorkflowAutonomousRunPolicy {
+  const validStopConditions = new Set(defaultWorkflowAutonomousRunPolicy.stopConditions);
+  const stopConditions = policy?.stopConditions.filter((condition) => validStopConditions.has(condition)) ?? [];
+  const normalizedStopConditions =
+    stopConditions.length > 0 ? stopConditions : defaultWorkflowAutonomousRunPolicy.stopConditions;
+  const suppliedGuardrails = new Map(
+    (policy?.guardrails ?? [])
+      .filter((guardrail) => validStopConditions.has(guardrail.condition) && guardrail.action === "stop-and-report")
+      .map((guardrail) => [
+        guardrail.condition,
+        {
+          condition: guardrail.condition,
+          label: guardrail.label.trim(),
+          action: guardrail.action,
+          description: guardrail.description.trim(),
+        },
+      ]),
+  );
+  const normalizedGuardrails = defaultWorkflowAutonomousRunPolicy.guardrails
+    .map((guardrail) => suppliedGuardrails.get(guardrail.condition) ?? guardrail)
+    .filter((guardrail) => normalizedStopConditions.includes(guardrail.condition))
+    .map((guardrail) => (guardrail.label && guardrail.description ? guardrail : defaultGuardrailFor(guardrail.condition)));
+
+  return {
+    mode: policy?.mode === "supervised" ? policy.mode : defaultWorkflowAutonomousRunPolicy.mode,
+    commitCadence:
+      policy?.commitCadence === "per-task" ? policy.commitCadence : defaultWorkflowAutonomousRunPolicy.commitCadence,
+    verificationRequired: policy?.verificationRequired ?? defaultWorkflowAutonomousRunPolicy.verificationRequired,
+    stopConditions: normalizedStopConditions,
+    guardrails: normalizedGuardrails,
+  };
+}
+
+function defaultGuardrailFor(condition: WorkflowAutonomousStopCondition): WorkflowAutonomousGuardrail {
+  const guardrail = defaultWorkflowAutonomousRunPolicy.guardrails.find((entry) => entry.condition === condition);
+  if (!guardrail) {
+    throw new Error(`Missing autonomous guardrail default for ${condition}`);
+  }
+  return guardrail;
+}
 
 export interface WorkflowPhaseModelPreference {
   readonly providerId: string;

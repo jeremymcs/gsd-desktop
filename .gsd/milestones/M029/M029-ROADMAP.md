@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Guardrail Policy Projection** `risk:medium` `depends:[M028]`
+- [x] **S01: Guardrail Policy Projection** `risk:medium` `depends:[M028]`
   > After this: stop conditions are durable and visible in UI and `.gsd/NEXT.md`.
-

@@ -423,6 +423,9 @@ test("creates a repo-local planning database and replays event-backed plan state
       "dirty-conflict",
       "milestone-complete",
     ]);
+    assert.equal(withShipSummary.workflowPreferences?.autonomousRun.guardrails.length, 5);
+    assert.equal(withShipSummary.workflowPreferences?.autonomousRun.guardrails[0]?.action, "stop-and-report");
+    assert.match(withShipSummary.workflowPreferences?.autonomousRun.guardrails[0]?.description ?? "", /typecheck/);
     assert.equal(withShipSummary.workflowPreferences?.models.executorClass, "balanced");
     assert.equal(withShipSummary.workflowPreferences?.models.phaseOverrides?.plan?.modelId, "gpt-5");
     assert.equal(withShipSummary.parkedItems.length, 2);
@@ -476,6 +479,12 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.workflowPreferences?.research, "skip");
     assert.equal(reopened.workflowPreferences?.autonomousRun.mode, "supervised");
     assert.equal(reopened.workflowPreferences?.autonomousRun.stopConditions.includes("milestone-complete"), true);
+    assert.equal(
+      reopened.workflowPreferences?.autonomousRun.guardrails.some(
+        (guardrail) => guardrail.condition === "dirty-conflict" && guardrail.label === "Dirty worktree conflict",
+      ),
+      true,
+    );
     assert.equal(reopened.workflowPreferences?.workflowPrefsCaptured, true);
     assert.equal(reopened.workflowPreferences?.models.phaseOverrides?.plan?.providerId, "openai");
     assert.equal(reopened.parkedItems.length, 2);
