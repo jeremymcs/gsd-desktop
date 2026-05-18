@@ -6,6 +6,7 @@ import type {
   PlanSnapshot,
   RequirementRecord,
   RequirementStatus,
+  TaskEvidenceRecord,
   TaskExecutionRecord,
   TaskSessionLinkRecord,
   TaskVerificationRecord,
@@ -443,6 +444,10 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
       ),
     ]),
     "",
+    "## Verification Evidence Ledger",
+    "",
+    renderVerificationEvidenceLedger(taskRefs, executionById, verificationById),
+    "",
     "## Task Plan Files",
     "",
     taskRefs.length > 0
@@ -467,6 +472,41 @@ function renderAutonomousRunPolicy(plan: PlanSnapshot): string {
 
 function formatAutonomousStopConditions(policy: WorkflowAutonomousRunPolicy): string {
   return policy.stopConditions.join(", ");
+}
+
+function renderVerificationEvidenceLedger(
+  tasks: readonly ProjectedTaskRef[],
+  executionById: ReadonlyMap<string, TaskExecutionRecord>,
+  verificationById: ReadonlyMap<string, TaskVerificationRecord>,
+): string {
+  if (tasks.length === 0) {
+    return "_No accepted tasks._";
+  }
+  const lines = [
+    "| Task | Execution | Evidence | Source session | Verification |",
+    "|---|---|---|---|---|",
+  ];
+  for (const task of tasks) {
+    const execution = executionById.get(task.id);
+    const evidence = execution?.evidence ?? [];
+    const verification = verificationById.get(task.id);
+    lines.push(
+      `| ${task.path} | ${formatExecutionState(execution)} | ${formatLedgerEvidence(evidence)} | ${formatLedgerEvidenceSources(evidence)} | ${formatVerificationState(verification)} |`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function formatLedgerEvidence(evidence: readonly TaskEvidenceRecord[]): string {
+  if (evidence.length === 0) {
+    return "none";
+  }
+  return evidence.map((entry) => entry.text).join("; ");
+}
+
+function formatLedgerEvidenceSources(evidence: readonly TaskEvidenceRecord[]): string {
+  const sources = unique(evidence.map((entry) => entry.sourceSessionTitle ?? entry.sourceSessionId ?? ""));
+  return sources.length > 0 ? sources.join(", ") : "none";
 }
 
 function renderDecisions(decisions: readonly DecisionProjection[]): string {

@@ -342,6 +342,11 @@ test("shows next work ordering and updates after dependency completion", async (
     await foundationTask.getByTestId("task-evidence-textarea").fill("T1 evidence recorded.");
     await foundationTask.getByTestId("update-task-execution-button").click();
 
+    const ledgerRow = window.getByTestId("evidence-ledger-row").filter({ hasText: "M1/S1/T1: Build foundation" });
+    await expect(ledgerRow).toContainText("Execution: Done");
+    await expect(ledgerRow).toContainText("Evidence: 1 evidence item");
+    await expect(ledgerRow).toContainText("Source: Task T1 - Build foundation");
+    await expect(ledgerRow).toContainText("Verification: Pending");
     await expect(panel).toContainText("2 ready / 0 blocked");
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T2");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
@@ -360,6 +365,9 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T2");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
+    const ledgerRow = window.getByTestId("evidence-ledger-row").filter({ hasText: "M1/S1/T1: Build foundation" });
+    await expect(ledgerRow).toContainText("Evidence: 1 evidence item");
+    await expect(ledgerRow).toContainText("Source: Task T1 - Build foundation");
   } finally {
     await harness.close();
   }

@@ -2453,6 +2453,44 @@
   white-space: normal;
 }
 
+.plan-evidence-ledger {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.plan-evidence-ledger__header {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-evidence-ledger__rows {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-evidence-ledger__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.25fr) repeat(4, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(12, 14, 18, 0.28);
+}
+
+.plan-evidence-ledger__row span,
+.plan-evidence-ledger__row strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .plan-evidence-ledger__row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plan-next-work {
   align-items: stretch;
   flex-direction: column;

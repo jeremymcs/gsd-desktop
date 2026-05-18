@@ -109,6 +109,81 @@ test("projects the next work queue with blockers and evidence gaps", async () =>
   }
 });
 
+test("projects a verification evidence ledger with source sessions", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    let snapshot = seedSnapshot(store);
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "task.session-linked",
+        link: {
+          taskId: "T01",
+          taskPath: "M001/S01/T01",
+          workspaceId: "workspace-1",
+          sessionId: "session-1",
+          title: "Task T01 - Package scaffold",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "task.status-updated",
+        task: {
+          taskId: "T01",
+          taskPath: "M001/S01/T01",
+          status: "done",
+          note: "Package scaffold is complete.",
+          blocker: "",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "task.evidence-recorded",
+        evidence: {
+          taskId: "T01",
+          taskPath: "M001/S01/T01",
+          text: "Scaffold evidence recorded.",
+          sourceSessionId: "session-1",
+          sourceSessionTitle: "Task T01 - Package scaffold",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "task.verification-recorded",
+        verification: {
+          taskId: "T01",
+          taskPath: "M001/S01/T01",
+          acceptance: "Package scaffold",
+          status: "passed",
+          note: "Evidence matched acceptance.",
+        },
+      },
+    });
+
+    const files = generatePlanningProjections(makeProjectionInput(snapshot));
+    const nextWork = files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
+
+    assert.match(nextWork, /## Verification Evidence Ledger/);
+    assert.match(nextWork, /\| M001\/S01\/T01 \| done \| Scaffold evidence recorded\. \| Task T01 - Package scaffold \| passed - Evidence matched acceptance\. \|/);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("projects change proposal activity into the state change log", async () => {
   const workspaceRoot = await makeWorkspace();
 

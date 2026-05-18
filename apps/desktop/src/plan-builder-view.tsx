@@ -3388,6 +3388,10 @@ function PlanExecutionQueue({
     () => new Map(taskExecutions.map((execution) => [execution.taskId, execution])),
     [taskExecutions],
   );
+  const taskVerificationMap = useMemo(
+    () => new Map(taskVerifications.map((verification) => [verification.taskId, verification])),
+    [taskVerifications],
+  );
   const planTasks = useMemo(
     () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
     [acceptedPlanProposal],
@@ -3508,6 +3512,14 @@ function PlanExecutionQueue({
           onLinkTaskSession={onLinkTaskSession}
           onOpenTaskSession={onOpenTaskSession}
           onStartTaskSession={onStartTaskSession}
+        />
+      ) : null}
+
+      {acceptedPlanProposal ? (
+        <PlanEvidenceLedger
+          taskExecutionMap={taskExecutionMap}
+          taskVerificationMap={taskVerificationMap}
+          tasks={planTasks}
         />
       ) : null}
 
@@ -3667,6 +3679,44 @@ function PlanExecutionQueue({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PlanEvidenceLedger({
+  tasks,
+  taskExecutionMap,
+  taskVerificationMap,
+}: {
+  readonly tasks: readonly PlanTaskEntry[];
+  readonly taskExecutionMap: ReadonlyMap<string, TaskExecutionRecord>;
+  readonly taskVerificationMap: ReadonlyMap<string, TaskVerificationRecord>;
+}) {
+  return (
+    <section className="plan-projection-card plan-evidence-ledger" data-testid="evidence-ledger">
+      <div className="plan-evidence-ledger__header">
+        <strong>Verification evidence ledger</strong>
+        <span>{tasks.length} task{tasks.length === 1 ? "" : "s"} tracked</span>
+      </div>
+      {tasks.length > 0 ? (
+        <div className="plan-evidence-ledger__rows">
+          {tasks.map((entry) => {
+            const execution = taskExecutionMap.get(entry.task.id);
+            const verification = taskVerificationMap.get(entry.task.id);
+            return (
+              <article className="plan-evidence-ledger__row" data-testid="evidence-ledger-row" key={entry.taskPath}>
+                <strong>{entry.taskPath}: {entry.task.title}</strong>
+                <span>Execution: {formatTaskExecutionStatus(execution?.status ?? "not-started")}</span>
+                <span>Evidence: {formatEvidenceLedgerCount(execution?.evidence ?? [])}</span>
+                <span>Source: {formatEvidenceLedgerSources(execution?.evidence ?? [])}</span>
+                <span>Verification: {formatTaskVerificationStatus(verification?.status)}</span>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <span>No accepted tasks yet.</span>
+      )}
+    </section>
   );
 }
 
@@ -4895,6 +4945,20 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
 
 function formatTaskEvidenceSummary(evidence: TaskEvidenceRecord): string {
   return evidence.sourceSessionTitle ? `${evidence.text} · Source: ${evidence.sourceSessionTitle}` : evidence.text;
+}
+
+function formatEvidenceLedgerCount(evidence: readonly TaskEvidenceRecord[]): string {
+  if (evidence.length === 0) {
+    return "No evidence";
+  }
+  return `${evidence.length} evidence item${evidence.length === 1 ? "" : "s"}`;
+}
+
+function formatEvidenceLedgerSources(evidence: readonly TaskEvidenceRecord[]): string {
+  const sources = [
+    ...new Set(evidence.map((entry) => entry.sourceSessionTitle ?? entry.sourceSessionId ?? "").filter(Boolean)),
+  ];
+  return sources.length > 0 ? sources.join(", ") : "No source session";
 }
 
 function formatNextWorkReason(item: NextWorkQueueItem): string {

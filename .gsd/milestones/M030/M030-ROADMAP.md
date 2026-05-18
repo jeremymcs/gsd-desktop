@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Plan-Level Evidence Ledger** `risk:medium` `depends:[M029]`
+- [x] **S01: Plan-Level Evidence Ledger** `risk:medium` `depends:[M029]`
   > After this: users can review execution and verification evidence without opening each task card.
-
