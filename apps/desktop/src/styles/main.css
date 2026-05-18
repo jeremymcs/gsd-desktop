@@ -2509,6 +2509,11 @@
   background: rgba(128, 201, 141, 0.08);
 }
 
+.plan-projection-card--workflow {
+  width: min(980px, 100%);
+  align-items: stretch;
+}
+
 .plan-projection-card--blocked {
   border-color: rgba(236, 118, 118, 0.42);
   background: rgba(236, 118, 118, 0.1);
@@ -2882,19 +2887,64 @@
 
 .plan-workflow-preferences {
   width: 100%;
+  display: grid;
+  gap: 12px;
+}
+
+.plan-workflow-preferences__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.plan-workflow-preferences__header > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.plan-workflow-preferences__help {
+  max-width: 720px;
+  margin: 0;
+  color: #a3a8b3;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-workflow-preferences__status {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(128, 201, 141, 0.34);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(128, 201, 141, 0.08);
+  color: #a9d8b1;
+  font-size: 12px;
+  font-weight: 680;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.plan-workflow-preferences__header span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .plan-phase-model-grid {
   display: grid;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
 }
 
 .plan-phase-model-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 320px);
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 360px);
   align-items: center;
-  gap: 12px;
+  gap: 18px;
 }
 
 .plan-projection-card .plan-phase-model-row span {
@@ -2906,7 +2956,8 @@
 
 .plan-projection-card .plan-phase-model-row small {
   color: #9ca3af;
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .plan-projection-card .plan-phase-model-row__missing,
@@ -2915,12 +2966,21 @@
 }
 
 .plan-phase-model-row__select {
-  min-height: 34px;
-  padding: 7px 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
   border-radius: 8px;
   background: var(--plan-input-bg);
   border-color: var(--plan-input-border);
   color: var(--plan-text);
+}
+
+@media (max-width: 900px) {
+  .plan-workflow-preferences__header,
+  .plan-phase-model-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }
 
 .plan-execution {

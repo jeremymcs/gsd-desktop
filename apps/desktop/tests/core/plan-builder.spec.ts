@@ -978,7 +978,14 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
-    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
+    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
+    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    const phaseStripBox = await window.locator(".plan-phase-strip").boundingBox();
+    const workflowPreferencesBox = await window.getByTestId("workflow-preferences-card").boundingBox();
+    expect(phaseStripBox).not.toBeNull();
+    expect(workflowPreferencesBox).not.toBeNull();
+    expect(Math.abs((phaseStripBox?.x ?? 0) - (workflowPreferencesBox?.x ?? 0))).toBeLessThanOrEqual(2);
+    expect(Math.abs((phaseStripBox?.width ?? 0) - (workflowPreferencesBox?.width ?? 0))).toBeLessThanOrEqual(2);
     const phaseIndexFontFamily = await window
       .locator(".plan-phase__index")
       .first()
@@ -2208,27 +2215,27 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / project");
-    await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("Answer the current Project question");
+    await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("Answer the project question below");
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-project.md");
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
-    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
+    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("phase-model-global-discuss")).toContainText("GPT-5");
-    await expect(window.getByTestId("phase-model-project-discuss")).toHaveText("Project: Use global default");
+    await expect(window.getByTestId("phase-model-project-discuss")).toHaveText("This project: Use team default");
     await expect(window.getByTestId("phase-model-resolved-discuss")).toHaveText(
-      "Resolved: openai/gpt-5 (global default)",
+      "Will use: openai/gpt-5 (Settings)",
     );
-    await expect(window.getByTestId("phase-model-global-plan")).toHaveText("Global: Not set");
-    await expect(window.getByTestId("phase-model-project-plan")).toHaveText("Project: Use global default");
-    await expect(window.getByTestId("phase-model-resolved-plan")).toContainText("Resolved:");
-    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
+    await expect(window.getByTestId("phase-model-global-plan")).toHaveText("Team default: Not set");
+    await expect(window.getByTestId("phase-model-project-plan")).toHaveText("This project: Use team default");
+    await expect(window.getByTestId("phase-model-resolved-plan")).toContainText("Will use:");
+    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
     await window.getByTestId("phase-model-select-execute").selectOption("openai:gpt-4o");
     await expect(window.getByTestId("phase-model-project-execute")).toContainText("GPT-4o");
     await expect(window.getByTestId("phase-model-resolved-execute")).toHaveText(
-      "Resolved: openai/gpt-4o (project override)",
+      "Will use: openai/gpt-4o (this project)",
     );
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -2672,7 +2679,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
+    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
     await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("complete-slice.md / complete-milestone.md");

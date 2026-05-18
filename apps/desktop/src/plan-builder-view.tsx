@@ -3503,7 +3503,7 @@ function guidanceForQuestion(question: DiscussQuestion): WorkflowGuidance {
   return {
     banner: question.stage === "requirements" ? "REQUIREMENTS" : `QUESTIONING / ${label.toLowerCase()}`,
     title: question.stage === "requirements" ? "Keep capabilities testable" : "Ask one focused question",
-    nextAction: `Answer the current ${label} question in the composer, or park useful context for later review.`,
+    nextAction: `Answer the ${label.toLowerCase()} question below. If you think of something useful that does not belong in the answer, park it for later.`,
     artifact: stageArtifact(question.stage),
     frame: stagePromptFrame(question.stage),
     promptSource: promptSourceForDiscussStage(question.stage),
@@ -3787,13 +3787,36 @@ function WorkflowPreferencesCard({
       ? { providerId: runtime.settings.defaultProvider, modelId: runtime.settings.defaultModelId }
       : undefined;
   return (
-    <div className="plan-projection-card" data-testid="workflow-preferences-card">
+    <div className="plan-projection-card plan-projection-card--workflow" data-testid="workflow-preferences-card">
       <div className="plan-workflow-preferences">
-        <strong>{saved ? "Workflow preferences saved" : "Workflow preferences"}</strong>
-        <span data-testid="workflow-preferences-summary">
-          commit_policy: per-task · branch_model: single · uat_dispatch: true · research: skip · autonomous_run:
-          supervised
-        </span>
+        <div className="plan-workflow-preferences__header">
+          <div>
+            <strong>Workflow preferences</strong>
+            <span data-testid="workflow-preferences-summary">
+              Defaults: one branch, one commit per task, UAT on, research skipped unless needed, supervised runs.
+            </span>
+          </div>
+          {saved ? (
+            <span className="plan-workflow-preferences__status" data-testid="workflow-preferences-status">
+              Saved
+            </span>
+          ) : (
+            <button
+              className="plan-action-button plan-action-button--compact"
+              data-testid="apply-workflow-preferences-button"
+              disabled={submitting}
+              onClick={onApply}
+              type="button"
+            >
+              Use recommended defaults
+            </button>
+          )}
+        </div>
+        {saved ? (
+          <p className="plan-workflow-preferences__help">
+            Choose a model for each phase. Leave a phase on team default to inherit Settings.
+          </p>
+        ) : null}
         {saved ? (
           <div className="plan-phase-model-grid">
             {planningPhaseModelOptions.map((phase) => {
@@ -3814,16 +3837,16 @@ function WorkflowPreferencesCard({
                   <span>
                     <strong>{phase.label}</strong>
                     <small data-testid={`phase-model-global-${phase.id}`}>
-                      Global: {formatPhaseModelPreference(globalPreference, modelOptions, "Not set")}
+                      Team default: {formatPhaseModelPreference(globalPreference, modelOptions, "Not set")}
                     </small>
                     <small data-testid={`phase-model-project-${phase.id}`}>
-                      Project: {formatPhaseModelPreference(overridePreference, modelOptions, "Use global default")}
+                      This project: {formatPhaseModelPreference(overridePreference, modelOptions, "Use team default")}
                     </small>
                     <small
                       className={resolvedModel.source === "not-configured" ? "plan-phase-model-row__missing" : ""}
                       data-testid={`phase-model-resolved-${phase.id}`}
                     >
-                      Resolved: {formatResolvedPhaseModel(resolvedModel)}
+                      Will use: {formatResolvedPhaseModel(resolvedModel)}
                     </small>
                   </span>
                   <select
@@ -3839,7 +3862,7 @@ function WorkflowPreferencesCard({
                       });
                     }}
                   >
-                    <option value="">Use global default</option>
+                    <option value="">Use team default</option>
                     {modelOptions.map((model) => (
                       <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
                         {model.label}
@@ -3852,19 +3875,6 @@ function WorkflowPreferencesCard({
           </div>
         ) : null}
       </div>
-      {saved ? (
-        <span className="plan-execution-task__status plan-execution-task__status--done">Saved</span>
-      ) : (
-        <button
-          className="plan-action-button plan-action-button--compact"
-          data-testid="apply-workflow-preferences-button"
-          disabled={submitting}
-          onClick={onApply}
-          type="button"
-        >
-          Apply defaults
-        </button>
-      )}
     </div>
   );
 }
@@ -3904,9 +3914,22 @@ function formatPhaseModelPreference(
 
 function formatResolvedPhaseModel(model: ResolvedWorkflowPhaseModel): string {
   if (model.source === "not-configured") {
-    return "Missing route - set a project override or global default";
+    return "No model selected yet - choose one here or in Settings";
   }
-  return `${workflowPhaseModelValueLabel(model)} (${workflowPhaseModelSourceLabel(model.source)})`;
+  return `${workflowPhaseModelValueLabel(model)} (${formatFriendlyPhaseModelSource(model.source)})`;
+}
+
+function formatFriendlyPhaseModelSource(source: ResolvedWorkflowPhaseModel["source"]): string {
+  switch (source) {
+    case "project-override":
+      return "this project";
+    case "global-default":
+      return "Settings";
+    case "session-default":
+      return "session default";
+    case "not-configured":
+      return "not configured";
+  }
 }
 
 function formatAutonomousRunPolicy(preferences: WorkflowPreferencesRecord | undefined): string {
@@ -4576,7 +4599,7 @@ function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRou
             <strong>{workflowPhaseModelValueLabel(row.model)}</strong>
             <small className={row.model.source === "not-configured" ? "plan-model-routing__missing" : ""}>
               {row.model.source === "not-configured"
-                ? "Missing route: set a project override or global default"
+                ? "Choose a model for this phase here or in Settings"
                 : workflowPhaseModelSourceLabel(row.model.source)}
             </small>
           </article>
