@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Run Recovery Summary** `risk:high` `depends:[M033]`
+- [x] **S01: Run Recovery Summary** `risk:high` `depends:[M033]`
   > After this: Plan Builder can explain where an overnight run stopped and what resumes next.
-

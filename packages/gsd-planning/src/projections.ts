@@ -412,6 +412,10 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
     "",
     renderAutonomousRunPolicy(plan),
     "",
+    "## Recovery Summary",
+    "",
+    renderRunRecoverySummary(plan),
+    "",
     "## Ready",
     "",
     queue.ready.length > 0
@@ -472,6 +476,46 @@ function renderAutonomousRunPolicy(plan: PlanSnapshot): string {
 
 function formatAutonomousStopConditions(policy: WorkflowAutonomousRunPolicy): string {
   return policy.stopConditions.join(", ");
+}
+
+function renderRunRecoverySummary(plan: PlanSnapshot): string {
+  const summary = plan.runRecoverySummary;
+  if (!summary) {
+    return renderBullets([
+      "Last attempted task: None recorded",
+      "Stop reason: No run handoff has been captured yet",
+      "Resume target: Use the first ready task below",
+    ]);
+  }
+
+  return renderBullets([
+    `Last attempted task: ${formatRecoveryTarget(summary.lastAttemptedTask)}`,
+    `Stop reason: ${formatRecoveryStopReason(summary.stopReason)}`,
+    `Stop detail: ${summary.stopDetail || "No detail recorded"}`,
+    `Resume target: ${summary.resumeTarget ? formatRecoveryTarget(summary.resumeTarget) : "No safe resume target"}`,
+    `Captured at: ${summary.createdAt}`,
+  ]);
+}
+
+function formatRecoveryTarget(target: { readonly taskPath: string; readonly title: string }): string {
+  return `${target.taskPath}: ${target.title}`;
+}
+
+function formatRecoveryStopReason(reason: NonNullable<PlanSnapshot["runRecoverySummary"]>["stopReason"]): string {
+  switch (reason) {
+    case "task-not-started":
+      return "Task not started";
+    case "task-in-progress":
+      return "Task in progress";
+    case "task-blocked":
+      return "Task blocked";
+    case "task-completed":
+      return "Task completed";
+    case "verification-failed":
+      return "Verification failed";
+    case "verification-passed":
+      return "Verification passed";
+  }
 }
 
 function renderVerificationEvidenceLedger(

@@ -93,12 +93,37 @@ test("projects the next work queue with blockers and evidence gaps", async () =>
         },
       },
     });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "run.recovery-updated",
+        summary: {
+          lastAttemptedTask: {
+            taskId: "T01",
+            taskPath: "M001/S01/T01",
+            title: "Package scaffold",
+          },
+          stopReason: "task-completed",
+          stopDetail: "Task completed without evidence.",
+          resumeTarget: {
+            taskId: "T02",
+            taskPath: "M001/S01/T02",
+            title: "Second generated task",
+          },
+        },
+      },
+    });
 
     const files = generatePlanningProjections(makeProjectionInput(snapshot, { includeSecondTask: true }));
     const nextWork = files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
 
     assert.match(nextWork, /\*\*Active Plan:\*\* .+ - Plan Builder/);
     assert.match(nextWork, /\*\*Queue:\*\* 0 ready \/ 1 blocked/);
+    assert.match(nextWork, /## Recovery Summary/);
+    assert.match(nextWork, /Last attempted task: M001\/S01\/T01: Package scaffold/);
+    assert.match(nextWork, /Stop reason: Task completed/);
+    assert.match(nextWork, /Resume target: M001\/S01\/T02: Second generated task/);
     assert.match(nextWork, /### M001\/S01\/T02: Second generated task/);
     assert.match(nextWork, /M001\/S01\/T01: Dependency is not done with evidence/);
     assert.match(nextWork, /M001\/S01\/T01: done without evidence/);

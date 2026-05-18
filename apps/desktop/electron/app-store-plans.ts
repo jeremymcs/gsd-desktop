@@ -15,6 +15,8 @@ import {
   type PlanSnapshot,
   type PlanningStore,
   type RequirementRecord,
+  type RunRecoveryStopReason,
+  type RunRecoveryTaskTargetRecord,
   type TaskSessionLinkExecutionModelRecord,
   type WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
@@ -1468,10 +1470,10 @@ export async function updatePlanningTaskExecution(
   }
 
   return store.withErrorHandling(async () => {
-    return withPlanningStore(workspace.path, (planningStore) => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
       let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       assertAcceptedPlan(snapshot);
-      assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      const taskContext = getAcceptedPlanTaskContext(snapshot, input.taskId, input.taskPath);
       if (snapshot.activePhase !== "execute") {
         throw new Error("EXECUTE must be active before updating a task");
       }
@@ -1520,7 +1522,17 @@ export async function updatePlanningTaskExecution(
         });
       }
 
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      snapshot = appendRunRecoverySummary(
+        planningStore,
+        snapshot,
+        toRunRecoveryTarget(taskContext.task, taskContext.taskPath),
+        executionStopReason(input.status),
+        executionStopDetail(input.status, note, blocker, evidence),
+      );
+      const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
     });
   });
 }
@@ -1574,10 +1586,11 @@ export async function recordPlanningTaskVerification(
   }
 
   return store.withErrorHandling(async () => {
-    return withPlanningStore(workspace.path, (planningStore) => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
       const snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       assertAcceptedPlan(snapshot);
       const acceptedTask = assertAcceptedPlanTask(snapshot, input.taskId, input.taskPath);
+      const taskContext = getAcceptedPlanTaskContext(snapshot, input.taskId, input.taskPath);
       assertTaskReadyForVerification(snapshot, input.taskId);
       if (snapshot.activePhase !== "verify") {
         throw new Error("VERIFY must be active before recording task verification");
@@ -1588,7 +1601,7 @@ export async function recordPlanningTaskVerification(
         throw new Error("Failed verification needs a note");
       }
 
-      const updated = planningStore.appendEvent({
+      let updated = planningStore.appendEvent({
         planId: input.planId,
         expectedRevision: input.expectedRevision,
         event: {
@@ -1603,7 +1616,18 @@ export async function recordPlanningTaskVerification(
         },
       });
 
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, updated);
+      updated = appendRunRecoverySummary(
+        planningStore,
+        updated,
+        toRunRecoveryTarget(taskContext.task, taskContext.taskPath),
+        input.status === "failed" ? "verification-failed" : "verification-passed",
+        note || (input.status === "failed" ? "Verification failed." : "Verification passed."),
+        input.status === "failed" ? toRunRecoveryTarget(taskContext.task, taskContext.taskPath) : undefined,
+      );
+      const projectionSummary = await writePlanningProjections(workspace.path, updated);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, updated, {
+        projectionSummary,
+      });
     });
   });
 }
@@ -1786,6 +1810,84 @@ async function refreshLegacyReferences(
   }
 
   return updated;
+}
+
+function appendRunRecoverySummary(
+  planningStore: PlanningStore,
+  snapshot: PlanSnapshot,
+  lastAttemptedTask: RunRecoveryTaskTargetRecord,
+  stopReason: RunRecoveryStopReason,
+  stopDetail: string,
+  explicitResumeTarget?: RunRecoveryTaskTargetRecord,
+): PlanSnapshot {
+  const resumeTarget = explicitResumeTarget ?? resolveRunRecoveryResumeTarget(snapshot);
+  return appendEvent(planningStore, snapshot, {
+    type: "run.recovery-updated",
+    summary: {
+      lastAttemptedTask,
+      stopReason,
+      stopDetail,
+      ...(resumeTarget ? { resumeTarget } : {}),
+      createdAt: new Date().toISOString(),
+    },
+  });
+}
+
+function resolveRunRecoveryResumeTarget(snapshot: PlanSnapshot): RunRecoveryTaskTargetRecord | undefined {
+  const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
+  const acceptedPlan = acceptedOutput ? tryParsePlanProposal(acceptedOutput.content) : undefined;
+  if (!acceptedPlan) {
+    return undefined;
+  }
+
+  const queue = computeNextWorkQueue({
+    tasks: getDashboardTaskEntries(acceptedPlan),
+    taskExecutions: snapshot.taskExecutions,
+    taskVerifications: snapshot.taskVerifications,
+    hiddenTaskIds: snapshot.hiddenPlanItems.map((item) => item.targetId),
+    hiddenTaskPaths: snapshot.hiddenPlanItems.map((item) => item.targetPath),
+  });
+  const target = queue.ready[0] ?? queue.blocked[0];
+  return target ? { taskId: target.taskId, taskPath: target.taskPath, title: target.title } : undefined;
+}
+
+function toRunRecoveryTarget(task: PlanningTaskDraft, taskPath: string): RunRecoveryTaskTargetRecord {
+  return {
+    taskId: task.id,
+    taskPath,
+    title: task.title,
+  };
+}
+
+function executionStopReason(status: UpdatePlanningTaskExecutionInput["status"]): RunRecoveryStopReason {
+  switch (status) {
+    case "not-started":
+      return "task-not-started";
+    case "in-progress":
+      return "task-in-progress";
+    case "blocked":
+      return "task-blocked";
+    case "done":
+      return "task-completed";
+  }
+}
+
+function executionStopDetail(
+  status: UpdatePlanningTaskExecutionInput["status"],
+  note: string,
+  blocker: string,
+  evidence: string,
+): string {
+  switch (status) {
+    case "not-started":
+      return note || "Task marked not started.";
+    case "in-progress":
+      return note || "Task in progress.";
+    case "blocked":
+      return blocker || "Task blocked.";
+    case "done":
+      return evidence ? "Task completed with evidence." : (note || "Task completed.");
+  }
 }
 
 function defaultWorkflowPreferences(): Omit<WorkflowPreferencesRecord, "capturedAt"> {

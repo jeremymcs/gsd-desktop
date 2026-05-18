@@ -148,6 +148,29 @@ export interface LegacyReferenceRecord {
   readonly discoveredAt: string;
 }
 
+export type RunRecoveryStopReason =
+  | "task-not-started"
+  | "task-in-progress"
+  | "task-blocked"
+  | "task-completed"
+  | "verification-failed"
+  | "verification-passed";
+
+export interface RunRecoveryTaskTargetRecord {
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly title: string;
+}
+
+export interface RunRecoverySummaryRecord {
+  readonly id: string;
+  readonly lastAttemptedTask: RunRecoveryTaskTargetRecord;
+  readonly stopReason: RunRecoveryStopReason;
+  readonly stopDetail: string;
+  readonly resumeTarget?: RunRecoveryTaskTargetRecord;
+  readonly createdAt: string;
+}
+
 export type WorkflowCommitPolicy = "per-task";
 export type WorkflowBranchModel = "single";
 export type WorkflowResearchMode = "skip" | "research";
@@ -472,6 +495,13 @@ export type PlanEvent =
       };
     }
   | {
+      readonly type: "run.recovery-updated";
+      readonly summary: Omit<RunRecoverySummaryRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+        readonly createdAt?: string;
+      };
+    }
+  | {
       readonly type: "idea.parked";
       readonly item: Omit<ParkedItemRecord, "id" | "createdAt" | "reviewStatus" | "reviewNote" | "reviewedAt"> & {
         readonly id?: string;
@@ -577,6 +607,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly legacyReferences: readonly LegacyReferenceRecord[];
+  readonly runRecoverySummary?: RunRecoverySummaryRecord;
   readonly workflowPreferences?: WorkflowPreferencesRecord;
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];

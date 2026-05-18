@@ -47,6 +47,49 @@ test("replays persisted legacy reference metadata without importing it as plan s
   }
 });
 
+test("replays persisted run recovery summary state", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Run Recovery Plan" });
+    const withRecovery = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "run.recovery-updated",
+        summary: {
+          lastAttemptedTask: {
+            taskId: "T1",
+            taskPath: "M1/S1/T1",
+            title: "Build foundation",
+          },
+          stopReason: "task-blocked",
+          stopDetail: "Waiting on credentials.",
+          resumeTarget: {
+            taskId: "T3",
+            taskPath: "M1/S1/T3",
+            title: "Independent check",
+          },
+        },
+      },
+    });
+
+    assert.equal(withRecovery.runRecoverySummary?.stopReason, "task-blocked");
+    assert.equal(withRecovery.runRecoverySummary?.resumeTarget?.taskPath, "M1/S1/T3");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.runRecoverySummary?.lastAttemptedTask.title, "Build foundation");
+    assert.equal(reopened.runRecoverySummary?.stopDetail, "Waiting on credentials.");
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("creates a repo-local planning database and replays event-backed plan state after reopen", async () => {
   const workspaceRoot = await makeWorkspace();
 

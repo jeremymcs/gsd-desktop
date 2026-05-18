@@ -373,6 +373,52 @@ test("shows next work ordering and updates after dependency completion", async (
   }
 });
 
+test("persists run recovery summary and projects NEXT after partial progress", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-run-recovery");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await createAcceptedDependencyPlanViaIpc(window, "Recovery handoff plan");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+
+    const foundationTask = window.getByTestId("execution-task").filter({ hasText: "Build foundation" });
+    await foundationTask.getByTestId("task-status-select").selectOption("blocked");
+    await foundationTask.getByTestId("task-note-textarea").fill("Stopped during overnight run.");
+    await foundationTask.getByTestId("task-blocker-textarea").fill("Waiting on credentials.");
+    await foundationTask.getByTestId("update-task-execution-button").click();
+
+    const recovery = window.getByTestId("run-recovery-summary");
+    await expect(recovery).toContainText("Last attempted: M1/S1/T1: Build foundation");
+    await expect(recovery).toContainText("Stop reason: Task blocked");
+    await expect(recovery).toContainText("Stop detail: Waiting on credentials.");
+    await expect(recovery).toContainText("Resume target: M1/S1/T3: Independent check");
+
+    const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
+    expect(nextProjection).toContain("## Recovery Summary");
+    expect(nextProjection).toContain("Last attempted task: M1/S1/T1: Build foundation");
+    expect(nextProjection).toContain("Stop reason: Task blocked");
+    expect(nextProjection).toContain("Resume target: M1/S1/T3: Independent check");
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, { testMode: "background" });
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("run-recovery-summary")).toContainText("Waiting on credentials.");
+  } finally {
+    await harness.close();
+  }
+});
+
 test("shows a cross-plan dashboard and switches selected plans", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-dashboard");

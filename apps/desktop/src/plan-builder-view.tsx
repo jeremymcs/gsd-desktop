@@ -13,6 +13,7 @@ import type {
   PlanSnapshot,
   PlanStage,
   RequirementRecord,
+  RunRecoverySummaryRecord,
   ShipSummaryRecord,
   StageStatus,
   TaskEvidenceRecord,
@@ -1689,6 +1690,7 @@ export function PlanBuilderView({
                 projectionSummary={planningState?.projectionSummary}
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
+                runRecoverySummary={snapshot.runRecoverySummary}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
                 taskVerifications={snapshot.taskVerifications ?? []}
                 workflowPreferences={snapshot.workflowPreferences}
@@ -3447,6 +3449,7 @@ function PlanExecutionQueue({
   projectionSummary,
   submitting,
   taskExecutions,
+  runRecoverySummary,
   taskSessionLinks,
   taskVerifications,
   workflowPreferences,
@@ -3461,6 +3464,7 @@ function PlanExecutionQueue({
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
+  readonly runRecoverySummary?: RunRecoverySummaryRecord;
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly workflowPreferences: WorkflowPreferencesRecord | undefined;
@@ -3595,6 +3599,8 @@ function PlanExecutionQueue({
           <span data-testid="run-guardrails-summary">{formatAutonomousGuardrails(workflowPreferences)}</span>
         </div>
       </div>
+
+      <RunRecoverySummaryCard summary={runRecoverySummary} />
 
       {acceptedPlanProposal ? (
         <NextWorkPanel
@@ -3809,6 +3815,28 @@ function PlanEvidenceLedger({
       ) : (
         <span>No accepted tasks yet.</span>
       )}
+    </section>
+  );
+}
+
+function RunRecoverySummaryCard({ summary }: { readonly summary?: RunRecoverySummaryRecord }) {
+  return (
+    <section className="plan-projection-card plan-run-recovery" data-testid="run-recovery-summary">
+      <div>
+        <strong>Run recovery</strong>
+        {summary ? (
+          <>
+            <span>Last attempted: {formatRunRecoveryTarget(summary.lastAttemptedTask)}</span>
+            <span>Stop reason: {formatRunRecoveryStopReason(summary.stopReason)}</span>
+            <span>Stop detail: {summary.stopDetail || "No detail recorded"}</span>
+            <span>
+              Resume target: {summary.resumeTarget ? formatRunRecoveryTarget(summary.resumeTarget) : "No safe resume target"}
+            </span>
+          </>
+        ) : (
+          <span>No run handoff has been captured yet.</span>
+        )}
+      </div>
     </section>
   );
 }
@@ -5033,6 +5061,27 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
       return "Blocked";
     case "done":
       return "Done";
+  }
+}
+
+function formatRunRecoveryTarget(target: RunRecoverySummaryRecord["lastAttemptedTask"]): string {
+  return `${target.taskPath}: ${target.title}`;
+}
+
+function formatRunRecoveryStopReason(reason: RunRecoverySummaryRecord["stopReason"]): string {
+  switch (reason) {
+    case "task-not-started":
+      return "Task not started";
+    case "task-in-progress":
+      return "Task in progress";
+    case "task-blocked":
+      return "Task blocked";
+    case "task-completed":
+      return "Task completed";
+    case "verification-failed":
+      return "Verification failed";
+    case "verification-passed":
+      return "Verification passed";
   }
 }
 
