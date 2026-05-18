@@ -30,7 +30,10 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     await openNewThread(window);
 
     const composer = window.getByTestId("new-thread-composer");
-    await expect(window.getByTestId("new-thread-logo")).toBeVisible();
+    const logo = window.getByTestId("new-thread-logo");
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute("alt", "GSD");
+    await expect.poll(() => logo.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
     await expect(window.getByText("GSD will guide you from DISCUSS through SHIP.")).toBeVisible();
     await expect(window.getByRole("button", { name: /Talk through the idea/ })).toBeVisible();

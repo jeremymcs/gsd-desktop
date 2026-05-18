@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ClipboardEvent, type DragEvent, type KeyboardEvent, type RefObject } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import gsdLogoUrl from "./assets/gsd-logo-transparent.svg";
 import type { ComposerAttachment, NewThreadEnvironment, WorkspaceRecord } from "./desktop-state";
-import { ArrowUpIcon, PiLogoMark, PlanIcon, PlusIcon, SparkIcon, StatusIcon } from "./icons";
+import { ArrowUpIcon, PlanIcon, PlusIcon, SparkIcon, StatusIcon } from "./icons";
 import {
   MODEL_OPTIONS_EMPTY_TITLE,
   type ComposerSlashCommand,
@@ -134,9 +135,7 @@ export function NewThreadView({
     <section className="canvas canvas--new-thread">
       <div className="new-thread">
         <div className="new-thread__hero">
-          <div className="new-thread__logo" data-testid="new-thread-logo">
-            <PiLogoMark />
-          </div>
+          <img alt="GSD" className="new-thread__logo" data-testid="new-thread-logo" src={gsdLogoUrl} />
           <div className="new-thread__eyebrow">New GSD project</div>
           <h1 className="new-thread__title">Let's turn your idea into a clear plan.</h1>
           <p className="new-thread__subtitle">
