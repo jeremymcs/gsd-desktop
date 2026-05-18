@@ -56,6 +56,119 @@ test("renders the planning-phase projection file set with generated ownership he
   }
 });
 
+test("projects change proposal activity into the state change log", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    let snapshot = seedSnapshot(store);
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          id: "proposal-add-task",
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-1",
+          title: "Add audit task",
+          summary: "Add an audit task after verification.",
+          impactNotes: "Execution needs a new task.",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-approved",
+        proposalId: "proposal-add-task",
+        injection: {
+          changeProposalId: "proposal-add-task",
+          sourceParkedItemId: "idea-1",
+          acceptedOutputId: "roadmap-output-1",
+          targetMilestoneId: "M001",
+          targetSliceId: "S01",
+          taskId: "T02",
+          taskPath: "M001/S01/T02",
+          title: "Run audit",
+          acceptance: "Audit task is represented.",
+          dependencies: ["T01"],
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "plan.item-hidden",
+        item: {
+          id: "hidden-task-1",
+          targetType: "task",
+          targetId: "T02",
+          targetPath: "M001/S01/T02",
+          reason: "No longer needed.",
+          acceptedOutputId: "roadmap-output-2",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "plan.item-restored",
+        itemId: "hidden-task-1",
+        targetPath: "M001/S01/T02",
+        acceptedOutputId: "roadmap-output-3",
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          id: "proposal-withdrawn",
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-2",
+          title: "Drop banner",
+          summary: "Drop a banner before approval.",
+          impactNotes: "No active plan impact.",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-withdrawn",
+        proposalId: "proposal-withdrawn",
+      },
+    });
+
+    const files = generatePlanningProjections(makeProjectionInput(snapshot));
+    const state = files.find((file) => file.path === ".gsd/STATE.md")?.content ?? "";
+
+    assert.match(state, /## Change Log/);
+    assert.match(state, /### Add audit task/);
+    assert.match(state, /- \*\*Status:\*\* Approved/);
+    assert.match(state, /- \*\*Injected task:\*\* M001\/S01\/T02/);
+    assert.match(state, /  - Drafted: Drafted proposal/);
+    assert.match(state, /  - Approved: Approved as new task M001\/S01\/T02/);
+    assert.match(state, /  - Hidden: Hidden injected task M001\/S01\/T02/);
+    assert.match(state, /  - Restored: Restored injected task M001\/S01\/T02/);
+    assert.match(state, /### Drop banner/);
+    assert.match(state, /- \*\*Status:\*\* Deleted/);
+    assert.match(state, /  - Deleted: Deleted draft/);
+    assert.doesNotMatch(state, /change\.proposal/);
+    assert.doesNotMatch(state, /plan\.item/);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("writes projections atomically, skips unchanged files, and supports manual regeneration", async () => {
   const workspaceRoot = await makeWorkspace();
 

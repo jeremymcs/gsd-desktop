@@ -18,7 +18,7 @@
 - [x] **S02: Proposal Card Timeline** `risk:medium` `depends:[S01]`
   > After this: users can expand a proposal card and see its lifecycle activity in order.
 
-- [ ] **S03: Change Log Projection** `risk:low` `depends:[S01,S02]`
+- [x] **S03: Change Log Projection** `risk:low` `depends:[S01,S02]`
   > After this: generated Markdown includes a compact change log for accepted and withdrawn proposal history.
 
 ## Boundary Map

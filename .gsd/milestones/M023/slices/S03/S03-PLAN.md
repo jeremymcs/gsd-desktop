@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add a compact change log section to generated planning projections.
-- [ ] Include proposal title, status, and lifecycle entries.
-- [ ] Write projections atomically and only when content changes.
-- [ ] Cover projection output in package tests.
+- [x] Add a compact change log section to generated planning projections.
+- [x] Include proposal title, status, and lifecycle entries.
+- [x] Write projections atomically and only when content changes.
+- [x] Cover projection output in package tests.
 
 ## Acceptance
 

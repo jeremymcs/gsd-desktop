@@ -1,4 +1,7 @@
 import type {
+  ChangeProposalActivityRecord,
+  ChangeProposalRecord,
+  ChangeProposalStatus,
   PlanPhase,
   PlanSnapshot,
   RequirementRecord,
@@ -335,6 +338,10 @@ function renderState(
     "## Next Action",
     "",
     state?.nextAction ?? "Continue the active planning phase.",
+    "",
+    "## Change Log",
+    "",
+    renderChangeLog(plan.changeProposals),
   ].join("\n");
 }
 
@@ -363,6 +370,63 @@ function renderDecisions(decisions: readonly DecisionProjection[]): string {
   }
 
   return lines.join("\n");
+}
+
+function renderChangeLog(proposals: readonly ChangeProposalRecord[]): string {
+  const entries = proposals.filter((proposal) => proposal.activity.length > 0);
+  return entries.length > 0 ? entries.map(renderChangeProposalLog).join("\n\n") : "- None";
+}
+
+function renderChangeProposalLog(proposal: ChangeProposalRecord): string {
+  const lines = [
+    `### ${proposal.title}`,
+    "",
+    `- **Status:** ${formatChangeProposalStatus(proposal.status)}`,
+  ];
+
+  if (proposal.injectedTaskPath) {
+    lines.push(`- **Injected task:** ${proposal.injectedTaskPath}`);
+  }
+  if (proposal.modifiedTaskPath) {
+    lines.push(`- **Modified task:** ${proposal.modifiedTaskPath}`);
+  }
+
+  lines.push("- **Activity:**");
+  for (const activity of proposal.activity) {
+    lines.push(`  - ${formatChangeProposalActivityLabel(activity)}: ${activity.summary}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatChangeProposalStatus(status: ChangeProposalStatus): string {
+  switch (status) {
+    case "draft":
+      return "Draft";
+    case "approved":
+      return "Approved";
+    case "withdrawn":
+      return "Deleted";
+  }
+}
+
+function formatChangeProposalActivityLabel(activity: ChangeProposalActivityRecord): string {
+  switch (activity.type) {
+    case "drafted":
+      return "Drafted";
+    case "updated":
+      return "Edited";
+    case "withdrawn":
+      return "Deleted";
+    case "approved":
+      return "Approved";
+    case "task-modified":
+      return "Modified";
+    case "task-hidden":
+      return "Hidden";
+    case "task-restored":
+      return "Restored";
+  }
 }
 
 function renderMilestoneRoadmap(
