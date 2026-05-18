@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { RuntimeExtensionRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { ExtensionCommandCompatibilityRecord, WorkspaceRecord } from "./desktop-state";
-import { RefreshIcon } from "./icons";
+import { ExtensionIcon, RefreshIcon } from "./icons";
 
 interface ExtensionsViewProps {
   readonly workspace?: WorkspaceRecord;
@@ -55,6 +55,9 @@ export function ExtensionsView({
         : [],
     [commandCompatibility, selectedExtension],
   );
+  const enabledExtensions = extensions.filter((extension) => extension.enabled).length;
+  const visibleCommands = filteredExtensions.reduce((total, extension) => total + extension.commands.length, 0);
+  const diagnosticsCount = extensions.reduce((total, extension) => total + extension.diagnostics.length, 0);
 
   if (!workspace) {
     return (
@@ -71,19 +74,31 @@ export function ExtensionsView({
   return (
     <section className="canvas">
       <div className="conversation skills-view">
-        <header className="view-header">
-          <div>
-            <div className="chat-header__eyebrow">Extensions</div>
-            <h1 className="view-header__title">Extensions</h1>
-            <p className="view-header__body">
-              Inspect runtime extensions that can add tools, commands, and GSD workflow behavior.
-            </p>
+        <header className="view-header catalog-header">
+          <div className="catalog-header__main">
+            <span className="catalog-header__icon" aria-hidden="true">
+              <ExtensionIcon />
+            </span>
+            <div>
+              <div className="chat-header__eyebrow">Extensions</div>
+              <h1 className="view-header__title">Runtime extensions</h1>
+              <p className="view-header__body">
+                Review the commands, tools, and workflow hooks available to this workspace.
+              </p>
+            </div>
           </div>
-          <div className="view-header__actions">
-            <button className="button button--secondary" type="button" onClick={onRefresh}>
-              <RefreshIcon />
-              <span>Refresh</span>
-            </button>
+          <div className="catalog-header__side">
+            <div className="catalog-stats" aria-label="Extensions summary">
+              <CatalogStat label="Available" value={extensions.length} />
+              <CatalogStat label="Enabled" value={enabledExtensions} />
+              <CatalogStat label="Issues" value={diagnosticsCount} />
+            </div>
+            <div className="view-header__actions">
+              <button className="button button--secondary" type="button" onClick={onRefresh}>
+                <RefreshIcon />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -97,6 +112,9 @@ export function ExtensionsView({
               setQuery(event.target.value);
             }}
           />
+          <span className="skills-toolbar__summary">
+            {filteredExtensions.length} shown · {visibleCommands} commands
+          </span>
         </div>
 
         <div className="skills-layout">
@@ -113,10 +131,15 @@ export function ExtensionsView({
                     setSelectedExtensionPath(extension.path);
                   }}
                 >
-                  <span className="skill-card__title-row">
-                    <span className="skill-card__title">{extension.displayName}</span>
-                    <span className={`skill-card__badge ${extension.enabled ? "skill-card__badge--enabled" : ""}`}>
-                      {extension.enabled ? "Enabled" : "Disabled"}
+                  <span className="skill-card__top">
+                    <span className="skill-card__icon" aria-hidden="true">
+                      <ExtensionIcon />
+                    </span>
+                    <span className="skill-card__title-row">
+                      <span className="skill-card__title">{extension.displayName}</span>
+                      <span className={`skill-card__badge ${extension.enabled ? "skill-card__badge--enabled" : ""}`}>
+                        {extension.enabled ? "Enabled" : "Disabled"}
+                      </span>
                     </span>
                   </span>
                   <span className="skill-card__description">
@@ -137,6 +160,9 @@ export function ExtensionsView({
             {selectedExtension ? (
               <>
                 <div className="skill-detail__header">
+                  <span className="skill-detail__icon" aria-hidden="true">
+                    <ExtensionIcon />
+                  </span>
                   <div>
                     <h2>{selectedExtension.displayName}</h2>
                     <div className="skill-detail__slash">{selectedExtension.sourceInfo.source}</div>
@@ -144,6 +170,11 @@ export function ExtensionsView({
                   <span className={`skill-detail__status ${selectedExtension.enabled ? "skill-detail__status--enabled" : ""}`}>
                     {selectedExtension.enabled ? "Enabled" : "Disabled"}
                   </span>
+                </div>
+                <div className="skill-detail__summary-grid">
+                  <DetailMetric label="Commands" value={String(selectedExtension.commands.length)} />
+                  <DetailMetric label="Tools" value={String(selectedExtension.tools.length)} />
+                  <DetailMetric label="Issues" value={String(selectedExtension.diagnostics.length)} />
                 </div>
                 <div className="skill-detail__meta-list">
                   <DetailItem label="Scope" value={selectedExtension.sourceInfo.scope} />
@@ -186,6 +217,24 @@ export function ExtensionsView({
   );
 }
 
+function CatalogStat({ label, value }: { readonly label: string; readonly value: number }) {
+  return (
+    <div className="catalog-stat">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="skill-detail__metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 function DetailItem({
   label,
   value,
@@ -213,21 +262,19 @@ function ExtensionContributionSection({
   readonly emptyLabel: string;
 }) {
   return (
-    <div className="skill-detail__meta-list">
-      <div>
-        <div className="skill-detail__meta-label">{title}</div>
-        {items.length > 0 ? (
-          <div className="extension-detail__tokens">
-            {items.map((item) => (
-              <span className="slash-menu__skill-badge" key={item}>
-                {item}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div className="skill-detail__description">{emptyLabel}</div>
-        )}
-      </div>
+    <div className="skill-detail__section">
+      <div className="skill-detail__meta-label">{title}</div>
+      {items.length > 0 ? (
+        <div className="extension-detail__tokens">
+          {items.map((item) => (
+            <span className="slash-menu__skill-badge" key={item}>
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="skill-detail__description">{emptyLabel}</div>
+      )}
     </div>
   );
 }
@@ -238,22 +285,20 @@ function ExtensionDiagnostics({
   readonly diagnostics: RuntimeExtensionRecord["diagnostics"];
 }) {
   return (
-    <div className="skill-detail__meta-list">
-      <div>
-        <div className="skill-detail__meta-label">Diagnostics</div>
-        {diagnostics.length > 0 ? (
-          <div className="extension-detail__diagnostics">
-            {diagnostics.map((diagnostic, index) => (
-              <div className={`activity-item activity-item--${diagnostic.type === "error" ? "error" : "info"}`} key={`${diagnostic.message}:${index}`}>
-                <div className="activity-item__text">{diagnostic.message}</div>
-                {diagnostic.path ? <div className="activity-item__meta">{diagnostic.path}</div> : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="skill-detail__description">No diagnostics reported.</div>
-        )}
-      </div>
+    <div className="skill-detail__section">
+      <div className="skill-detail__meta-label">Diagnostics</div>
+      {diagnostics.length > 0 ? (
+        <div className="extension-detail__diagnostics">
+          {diagnostics.map((diagnostic, index) => (
+            <div className={`activity-item activity-item--${diagnostic.type === "error" ? "error" : "info"}`} key={`${diagnostic.message}:${index}`}>
+              <div className="activity-item__text">{diagnostic.message}</div>
+              {diagnostic.path ? <div className="activity-item__meta">{diagnostic.path}</div> : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="skill-detail__description">No diagnostics reported.</div>
+      )}
     </div>
   );
 }
@@ -274,29 +319,27 @@ function ExtensionCompatibilitySection({
   );
 
   return (
-    <div className="skill-detail__meta-list">
-      <div>
-        <div className="skill-detail__meta-label">Command compatibility</div>
-        <div className="skill-detail__description">
-          Learned from real GUI execution. Unlisted commands remain unknown until exercised.
-        </div>
-        <div className="extension-detail__tokens">
-          {supported.map((record) => (
-            <span className="slash-menu__skill-badge" key={`supported:${record.commandName}`}>
-              {record.commandName} · GUI-compatible
-            </span>
-          ))}
-          {terminalOnly.map((record) => (
-            <span className="slash-menu__skill-badge slash-menu__skill-badge--warning" key={`terminal:${record.commandName}`}>
-              {record.commandName} · Terminal-only
-            </span>
-          ))}
-          {unknown.map((commandName) => (
-            <span className="slash-menu__skill-badge" key={`unknown:${commandName}`}>
-              {commandName} · Unknown
-            </span>
-          ))}
-        </div>
+    <div className="skill-detail__section">
+      <div className="skill-detail__meta-label">Command compatibility</div>
+      <div className="skill-detail__description">
+        Learned from real GUI execution. Unlisted commands remain unknown until exercised.
+      </div>
+      <div className="extension-detail__tokens">
+        {supported.map((record) => (
+          <span className="slash-menu__skill-badge" key={`supported:${record.commandName}`}>
+            {record.commandName} · GUI-compatible
+          </span>
+        ))}
+        {terminalOnly.map((record) => (
+          <span className="slash-menu__skill-badge slash-menu__skill-badge--warning" key={`terminal:${record.commandName}`}>
+            {record.commandName} · Terminal-only
+          </span>
+        ))}
+        {unknown.map((commandName) => (
+          <span className="slash-menu__skill-badge" key={`unknown:${commandName}`}>
+            {commandName} · Unknown
+          </span>
+        ))}
       </div>
     </div>
   );

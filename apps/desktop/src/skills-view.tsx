@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { RuntimeSkillRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { WorkspaceRecord } from "./desktop-state";
-import { RefreshIcon } from "./icons";
+import { RefreshIcon, SkillIcon } from "./icons";
 import { titleCase } from "./string-utils";
 
 interface SkillsViewProps {
@@ -38,6 +38,8 @@ export function SkillsView({
   }, [query, skills]);
   const selectedSkill =
     filteredSkills.find((skill) => skill.filePath === selectedSkillPath) ?? filteredSkills[0];
+  const enabledSkills = skills.filter((skill) => skill.enabled).length;
+  const projectSkills = skills.filter((skill) => skill.source === "project").length;
 
   if (!workspace) {
     return (
@@ -54,37 +56,49 @@ export function SkillsView({
   return (
     <section className="canvas">
       <div className="conversation skills-view">
-        <header className="view-header">
-          <div>
-            <div className="chat-header__eyebrow">Skills</div>
-            <h1 className="view-header__title">Skills</h1>
-            <p className="view-header__body">
-              Give GSD runs workspace-specific capabilities, prompts, and reusable workflow moves.
-            </p>
+        <header className="view-header catalog-header">
+          <div className="catalog-header__main">
+            <span className="catalog-header__icon" aria-hidden="true">
+              <SkillIcon />
+            </span>
+            <div>
+              <div className="chat-header__eyebrow">Skills</div>
+              <h1 className="view-header__title">Workspace skills</h1>
+              <p className="view-header__body">
+                Choose the reusable prompts and workflow moves GSD can bring into this project.
+              </p>
+            </div>
           </div>
-          <div className="view-header__actions">
-            <button className="button button--secondary" type="button" onClick={onRefresh}>
-              <RefreshIcon />
-              <span>Refresh</span>
-            </button>
-            <button
-              className="button button--primary"
-              type="button"
-              onClick={() =>
-                onTrySkill({
-                  name: "new-skill",
-                  description: "Create a new skill for this workspace",
-                  filePath: "",
-                  baseDir: workspace.path,
-                  source: "project",
-                  enabled: true,
-                  disableModelInvocation: false,
-                  slashCommand: "/skill:new-skill",
-                })
-              }
-            >
-              New skill
-            </button>
+          <div className="catalog-header__side">
+            <div className="catalog-stats" aria-label="Skills summary">
+              <CatalogStat label="Available" value={skills.length} />
+              <CatalogStat label="Enabled" value={enabledSkills} />
+              <CatalogStat label="Project" value={projectSkills} />
+            </div>
+            <div className="view-header__actions">
+              <button className="button button--secondary" type="button" onClick={onRefresh}>
+                <RefreshIcon />
+                <span>Refresh</span>
+              </button>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() =>
+                  onTrySkill({
+                    name: "new-skill",
+                    description: "Create a new skill for this workspace",
+                    filePath: "",
+                    baseDir: workspace.path,
+                    source: "project",
+                    enabled: true,
+                    disableModelInvocation: false,
+                    slashCommand: "/skill:new-skill",
+                  })
+                }
+              >
+                New skill
+              </button>
+            </div>
           </div>
         </header>
 
@@ -98,6 +112,9 @@ export function SkillsView({
               setQuery(event.target.value);
             }}
           />
+          <span className="skills-toolbar__summary">
+            {filteredSkills.length} shown · {enabledSkills} enabled
+          </span>
         </div>
 
         <div className="skills-layout">
@@ -114,10 +131,15 @@ export function SkillsView({
                     setSelectedSkillPath(skill.filePath);
                   }}
                 >
-                  <span className="skill-card__title-row">
-                    <span className="skill-card__title">{titleCase(skill.name)}</span>
-                    <span className={`skill-card__badge ${skill.enabled ? "skill-card__badge--enabled" : ""}`}>
-                      {skill.enabled ? "Enabled" : "Disabled"}
+                  <span className="skill-card__top">
+                    <span className="skill-card__icon" aria-hidden="true">
+                      <SkillIcon />
+                    </span>
+                    <span className="skill-card__title-row">
+                      <span className="skill-card__title">{titleCase(skill.name)}</span>
+                      <span className={`skill-card__badge ${skill.enabled ? "skill-card__badge--enabled" : ""}`}>
+                        {skill.enabled ? "Enabled" : "Disabled"}
+                      </span>
                     </span>
                   </span>
                   <span className="skill-card__description">{skill.description}</span>
@@ -135,6 +157,9 @@ export function SkillsView({
             {selectedSkill ? (
               <>
                 <div className="skill-detail__header">
+                  <span className="skill-detail__icon" aria-hidden="true">
+                    <SkillIcon />
+                  </span>
                   <div>
                     <h2>{titleCase(selectedSkill.name)}</h2>
                     <div className="skill-detail__slash">{selectedSkill.slashCommand}</div>
@@ -144,15 +169,17 @@ export function SkillsView({
                   </span>
                 </div>
                 <p className="skill-detail__description">{selectedSkill.description}</p>
-                <div className="skill-detail__meta-list">
-                  <div>
-                    <div className="skill-detail__meta-label">Source</div>
-                    <div className="skill-detail__description">{selectedSkill.source}</div>
-                  </div>
-                  <div>
-                    <div className="skill-detail__meta-label">Path</div>
-                    <div className="skill-detail__path">{selectedSkill.filePath}</div>
-                  </div>
+                <div className="skill-detail__summary-grid">
+                  <DetailMetric label="Source" value={selectedSkill.source} />
+                  <DetailMetric
+                    label="Mode"
+                    value={selectedSkill.disableModelInvocation ? "Slash only" : "Guided prompt"}
+                  />
+                  <DetailMetric label="Status" value={selectedSkill.enabled ? "Ready" : "Paused"} />
+                </div>
+                <div className="skill-detail__section">
+                  <div className="skill-detail__meta-label">Location</div>
+                  <div className="skill-detail__path">{selectedSkill.filePath}</div>
                 </div>
                 <div className="skill-detail__actions">
                   <button className="button button--secondary" type="button" onClick={() => onOpenSkillFolder(selectedSkill.filePath)}>
@@ -177,6 +204,24 @@ export function SkillsView({
         </div>
       </div>
     </section>
+  );
+}
+
+function CatalogStat({ label, value }: { readonly label: string; readonly value: number }) {
+  return (
+    <div className="catalog-stat">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="skill-detail__metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
