@@ -37,6 +37,11 @@ test("shows workspace file mentions from the composer and inserts the selected f
     const mentionMenu = window.getByTestId("mention-menu");
     await expect(mentionMenu).toBeVisible();
     await expect(mentionMenu.locator(".mention-menu__item")).toHaveCount(2);
+    const mentionFontFamily = await mentionMenu
+      .locator(".mention-menu__item")
+      .first()
+      .evaluate((node) => getComputedStyle(node).fontFamily);
+    expect(mentionFontFamily).not.toMatch(/mono/i);
 
     await composer.pressSequentially("READ");
     await expect(mentionMenu.locator(".mention-menu__item")).toHaveCount(1);
@@ -84,6 +89,8 @@ test("toggles the diff panel from the keyboard shortcut and renders changed file
     await diffPanel.locator(".diff-panel__file-name").click();
     await expect(diffPanel.locator(".diff-inline")).toBeVisible();
     await expect(diffPanel.locator(".diff-line--added")).toHaveCount(1);
+    const diffFontFamily = await diffPanel.locator(".diff-inline").evaluate((node) => getComputedStyle(node).fontFamily);
+    expect(diffFontFamily).toMatch(/mono/i);
 
     await window.keyboard.press(desktopShortcut("D"));
     await expect(diffPanel).toHaveCount(0);
