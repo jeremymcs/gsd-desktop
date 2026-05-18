@@ -3645,6 +3645,33 @@
   font-size: 12px;
 }
 
+.plan-proposal-activity-control {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.plan-proposal-activity {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 0 18px;
+  border-top: 1px solid rgba(132, 188, 255, 0.18);
+}
+
+.plan-proposal-activity li {
+  color: #a3a8b3;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.plan-proposal-activity strong {
+  margin-right: 6px;
+  color: #d7b269;
+  font-weight: 700;
+}
+
 .plan-requirement-row__meta {
   display: flex;
   flex-wrap: wrap;
@@ -4277,6 +4304,18 @@
 }
 
 .canvas--plans .plan-memory__item .plan-memory__note {
+  color: var(--plan-note-text);
+}
+
+.canvas--plans .plan-proposal-activity {
+  border-top-color: var(--plan-info-border);
+}
+
+.canvas--plans .plan-proposal-activity li {
+  color: var(--plan-muted-text);
+}
+
+.canvas--plans .plan-proposal-activity strong {
   color: var(--plan-note-text);
 }
 

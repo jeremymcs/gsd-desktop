@@ -1624,6 +1624,14 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await modificationProposal.getByRole("button", { name: "Approve modification" }).click();
     await expect(modificationProposal.getByTestId("plan-change-proposal-status")).toHaveText("Approved");
     await expect(modificationProposal).toContainText("Modified M1/S1/T1");
+    await expect(modificationProposal.getByTestId("plan-change-proposal-activity")).toHaveCount(0);
+    await expect(modificationProposal.getByTestId("plan-change-proposal-activity-toggle")).toHaveText("History 2");
+    await modificationProposal.getByTestId("plan-change-proposal-activity-toggle").click();
+    const modificationActivity = modificationProposal.getByTestId("plan-change-proposal-activity");
+    await expect(modificationActivity.getByTestId("plan-change-proposal-activity-entry")).toHaveCount(2);
+    await expect(modificationActivity).toContainText("Drafted");
+    await expect(modificationActivity).toContainText("Modified");
+    await expect(modificationActivity).toContainText("Approved task modification M1/S1/T1");
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Modified task - M1/S1/T1");
     const changeProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Integration change draft" });
     await expect(changeProposal.getByTestId("plan-injection-form")).toBeVisible();
@@ -1679,6 +1687,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         return "missing";
       }
     }).toBe("missing");
+    await expect(changeProposal.getByTestId("plan-change-proposal-activity")).toHaveCount(0);
+    await expect(changeProposal.getByTestId("plan-change-proposal-activity-toggle")).toHaveText("History 5");
+    await changeProposal.getByTestId("plan-change-proposal-activity-toggle").click();
+    const proposalActivity = changeProposal.getByTestId("plan-change-proposal-activity");
+    await expect(proposalActivity.getByTestId("plan-change-proposal-activity-entry")).toHaveCount(5);
+    await expect(proposalActivity).toContainText("Drafted");
+    await expect(proposalActivity).toContainText("Approved as new task M1/S1/T2");
+    await expect(proposalActivity).toContainText("Hidden injected task M1/S1/T2");
+    await expect(proposalActivity).toContainText("Restored injected task M1/S1/T2");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
@@ -1861,13 +1878,16 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               proposal.title === "Integration change draft" &&
               proposal.status === "approved" &&
               proposal.impactNotes.includes("review roadmap boundaries") &&
-              proposal.injectedTaskPath === "M1/S1/T2",
+              proposal.injectedTaskPath === "M1/S1/T2" &&
+              proposal.activity.filter((activity) => activity.type === "task-hidden").length === 2 &&
+              proposal.activity.some((activity) => activity.type === "task-restored"),
           ) &&
           entry.selectedPlan.changeProposals.some(
             (proposal) =>
               proposal.title === "Primary task acceptance update" &&
               proposal.status === "approved" &&
-              proposal.modifiedTaskPath === "M1/S1/T1",
+              proposal.modifiedTaskPath === "M1/S1/T1" &&
+              proposal.activity.some((activity) => activity.type === "task-modified"),
           ) &&
           entry.selectedPlan.approvedInjections.some(
             (injection) =>

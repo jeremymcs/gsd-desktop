@@ -3977,6 +3977,7 @@ function ChangeProposalCard({
   );
   const [hideReason, setHideReason] = useState("No longer needed in the active plan.");
   const [editingDetails, setEditingDetails] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const [proposalTitleDraft, setProposalTitleDraft] = useState(proposal.title);
   const [proposalSummaryDraft, setProposalSummaryDraft] = useState(proposal.summary);
   const [proposalImpactDraft, setProposalImpactDraft] = useState(proposal.impactNotes);
@@ -4011,6 +4012,7 @@ function ChangeProposalCard({
     setModificationTaskPath(defaultModificationTaskPath);
     setHideReason("No longer needed in the active plan.");
     setEditingDetails(false);
+    setActivityExpanded(false);
     setProposalTitleDraft(proposal.title);
     setProposalSummaryDraft(proposal.summary);
     setProposalImpactDraft(proposal.impactNotes);
@@ -4164,6 +4166,29 @@ function ChangeProposalCard({
         <p className="plan-memory__note" data-testid="plan-hidden-task-note">
           Hidden from active plan
         </p>
+      ) : null}
+      {proposal.activity.length > 0 ? (
+        <div className="plan-proposal-activity-control">
+          <button
+            aria-expanded={activityExpanded}
+            className="plan-inline-button"
+            data-testid="plan-change-proposal-activity-toggle"
+            onClick={() => setActivityExpanded((current) => !current)}
+            type="button"
+          >
+            History {proposal.activity.length}
+          </button>
+          {activityExpanded ? (
+            <ol className="plan-proposal-activity" data-testid="plan-change-proposal-activity">
+              {proposal.activity.map((activity) => (
+                <li data-testid="plan-change-proposal-activity-entry" key={activity.id}>
+                  <strong>{formatProposalActivityLabel(activity)}</strong>
+                  <span>{activity.summary}</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </div>
       ) : null}
       {proposal.status === "approved" && restoreInjectedTaskPath ? (
         <div className="plan-memory__editor-actions">
@@ -4334,6 +4359,25 @@ function ChangeProposalCard({
       ) : null}
     </article>
   );
+}
+
+function formatProposalActivityLabel(activity: ChangeProposalRecord["activity"][number]): string {
+  switch (activity.type) {
+    case "drafted":
+      return "Drafted";
+    case "updated":
+      return "Edited";
+    case "withdrawn":
+      return "Deleted";
+    case "approved":
+      return "Approved";
+    case "task-modified":
+      return "Modified";
+    case "task-hidden":
+      return "Hidden";
+    case "task-restored":
+      return "Restored";
+  }
 }
 
 function buildResearchDraft(snapshot: PlanSnapshot | undefined, answers: readonly AnswerRecord[]): string {

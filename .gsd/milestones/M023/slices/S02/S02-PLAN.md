@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add a compact expandable timeline to proposal cards.
-- [ ] Use readable labels for drafted, edited, deleted, approved, hidden, restored, and modified.
-- [ ] Keep the default proposal card dense.
-- [ ] Cover the timeline in Electron.
+- [x] Add a compact expandable timeline to proposal cards.
+- [x] Use readable labels for drafted, edited, deleted, approved, hidden, restored, and modified.
+- [x] Keep the default proposal card dense.
+- [x] Cover the timeline in Electron.
 
 ## Acceptance
 
