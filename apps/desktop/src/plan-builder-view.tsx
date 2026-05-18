@@ -1947,14 +1947,25 @@ export function PlanBuilderView({
                           Dismiss
                         </button>
                         {item.reviewStatus === "promotion-ready" ? (
-                          <button
-                            className="plan-inline-button"
-                            disabled={submitting || Boolean(proposal)}
-                            onClick={() => startDraftChangeProposal(item)}
-                            type="button"
-                          >
-                            {proposal ? "Drafted" : "Draft change"}
-                          </button>
+                          proposal ? (
+                            <button
+                              className="plan-inline-button"
+                              disabled={submitting}
+                              onClick={() => focusChangeProposal(proposal)}
+                              type="button"
+                            >
+                              Review proposal
+                            </button>
+                          ) : (
+                            <button
+                              className="plan-inline-button"
+                              disabled={submitting}
+                              onClick={() => startDraftChangeProposal(item)}
+                              type="button"
+                            >
+                              Draft change
+                            </button>
+                          )
                         ) : null}
                       </div>
                       {isDraftingProposal ? (

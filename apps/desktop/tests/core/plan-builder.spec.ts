@@ -767,6 +767,12 @@ test("starts a change draft from a prepared composer idea", async () => {
     await titleInput.fill("Retry budget change");
     await idea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
+    await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
+    await expect(idea.getByRole("button", { name: "Drafted" })).toHaveCount(0);
+    await idea.getByRole("button", { name: "Review proposal" }).click();
+    await expect(
+      window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-injection-target-select"),
+    ).toBeFocused();
     await expect(review.getByRole("button", { name: "Review proposal" })).toBeEnabled();
     await review.getByRole("button", { name: "Review proposal" }).click();
     await expect(
