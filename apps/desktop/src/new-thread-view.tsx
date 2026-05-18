@@ -137,8 +137,11 @@ export function NewThreadView({
           <div className="new-thread__logo" data-testid="new-thread-logo">
             <PiLogoMark />
           </div>
-          <div className="new-thread__eyebrow">GSD workflow</div>
-          <h1 className="new-thread__title">What should move from DISCUSS to SHIP?</h1>
+          <div className="new-thread__eyebrow">New GSD project</div>
+          <h1 className="new-thread__title">Let's turn your idea into a clear plan.</h1>
+          <p className="new-thread__subtitle">
+            Share the outcome, constraints, or questions you already have. GSD will guide you from DISCUSS through SHIP.
+          </p>
           <label className="new-thread__workspace-picker">
             <span className="sr-only">Workspace</span>
             <select
@@ -165,7 +168,10 @@ export function NewThreadView({
             }}
           >
             <SparkIcon />
-            <span>Start DISCUSS</span>
+            <span className="new-thread__quick-action-copy">
+              <span className="new-thread__quick-action-title">Talk through the idea</span>
+              <small>Capture goals, users, constraints, and open questions.</small>
+            </span>
           </button>
           <button
             className="new-thread__quick-action"
@@ -176,11 +182,17 @@ export function NewThreadView({
             }}
           >
             <StatusIcon />
-            <span>Research workspace</span>
+            <span className="new-thread__quick-action-copy">
+              <span className="new-thread__quick-action-title">Learn from this workspace</span>
+              <small>Use the current codebase as context before planning.</small>
+            </span>
           </button>
-          <button aria-label="Plan a new project" className="new-thread__quick-action" type="button" onClick={onNewPlan}>
+          <button aria-label="Create the guided plan" className="new-thread__quick-action" type="button" onClick={onNewPlan}>
             <PlanIcon />
-            <span>Build GSD plan</span>
+            <span className="new-thread__quick-action-copy">
+              <span className="new-thread__quick-action-title">Create the guided plan</span>
+              <small>Shape milestones, phases, slices, and tasks.</small>
+            </span>
           </button>
         </div>
 
@@ -223,7 +235,7 @@ export function NewThreadView({
               textareaLabel="New thread prompt"
               textareaTestId="new-thread-composer"
               textareaClassName="new-thread__textarea"
-              textareaPlaceholder="Describe the outcome, constraints, or next GSD step."
+              textareaPlaceholder="Start with the outcome, users, constraints, or any question on your mind."
               footer={(
                 <NewThreadComposerFooter
                   runtime={runtime}

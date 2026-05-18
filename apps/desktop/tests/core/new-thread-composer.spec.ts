@@ -31,7 +31,10 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
 
     const composer = window.getByTestId("new-thread-composer");
     await expect(window.getByTestId("new-thread-logo")).toBeVisible();
-    await expect(window.getByRole("heading", { name: "What should move from DISCUSS to SHIP?" })).toBeVisible();
+    await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
+    await expect(window.getByText("GSD will guide you from DISCUSS through SHIP.")).toBeVisible();
+    await expect(window.getByRole("button", { name: /Talk through the idea/ })).toBeVisible();
+    await expect(window.getByRole("button", { name: /Create the guided plan/ })).toBeVisible();
     const flowFontFamily = await window.locator(".topbar__flow").evaluate((node) => getComputedStyle(node).fontFamily);
     expect(flowFontFamily).not.toMatch(/mono/i);
     const sidebarFlowFontFamily = await window
@@ -39,7 +42,10 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
       .evaluate((node) => getComputedStyle(node).fontFamily);
     expect(sidebarFlowFontFamily).not.toMatch(/mono/i);
     await expect(composer).toBeFocused();
-    await expect(composer).toHaveAttribute("placeholder", "Describe the outcome, constraints, or next GSD step.");
+    await expect(composer).toHaveAttribute(
+      "placeholder",
+      "Start with the outcome, users, constraints, or any question on your mind.",
+    );
 
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
     await expect(modelBadge).toBeVisible();
