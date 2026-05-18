@@ -10,6 +10,7 @@ import type {
   ParkedItemReviewStatus,
   ParkedItemRecord,
   PlanPhase,
+  PlanStatus,
   PlanSnapshot,
   PlanStage,
   RequirementRecord,
@@ -66,6 +67,7 @@ import type {
   StartPlanningVerifyInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
@@ -135,6 +137,7 @@ interface PlanBuilderViewProps {
   readonly onSelectWorkspace: (workspaceId: string) => void;
   readonly onCreatePlan: (input: CreatePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onSelectPlan: (input: SelectPlanningPlanInput) => Promise<DesktopAppState>;
+  readonly onUpdatePlanStatus: (input: UpdatePlanningPlanStatusInput) => Promise<DesktopAppState>;
   readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
@@ -168,6 +171,8 @@ interface PlanBuilderViewProps {
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
 
+type UserEditablePlanStatus = Extract<PlanStatus, "active" | "archived" | "shipped">;
+
 interface GuidanceRollupItem {
   readonly stage: DiscussStage;
   readonly total: number;
@@ -186,6 +191,7 @@ export function PlanBuilderView({
   onSelectWorkspace,
   onCreatePlan,
   onSelectPlan,
+  onUpdatePlanStatus,
   onApplyWorkflowPreferences,
   onUpdateWorkflowPreferences,
   onRecordAnswer,
@@ -243,6 +249,14 @@ export function PlanBuilderView({
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const changeDraftTitleInputRef = useRef<HTMLInputElement | null>(null);
   const snapshot = planningState?.selectedPlan;
+  const visiblePlans = useMemo(
+    () => planningState?.plans.filter((plan) => plan.status !== "archived") ?? [],
+    [planningState?.plans],
+  );
+  const archivedPlans = useMemo(
+    () => planningState?.plans.filter((plan) => plan.status === "archived") ?? [],
+    [planningState?.plans],
+  );
   const activeQuestion = getActiveDiscussQuestion(snapshot);
   const activePlanStage: PlanStage = snapshot?.activeStage ?? "project";
   const activeDiscussStage: DiscussStage =
@@ -454,6 +468,24 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const updatePlanStatus = (
+    plan: { readonly id: string; readonly revision: number },
+    status: UserEditablePlanStatus,
+  ) => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdatePlanStatus({
+      workspaceId: workspace.id,
+      planId: plan.id,
+      expectedRevision: plan.revision,
+      status,
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const applyWorkflowPreferences = () => {
@@ -1940,25 +1972,33 @@ export function PlanBuilderView({
               </select>
             </label>
 
-            {planningState?.plans.length ? (
+            {visiblePlans.length ? (
               <label className="plan-side__workspace">
                 <span>Plan</span>
                 <select
                   data-testid="plan-select"
-                  value={planningState.selectedPlanId}
+                  value={planningState?.selectedPlanId ?? ""}
                   onChange={(event) => {
                     if (event.target.value) {
                       void onSelectPlan({ workspaceId: workspace.id, planId: event.target.value });
                     }
                   }}
                 >
-                  {planningState.plans.map((plan) => (
+                  {visiblePlans.map((plan) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.readableId} · {plan.name}
                     </option>
                   ))}
                 </select>
               </label>
+            ) : null}
+
+            {snapshot ? (
+              <PlanStatusCard
+                plan={snapshot}
+                submitting={submitting}
+                onStatusChange={(status) => updatePlanStatus(snapshot, status)}
+              />
             ) : null}
 
             {planningState?.planDashboardRows.length ? (
@@ -1969,6 +2009,14 @@ export function PlanBuilderView({
                 onSelectPlan={(planId) => {
                   void onSelectPlan({ workspaceId: workspace.id, planId });
                 }}
+              />
+            ) : null}
+
+            {archivedPlans.length ? (
+              <ArchivedPlansPanel
+                plans={archivedPlans}
+                submitting={submitting}
+                onRestore={(plan) => updatePlanStatus(plan, "active")}
               />
             ) : null}
 
@@ -2587,6 +2635,99 @@ function formatGuidanceRollupCount(item: GuidanceRollupItem): string {
     parts.push(`${item.medium} medium`);
   }
   return parts.join(" / ");
+}
+
+function PlanStatusCard({
+  plan,
+  submitting,
+  onStatusChange,
+}: {
+  readonly plan: PlanSnapshot;
+  readonly submitting: boolean;
+  readonly onStatusChange: (status: UserEditablePlanStatus) => void;
+}) {
+  return (
+    <section className="plan-status-card" data-testid="plan-status-card">
+      <div>
+        <strong>Status</strong>
+        <span data-testid="plan-status-label">{formatPlanRecordStatus(plan.status)}</span>
+      </div>
+      <div className="plan-status-card__actions">
+        {plan.status === "archived" ? (
+          <button
+            className="plan-action-button plan-action-button--compact"
+            data-testid="restore-selected-plan-button"
+            disabled={submitting}
+            onClick={() => onStatusChange("active")}
+            type="button"
+          >
+            Restore plan
+          </button>
+        ) : (
+          <>
+            {plan.status !== "shipped" ? (
+              <button
+                className="plan-secondary-button plan-secondary-button--compact"
+                data-testid="ship-plan-button"
+                disabled={submitting}
+                onClick={() => onStatusChange("shipped")}
+                type="button"
+              >
+                Mark shipped
+              </button>
+            ) : null}
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              data-testid="archive-plan-button"
+              disabled={submitting}
+              onClick={() => onStatusChange("archived")}
+              type="button"
+            >
+              Archive plan
+            </button>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ArchivedPlansPanel({
+  plans,
+  submitting,
+  onRestore,
+}: {
+  readonly plans: readonly {
+    readonly id: string;
+    readonly readableId: string;
+    readonly name: string;
+    readonly revision: number;
+  }[];
+  readonly submitting: boolean;
+  readonly onRestore: (plan: { readonly id: string; readonly revision: number }) => void;
+}) {
+  return (
+    <section className="plan-archived-list" data-testid="archived-plan-list">
+      <div className="plan-memory__title">Archived plans</div>
+      {plans.map((plan) => (
+        <article className="plan-archived-list__row" data-testid="archived-plan-row" key={plan.id}>
+          <div>
+            <strong>{plan.readableId}</strong>
+            <span>{plan.name}</span>
+          </div>
+          <button
+            className="plan-action-button plan-action-button--compact"
+            data-testid="restore-archived-plan-button"
+            disabled={submitting}
+            onClick={() => onRestore(plan)}
+            type="button"
+          >
+            Restore
+          </button>
+        </article>
+      ))}
+    </section>
+  );
 }
 
 function PlanDashboard({
@@ -3370,6 +3511,21 @@ function formatPlanDashboardHealth(row: PlanningPlanDashboardRow): string {
     countLabel(row.projectionIssueCount, "projection issue"),
   ].filter(Boolean);
   return signals.length > 0 ? `Health: ${signals.join(" / ")}` : "Health: healthy";
+}
+
+function formatPlanRecordStatus(status: PlanStatus): string {
+  switch (status) {
+    case "draft":
+      return "Draft";
+    case "active":
+      return "Active";
+    case "approved":
+      return "Approved";
+    case "archived":
+      return "Archived";
+    case "shipped":
+      return "Shipped";
+  }
 }
 
 function countLabel(count: number, noun: string): string | undefined {

@@ -59,6 +59,7 @@ import type {
   SetGlobalPlanningPhaseModelsInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -172,6 +173,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.createPlanningPlan, input) as Promise<DesktopAppState>,
   selectPlanningPlan: (input: SelectPlanningPlanInput) =>
     ipcRenderer.invoke(desktopIpc.selectPlanningPlan, input) as Promise<DesktopAppState>,
+  updatePlanningPlanStatus: (input: UpdatePlanningPlanStatusInput) =>
+    ipcRenderer.invoke(desktopIpc.updatePlanningPlanStatus, input) as Promise<DesktopAppState>,
   applyPlanningWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) =>
     ipcRenderer.invoke(desktopIpc.applyPlanningWorkflowPreferences, input) as Promise<DesktopAppState>,
   updatePlanningWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) =>

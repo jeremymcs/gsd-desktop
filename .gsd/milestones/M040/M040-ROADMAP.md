@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Archive And Restore Plan** `risk:medium` `depends:[M032]`
+- [x] **S01: Archive And Restore Plan** `risk:medium` `depends:[M032]`
   > After this: users can remove old plans from the active dashboard safely.

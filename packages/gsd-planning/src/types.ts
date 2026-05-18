@@ -2,7 +2,7 @@ export type PlanId = string;
 export type PlanEventId = string;
 export type RequirementId = `R${string}`;
 
-export type PlanStatus = "draft" | "active" | "approved" | "archived";
+export type PlanStatus = "draft" | "active" | "approved" | "archived" | "shipped";
 export type PlanPhase = "discuss" | "research" | "plan" | "execute" | "verify" | "ship";
 export type PlanStage =
   | "project"
@@ -422,6 +422,10 @@ export type PlanEvent =
   | {
       readonly type: "project.updated";
       readonly project: Partial<ProjectSummary>;
+    }
+  | {
+      readonly type: "plan.status-updated";
+      readonly status: PlanStatus;
     }
   | {
       readonly type: "phase.updated";

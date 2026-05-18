@@ -87,9 +87,10 @@ async function createAcceptedDependencyPlanViaIpc(window: Page, planName: string
       throw new Error("piApp IPC bridge is unavailable");
     }
     const readPlan = (state: Awaited<ReturnType<typeof app.getState>>) => {
-      const plan = state.planningByWorkspace[state.selectedWorkspaceId]?.selectedPlan;
+      const planningState = state.planningByWorkspace[workspaceId] ?? state.planningByWorkspace[state.selectedWorkspaceId];
+      const plan = planningState?.selectedPlan;
       if (!plan) {
-        throw new Error("Expected selected plan");
+        throw new Error(`Expected selected plan${state.lastError ? `: ${state.lastError}` : ""}`);
       }
       return plan;
     };
@@ -539,6 +540,53 @@ test("shows a cross-plan dashboard and switches selected plans", async () => {
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Ready dashboard plan");
     await draftRow.click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Draft dashboard plan");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("archives and restores plans across restart", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-archive-restore");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await createAcceptedDependencyPlanViaIpc(window, "Keep active plan");
+    await createAcceptedDependencyPlanViaIpc(window, "Archive candidate plan");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Archive candidate plan");
+    await window.getByTestId("ship-plan-button").click();
+    await expect(window.getByTestId("plan-status-label")).toHaveText("Shipped");
+    await window.getByTestId("archive-plan-button").click();
+
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Keep active plan");
+    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
+    await expect(window.getByTestId("archived-plan-list")).toContainText("Archive candidate plan");
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, { testMode: "background" });
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
+
+    const archivedRow = window.getByTestId("archived-plan-row").filter({ hasText: "Archive candidate plan" });
+    await expect(archivedRow).toBeVisible();
+    await archivedRow.getByTestId("restore-archived-plan-button").click();
+
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Archive candidate plan");
+    await expect(window.getByTestId("plan-status-label")).toHaveText("Active");
+    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(1);
+    await expect(window.getByTestId("archived-plan-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
   } finally {
     await harness.close();
   }

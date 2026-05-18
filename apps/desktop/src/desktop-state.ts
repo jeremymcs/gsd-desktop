@@ -3,6 +3,7 @@ import type { ModelSettingsSnapshot, RuntimeCommandRecord, RuntimeSnapshot } fro
 import type {
   PlanListEntry,
   PlanPhase,
+  PlanStatus,
   PlanSnapshot,
   PlanStage,
   ParkedItemReviewStatus,
@@ -213,6 +214,13 @@ export interface CreatePlanningPlanInput {
 export interface SelectPlanningPlanInput {
   readonly workspaceId: string;
   readonly planId: string;
+}
+
+export interface UpdatePlanningPlanStatusInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly status: Extract<PlanStatus, "active" | "archived" | "shipped">;
 }
 
 export interface ApplyPlanningWorkflowPreferencesInput {

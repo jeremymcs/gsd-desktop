@@ -185,15 +185,17 @@ export class SqlitePlanningStore implements PlanningStore {
       `).run(eventId, input.planId, nextRevision, input.event.type, payloadJson, now);
 
       const phaseStage = phaseStageFromEvent(input.event);
+      const status = statusFromEvent(input.event);
       this.db.prepare(`
         UPDATE plans
         SET
           current_revision = ?,
           updated_at = ?,
+          status = COALESCE(?, status),
           active_phase = COALESCE(?, active_phase),
           active_stage = COALESCE(?, active_stage)
         WHERE id = ?
-      `).run(nextRevision, now, phaseStage?.phase, phaseStage?.stage, input.planId);
+      `).run(nextRevision, now, status, phaseStage?.phase, phaseStage?.stage, input.planId);
     });
 
     append();
@@ -309,6 +311,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     const payload = event.payload;
     switch (payload.type) {
       case "phase.updated":
+      case "plan.status-updated":
         break;
       case "project.updated":
         Object.assign(project, payload.project);
@@ -825,6 +828,8 @@ function toPersistedPlanEvent(value: unknown): PersistedPlanEvent {
 
 function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; readonly stage: PlanStage } | undefined {
   switch (event.type) {
+    case "plan.status-updated":
+      return undefined;
     case "phase.updated":
       return { phase: event.phase, stage: event.stage };
     case "project.updated":
@@ -859,6 +864,15 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "change.proposal-modification-approved":
     case "plan.item-hidden":
     case "plan.item-restored":
+      return undefined;
+  }
+}
+
+function statusFromEvent(event: PlanEvent): PlanStatus | undefined {
+  switch (event.type) {
+    case "plan.status-updated":
+      return event.status;
+    default:
       return undefined;
   }
 }

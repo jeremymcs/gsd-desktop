@@ -2152,6 +2152,9 @@ export default function App() {
               onSelectWorkspace={handleSelectPlansWorkspace}
               onCreatePlan={(input) => updateSnapshot(api, setSnapshot, () => api.createPlanningPlan(input))}
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
+              onUpdatePlanStatus={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.updatePlanningPlanStatus(input))
+              }
               onApplyWorkflowPreferences={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
               }

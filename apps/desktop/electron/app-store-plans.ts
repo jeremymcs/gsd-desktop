@@ -67,6 +67,7 @@ import type {
   StartPlanningVerifyInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -112,7 +113,7 @@ export async function loadPlanningWorkspace(
     return withPlanningStore(workspace.path, async (planningStore) => {
       const existing = store.state.planningByWorkspace[workspace.id];
       let plans = planningStore.listPlans();
-      const selectedPlanId = resolveSelectedPlanId(plans, existing?.selectedPlanId);
+      const selectedPlanId = resolveSelectedPlanId(getVisiblePlans(plans), existing?.selectedPlanId);
       let selectedPlan = selectedPlanId ? planningStore.getPlanSnapshot(selectedPlanId) : undefined;
       selectedPlan = await refreshLegacyReferences(planningStore, workspace.path, selectedPlan);
       plans = planningStore.listPlans();
@@ -175,6 +176,42 @@ export async function selectPlanningPlan(
       }
       snapshot = await refreshLegacyReferences(planningStore, workspace.path, snapshot);
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningPlanStatus(
+  store: AppStoreInternals,
+  input: UpdatePlanningPlanStatusInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      if (current.status === input.status) {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, current);
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "plan.status-updated",
+          status: input.status,
+        },
+      });
+
+      if (input.status !== "archived") {
+        return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      }
+
+      const nextSelectedPlan = getNextVisiblePlanSnapshot(planningStore, snapshot.id);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, nextSelectedPlan);
     });
   });
 }
@@ -2558,6 +2595,16 @@ function resolveSelectedPlanId(
   return [...plans].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]?.id ?? "";
 }
 
+function getVisiblePlans(plans: readonly PlanListEntry[]): readonly PlanListEntry[] {
+  return plans.filter((plan) => plan.status !== "archived");
+}
+
+function getNextVisiblePlanSnapshot(planningStore: PlanningStore, ignoredPlanId: string): PlanSnapshot | undefined {
+  const plans = getVisiblePlans(planningStore.listPlans()).filter((plan) => plan.id !== ignoredPlanId);
+  const planId = resolveSelectedPlanId(plans, undefined);
+  return planId ? planningStore.getPlanSnapshot(planId) : undefined;
+}
+
 function getPlanSnapshots(planningStore: PlanningStore, plans: readonly PlanListEntry[]): readonly PlanSnapshot[] {
   return plans.flatMap((plan) => {
     const snapshot = planningStore.getPlanSnapshot(plan.id);
@@ -2570,43 +2617,49 @@ async function buildPlanDashboardRows(
   snapshots: readonly PlanSnapshot[],
 ): Promise<readonly PlanningPlanDashboardRow[]> {
   const rows = await Promise.all(
-    snapshots.map(async (snapshot): Promise<PlanningPlanDashboardRow> => {
-      const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
-      const acceptedPlan = acceptedOutput ? tryParsePlanProposal(acceptedOutput.content) : undefined;
-      const queue = acceptedPlan
-        ? computeNextWorkQueue({
-            tasks: getDashboardTaskEntries(acceptedPlan),
-            taskExecutions: snapshot.taskExecutions,
-            taskVerifications: snapshot.taskVerifications,
-            hiddenTaskIds: snapshot.hiddenPlanItems.map((item) => item.targetId),
-            hiddenTaskPaths: snapshot.hiddenPlanItems.map((item) => item.targetPath),
-          })
-        : undefined;
-      const firstReady = queue?.ready[0];
-      const projectionDrift = acceptedPlan
-        ? await compareGeneratedProjections({
-            workspaceRoot: workspacePath,
-            projectionInput: buildPlanningProjectionInput(snapshot),
-          })
-        : undefined;
-      return {
-        planId: snapshot.id,
-        readableId: snapshot.readableId,
-        name: snapshot.name,
-        activePhase: snapshot.activePhase,
-        activeStage: snapshot.activeStage,
-        readyCount: queue?.ready.length ?? 0,
-        blockedCount: queue?.blocked.length ?? 0,
-        nextWork: firstReady ? `${firstReady.taskPath}: ${firstReady.title}` : acceptedPlan ? "No ready work" : "No accepted plan",
-        projectionState: acceptedPlan ? "ready" : "not-ready",
-        blockerCount: snapshot.taskExecutions.filter((execution) => execution.status === "blocked").length,
-        recoveryStopCount: isActionableRecoveryStop(snapshot.runRecoverySummary) ? 1 : 0,
-        evidenceGapCount: countEvidenceGaps(snapshot, acceptedPlan),
-        projectionIssueCount: projectionDrift
-          ? projectionDrift.missing.length + projectionDrift.stale.length + projectionDrift.conflicts.length
-          : 0,
-      };
-    }),
+    snapshots
+      .filter((snapshot) => snapshot.status !== "archived")
+      .map(async (snapshot): Promise<PlanningPlanDashboardRow> => {
+        const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
+        const acceptedPlan = acceptedOutput ? tryParsePlanProposal(acceptedOutput.content) : undefined;
+        const queue = acceptedPlan
+          ? computeNextWorkQueue({
+              tasks: getDashboardTaskEntries(acceptedPlan),
+              taskExecutions: snapshot.taskExecutions,
+              taskVerifications: snapshot.taskVerifications,
+              hiddenTaskIds: snapshot.hiddenPlanItems.map((item) => item.targetId),
+              hiddenTaskPaths: snapshot.hiddenPlanItems.map((item) => item.targetPath),
+            })
+          : undefined;
+        const firstReady = queue?.ready[0];
+        const projectionDrift = acceptedPlan
+          ? await compareGeneratedProjections({
+              workspaceRoot: workspacePath,
+              projectionInput: buildPlanningProjectionInput(snapshot),
+            })
+          : undefined;
+        return {
+          planId: snapshot.id,
+          readableId: snapshot.readableId,
+          name: snapshot.name,
+          activePhase: snapshot.activePhase,
+          activeStage: snapshot.activeStage,
+          readyCount: queue?.ready.length ?? 0,
+          blockedCount: queue?.blocked.length ?? 0,
+          nextWork: firstReady
+            ? `${firstReady.taskPath}: ${firstReady.title}`
+            : acceptedPlan
+              ? "No ready work"
+              : "No accepted plan",
+          projectionState: acceptedPlan ? "ready" : "not-ready",
+          blockerCount: snapshot.taskExecutions.filter((execution) => execution.status === "blocked").length,
+          recoveryStopCount: isActionableRecoveryStop(snapshot.runRecoverySummary) ? 1 : 0,
+          evidenceGapCount: countEvidenceGaps(snapshot, acceptedPlan),
+          projectionIssueCount: projectionDrift
+            ? projectionDrift.missing.length + projectionDrift.stale.length + projectionDrift.conflicts.length
+            : 0,
+        };
+      }),
   );
   return rows.sort((left, right) => left.readableId.localeCompare(right.readableId));
 }

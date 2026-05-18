@@ -90,6 +90,46 @@ test("replays persisted run recovery summary state", async () => {
   }
 });
 
+test("updates plan status through append-only events", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Status Plan" });
+    const archived = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "plan.status-updated",
+        status: "archived",
+      },
+    });
+
+    assert.equal(archived.status, "archived");
+    assert.equal(archived.events.at(-1)?.type, "plan.status-updated");
+    assert.equal(store.listPlans()[0]?.status, "archived");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.status, "archived");
+    const restored = store.appendEvent({
+      planId: reopened.id,
+      expectedRevision: reopened.revision,
+      event: {
+        type: "plan.status-updated",
+        status: "active",
+      },
+    });
+    assert.equal(restored.status, "active");
+    assert.equal(restored.events.filter((event) => event.type === "plan.status-updated").length, 2);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("creates a repo-local planning database and replays event-backed plan state after reopen", async () => {
   const workspaceRoot = await makeWorkspace();
 

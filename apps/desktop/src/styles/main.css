@@ -3666,6 +3666,54 @@
   gap: 8px;
 }
 
+.plan-status-card,
+.plan-archived-list__row {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #292d35;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.plan-status-card > div,
+.plan-archived-list__row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.plan-status-card strong,
+.plan-archived-list__row strong {
+  color: #f4f4f5;
+  font-size: 13px;
+}
+
+.plan-status-card span,
+.plan-archived-list__row span {
+  overflow: hidden;
+  color: #aeb4c0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-status-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-archived-list {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-archived-list__row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .plan-dashboard__row {
   width: 100%;
   display: grid;
@@ -4138,6 +4186,8 @@
 .canvas--plans .plan-memory__title,
 .canvas--plans .plan-memory__item-header span,
 .canvas--plans .plan-legacy-reference__header strong,
+.canvas--plans .plan-status-card strong,
+.canvas--plans .plan-archived-list__row strong,
 .canvas--plans .plan-change-draft label {
   color: var(--plan-text);
 }
@@ -4185,7 +4235,9 @@
 .canvas--plans .plan-requirements-contract__header p,
 .canvas--plans .plan-memory__item p,
 .canvas--plans .plan-legacy-reference__header span,
-.canvas--plans .plan-legacy-reference p {
+.canvas--plans .plan-legacy-reference p,
+.canvas--plans .plan-status-card span,
+.canvas--plans .plan-archived-list__row span {
   color: var(--plan-muted-text);
 }
 
@@ -4231,7 +4283,9 @@
 .canvas--plans .plan-phase-strip,
 .canvas--plans .plan-outline-stat,
 .canvas--plans .plan-stage-list__item,
-.canvas--plans .plan-memory__item {
+.canvas--plans .plan-memory__item,
+.canvas--plans .plan-status-card,
+.canvas--plans .plan-archived-list__row {
   border-color: var(--plan-pane-border);
   background: var(--plan-pane-subtle-bg);
   box-shadow: var(--plan-card-shadow);

@@ -65,6 +65,7 @@ import type {
   SetGlobalPlanningPhaseModelsInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -555,6 +556,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.selectPlanningPlan, (_event, input: SelectPlanningPlanInput) =>
     store.selectPlanningPlan(input),
+  );
+  ipcMain.handle(desktopIpc.updatePlanningPlanStatus, (_event, input: UpdatePlanningPlanStatusInput) =>
+    store.updatePlanningPlanStatus(input),
   );
   ipcMain.handle(desktopIpc.applyPlanningWorkflowPreferences, (_event, input: ApplyPlanningWorkflowPreferencesInput) =>
     store.applyPlanningWorkflowPreferences(input),

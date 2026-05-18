@@ -45,6 +45,7 @@ import type {
   SetGlobalPlanningPhaseModelsInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -81,6 +82,7 @@ export const desktopIpc = {
   loadPlanningWorkspace: "pi-gui:load-planning-workspace",
   createPlanningPlan: "pi-gui:create-planning-plan",
   selectPlanningPlan: "pi-gui:select-planning-plan",
+  updatePlanningPlanStatus: "pi-gui:update-planning-plan-status",
   applyPlanningWorkflowPreferences: "pi-gui:apply-planning-workflow-preferences",
   updatePlanningWorkflowPreferences: "pi-gui:update-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
@@ -299,6 +301,7 @@ export interface PiDesktopApi {
   loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState>;
   createPlanningPlan(input: CreatePlanningPlanInput): Promise<DesktopAppState>;
   selectPlanningPlan(input: SelectPlanningPlanInput): Promise<DesktopAppState>;
+  updatePlanningPlanStatus(input: UpdatePlanningPlanStatusInput): Promise<DesktopAppState>;
   applyPlanningWorkflowPreferences(input: ApplyPlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
