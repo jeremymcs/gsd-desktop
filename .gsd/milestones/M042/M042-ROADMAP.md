@@ -12,5 +12,9 @@
 
 ## Slices
 
-- [ ] **S01: Deterministic Guardrail Warnings** `risk:high` `depends:[M029,M031]`
+- [x] **S01: Deterministic Guardrail Warnings** `risk:high` `depends:[M029,M031]`
   > After this: Plan Builder warns when known local state violates autonomous-run guardrails.
+
+## Status
+
+- S01 complete: execution queue now surfaces deterministic warnings for projection drift, projection write conflicts, and unfinished recovery stops.

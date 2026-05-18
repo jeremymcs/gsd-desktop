@@ -17,6 +17,10 @@
     "./next-work": {
       "types": "./dist/next-work.d.ts",
       "default": "./dist/next-work.js"
+    },
+    "./guardrails": {
+      "types": "./dist/guardrails.d.ts",
+      "default": "./dist/guardrails.js"
     }
   },
   "files": [

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import { computeGuardrailWarnings, type GuardrailWarning } from "@pi-gui/gsd-planning/guardrails";
 import { defaultWorkflowAutonomousRunPolicy } from "@pi-gui/gsd-planning/types";
 import { computeNextWorkQueue, type NextWorkQueueItem } from "@pi-gui/gsd-planning/next-work";
 import type {
@@ -3750,6 +3751,20 @@ function PlanExecutionQueue({
     () => buildPhaseModelRoutingRows(plan.workflowPreferences, globalPlanningPreferences, runtime),
     [globalPlanningPreferences, plan.workflowPreferences, runtime],
   );
+  const guardrailWarnings = useMemo(
+    () =>
+      computeGuardrailWarnings({
+        projection: projectionSummary
+          ? {
+              missing: projectionSummary.missing,
+              stale: projectionSummary.stale,
+              conflicts: projectionSummary.conflicts,
+            }
+          : undefined,
+        runRecoverySummary,
+      }),
+    [projectionSummary, runRecoverySummary],
+  );
   const handoffText = useMemo(
     () =>
       buildPlanHandoffBundle({
@@ -3853,6 +3868,8 @@ function PlanExecutionQueue({
       </div>
 
       <PhaseModelRoutingCard rows={phaseModelRouting} />
+
+      <GuardrailWarningsCard warnings={guardrailWarnings} />
 
       <RunRecoverySummaryCard
         summary={runRecoverySummary}
@@ -4043,6 +4060,41 @@ function PlanExecutionQueue({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly GuardrailWarning[] }) {
+  if (warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="plan-projection-card plan-guardrail-warnings" data-testid="guardrail-warning-list">
+      <div className="plan-guardrail-warnings__header">
+        <strong>Guardrail warnings</strong>
+        <span>
+          {warnings.length} detected before autonomous work starts
+        </span>
+      </div>
+      <div className="plan-guardrail-warnings__rows">
+        {warnings.map((warning) => (
+          <article className="plan-guardrail-warning" data-testid="guardrail-warning" key={warning.id}>
+            <div>
+              <strong>{warning.title}</strong>
+              <span>{warning.detail}</span>
+            </div>
+            <small>{formatAutonomousStopCondition(warning.condition)}</small>
+            {warning.evidence.length > 0 ? (
+              <ul>
+                {warning.evidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -5642,6 +5694,21 @@ function formatRunRecoveryStopReason(reason: RunRecoverySummaryRecord["stopReaso
       return "Verification failed";
     case "verification-passed":
       return "Verification passed";
+  }
+}
+
+function formatAutonomousStopCondition(condition: GuardrailWarning["condition"]): string {
+  switch (condition) {
+    case "tests-fail":
+      return "tests-fail";
+    case "scope-ambiguous":
+      return "scope-ambiguous";
+    case "destructive-action":
+      return "destructive-action";
+    case "dirty-conflict":
+      return "dirty-conflict";
+    case "milestone-complete":
+      return "milestone-complete";
   }
 }
 
