@@ -788,6 +788,19 @@ test("starts a change draft from a prepared composer idea", async () => {
     await idea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
     await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
+    const replacementProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget replacement" });
+    await replacementProposal.getByRole("button", { name: "Edit draft details" }).click();
+    await expect(replacementProposal.getByTestId("plan-change-proposal-edit-form")).toBeVisible();
+    await replacementProposal.getByTestId("plan-change-proposal-title-input").fill("Retry budget replacement revised");
+    await replacementProposal
+      .getByTestId("plan-change-proposal-summary-textarea")
+      .fill("Revise the retry budget change before approval.");
+    await replacementProposal
+      .getByTestId("plan-change-proposal-impact-textarea")
+      .fill("Impact: revised retry budget boundaries.");
+    await replacementProposal.getByRole("button", { name: "Save details" }).click();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement revised");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: revised retry budget boundaries.");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -797,7 +810,11 @@ test("starts a change draft from a prepared composer idea", async () => {
         activePhase: plan?.activePhase ?? "",
         replacementDrafted:
           plan?.changeProposals.some(
-            (proposal) => proposal.title === "Retry budget replacement" && proposal.status === "draft",
+            (proposal) =>
+              proposal.title === "Retry budget replacement revised" &&
+              proposal.summary === "Revise the retry budget change before approval." &&
+              proposal.impactNotes === "Impact: revised retry budget boundaries." &&
+              proposal.status === "draft",
           ) ?? false,
         firstDraftDeleted:
           plan?.changeProposals.some(
@@ -827,9 +844,14 @@ test("starts a change draft from a prepared composer idea", async () => {
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
     await expect(
-      window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-change-proposal-status"),
+      window
+        .getByTestId("plan-change-proposal")
+        .filter({ hasText: "Retry budget change" })
+        .filter({ hasText: "Deleted" })
+        .getByTestId("plan-change-proposal-status"),
     ).toHaveText("Deleted");
-    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement revised");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: revised retry budget boundaries.");
   } finally {
     await harness.close();
   }

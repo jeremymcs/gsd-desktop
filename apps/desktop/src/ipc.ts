@@ -43,6 +43,7 @@ import type {
   StartPlanningVerifyInput,
   StartThreadInput,
   SetGlobalPlanningPhaseModelsInput,
+  UpdatePlanningChangeProposalInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -88,6 +89,7 @@ export const desktopIpc = {
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
   withdrawPlanningChangeProposal: "pi-gui:withdraw-planning-change-proposal",
+  updatePlanningChangeProposal: "pi-gui:update-planning-change-proposal",
   approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
   approvePlanningTaskModification: "pi-gui:approve-planning-task-modification",
   hidePlanningTask: "pi-gui:hide-planning-task",
@@ -304,6 +306,7 @@ export interface PiDesktopApi {
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
   withdrawPlanningChangeProposal(input: WithdrawPlanningChangeProposalInput): Promise<DesktopAppState>;
+  updatePlanningChangeProposal(input: UpdatePlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningTaskModification(input: ApprovePlanningTaskModificationInput): Promise<DesktopAppState>;
   hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState>;

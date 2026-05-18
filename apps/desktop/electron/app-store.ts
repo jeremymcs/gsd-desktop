@@ -76,6 +76,7 @@ import {
   type StartThreadInput,
   type TranscriptMessage,
   type SetGlobalPlanningPhaseModelsInput,
+  type UpdatePlanningChangeProposalInput,
   type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
   type UpsertPlanningRequirementsInput,
@@ -419,6 +420,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async withdrawPlanningChangeProposal(input: WithdrawPlanningChangeProposalInput): Promise<DesktopAppState> {
     return plans.withdrawPlanningChangeProposal(this, input);
+  }
+
+  async updatePlanningChangeProposal(input: UpdatePlanningChangeProposalInput): Promise<DesktopAppState> {
+    return plans.updatePlanningChangeProposal(this, input);
   }
 
   async approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState> {

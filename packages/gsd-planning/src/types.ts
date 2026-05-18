@@ -346,6 +346,13 @@ export type PlanEvent =
       readonly proposalId: string;
     }
   | {
+      readonly type: "change.proposal-updated";
+      readonly proposalId: string;
+      readonly title: string;
+      readonly summary: string;
+      readonly impactNotes: string;
+    }
+  | {
       readonly type: "change.proposal-approved";
       readonly proposalId: string;
       readonly injection: Omit<ApprovedPlanInjectionRecord, "id" | "createdAt"> & {

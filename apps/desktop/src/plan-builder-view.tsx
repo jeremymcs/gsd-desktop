@@ -56,6 +56,7 @@ import type {
   StartPlanningResearchInput,
   StartPlanningShipInput,
   StartPlanningVerifyInput,
+  UpdatePlanningChangeProposalInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
@@ -131,6 +132,7 @@ interface PlanBuilderViewProps {
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onWithdrawChangeProposal: (input: WithdrawPlanningChangeProposalInput) => Promise<DesktopAppState>;
+  readonly onUpdateChangeProposal: (input: UpdatePlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveTaskModification: (input: ApprovePlanningTaskModificationInput) => Promise<DesktopAppState>;
   readonly onHidePlanningTask: (input: HidePlanningTaskInput) => Promise<DesktopAppState>;
@@ -180,6 +182,7 @@ export function PlanBuilderView({
   onReviewIdea,
   onDraftChangeProposal,
   onWithdrawChangeProposal,
+  onUpdateChangeProposal,
   onApproveChangeProposal,
   onApproveTaskModification,
   onHidePlanningTask,
@@ -674,6 +677,27 @@ export function PlanBuilderView({
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
       proposalId: proposal.id,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const updateChangeProposal = (
+    proposal: ChangeProposalRecord,
+    draft: Pick<ChangeProposalRecord, "title" | "summary" | "impactNotes">,
+  ) => {
+    if (!snapshot || submitting || proposal.status !== "draft") {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdateChangeProposal({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      proposalId: proposal.id,
+      title: draft.title,
+      summary: draft.summary,
+      impactNotes: draft.impactNotes,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -2081,6 +2105,7 @@ export function PlanBuilderView({
                     onHideTask={hidePlanningTask}
                     onRestoreTask={restorePlanningTask}
                     onWithdraw={withdrawChangeProposal}
+                    onUpdate={updateChangeProposal}
                   />
                 ))}
               </div>
@@ -3786,6 +3811,7 @@ function ChangeProposalCard({
   onHideTask,
   onRestoreTask,
   onWithdraw,
+  onUpdate,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly focusToken: number;
@@ -3796,6 +3822,10 @@ function ChangeProposalCard({
   readonly onHideTask: (taskPath: string, reason: string) => void;
   readonly onRestoreTask: (taskPath: string) => void;
   readonly onWithdraw: (proposal: ChangeProposalRecord) => void;
+  readonly onUpdate: (
+    proposal: ChangeProposalRecord,
+    draft: Pick<ChangeProposalRecord, "title" | "summary" | "impactNotes">,
+  ) => void;
 }) {
   const cardRef = useRef<HTMLElement | null>(null);
   const approvalFocusRef = useRef<HTMLSelectElement | null>(null);
@@ -3833,6 +3863,10 @@ function ChangeProposalCard({
     selectedModificationTask?.task.dependencies.join(", ") ?? "",
   );
   const [hideReason, setHideReason] = useState("No longer needed in the active plan.");
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [proposalTitleDraft, setProposalTitleDraft] = useState(proposal.title);
+  const [proposalSummaryDraft, setProposalSummaryDraft] = useState(proposal.summary);
+  const [proposalImpactDraft, setProposalImpactDraft] = useState(proposal.impactNotes);
   const selectedTarget = targets.find((target) => target.id === targetId) ?? targets[0];
   const injectedTaskActive = proposal.injectedTaskPath ? activeTaskPaths.has(proposal.injectedTaskPath) : false;
   const canApprove =
@@ -3848,6 +3882,12 @@ function ChangeProposalCard({
     Boolean(modifiedTaskTitle.trim()) &&
     Boolean(modifiedTaskAcceptance.trim()) &&
     !submitting;
+  const canUpdateDetails =
+    proposal.status === "draft" &&
+    Boolean(proposalTitleDraft.trim()) &&
+    Boolean(proposalSummaryDraft.trim()) &&
+    Boolean(proposalImpactDraft.trim()) &&
+    !submitting;
 
   useEffect(() => {
     setTargetId(defaultTargetId);
@@ -3857,6 +3897,10 @@ function ChangeProposalCard({
     setDependencies("");
     setModificationTaskPath(defaultModificationTaskPath);
     setHideReason("No longer needed in the active plan.");
+    setEditingDetails(false);
+    setProposalTitleDraft(proposal.title);
+    setProposalSummaryDraft(proposal.summary);
+    setProposalImpactDraft(proposal.impactNotes);
   }, [
     defaultModificationTaskPath,
     defaultTargetId,
@@ -3929,6 +3973,18 @@ function ChangeProposalCard({
     });
   };
 
+  const submitDetailsUpdate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canUpdateDetails) {
+      return;
+    }
+    onUpdate(proposal, {
+      title: proposalTitleDraft.trim(),
+      summary: proposalSummaryDraft.trim(),
+      impactNotes: proposalImpactDraft.trim(),
+    });
+  };
+
   return (
     <article
       className="plan-memory__item plan-memory__item--proposal"
@@ -3940,8 +3996,51 @@ function ChangeProposalCard({
         <span>{proposal.title}</span>
         <small data-testid="plan-change-proposal-status">{formatChangeProposalStatus(proposal.status)}</small>
       </div>
-      <p>{proposal.summary}</p>
-      <p className="plan-memory__note">{proposal.impactNotes}</p>
+      {editingDetails ? (
+        <form className="plan-change-draft" data-testid="plan-change-proposal-edit-form" onSubmit={submitDetailsUpdate}>
+          <label>
+            <span>Title</span>
+            <input
+              data-testid="plan-change-proposal-title-input"
+              onChange={(event) => setProposalTitleDraft(event.target.value)}
+              value={proposalTitleDraft}
+            />
+          </label>
+          <label>
+            <span>Summary</span>
+            <textarea
+              data-testid="plan-change-proposal-summary-textarea"
+              onChange={(event) => setProposalSummaryDraft(event.target.value)}
+              value={proposalSummaryDraft}
+            />
+          </label>
+          <label>
+            <span>Impact</span>
+            <textarea
+              data-testid="plan-change-proposal-impact-textarea"
+              onChange={(event) => setProposalImpactDraft(event.target.value)}
+              value={proposalImpactDraft}
+            />
+          </label>
+          <div className="plan-memory__editor-actions">
+            <button className="plan-action-button plan-action-button--compact" disabled={!canUpdateDetails} type="submit">
+              Save details
+            </button>
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              onClick={() => setEditingDetails(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p>{proposal.summary}</p>
+          <p className="plan-memory__note">{proposal.impactNotes}</p>
+        </>
+      )}
       {proposal.injectedTaskPath ? (
         <p className="plan-memory__note">Injected as {proposal.injectedTaskPath}</p>
       ) : null}
@@ -3967,6 +4066,16 @@ function ChangeProposalCard({
       ) : null}
       {proposal.status === "draft" ? (
         <div className="plan-memory__editor-actions">
+          {!editingDetails ? (
+            <button
+              className="plan-secondary-button plan-secondary-button--compact"
+              disabled={submitting}
+              onClick={() => setEditingDetails(true)}
+              type="button"
+            >
+              Edit draft details
+            </button>
+          ) : null}
           <button
             className="plan-secondary-button plan-secondary-button--compact"
             disabled={submitting}
@@ -3980,7 +4089,7 @@ function ChangeProposalCard({
       {proposal.status === "draft" && !acceptedPlanProposal ? (
         <p className="plan-memory__note">Accept a plan before approving this change.</p>
       ) : null}
-      {proposal.status === "draft" && acceptedPlanProposal ? (
+      {proposal.status === "draft" && acceptedPlanProposal && !editingDetails ? (
         <form className="plan-change-draft" data-testid="plan-injection-form" onSubmit={submitApproval}>
           <label>
             <span>Target slice</span>
@@ -4037,7 +4146,7 @@ function ChangeProposalCard({
           </div>
         </form>
       ) : null}
-      {proposal.status === "draft" && acceptedPlanProposal ? (
+      {proposal.status === "draft" && acceptedPlanProposal && !editingDetails ? (
         <form className="plan-change-draft" data-testid="plan-modification-form" onSubmit={submitModification}>
           <label>
             <span>Modify task</span>

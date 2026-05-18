@@ -47,6 +47,7 @@ import type {
   StartPlanningResearchInput,
   StartPlanningShipInput,
   StartPlanningVerifyInput,
+  UpdatePlanningChangeProposalInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -513,6 +514,51 @@ export async function withdrawPlanningChangeProposal(
         event: {
           type: "change.proposal-withdrawn",
           proposalId: proposal.id,
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningChangeProposal(
+  store: AppStoreInternals,
+  input: UpdatePlanningChangeProposalInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const title = input.title.trim();
+  const summary = input.summary.trim();
+  const impactNotes = input.impactNotes.trim();
+  if (!title || !summary || !impactNotes) {
+    return store.withError("Change proposal title, summary, and impact notes are required");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const proposal = current.changeProposals.find((entry) => entry.id === input.proposalId);
+      if (!proposal) {
+        throw new Error(`Unknown change proposal: ${input.proposalId}`);
+      }
+      if (proposal.status !== "draft") {
+        throw new Error("Only draft change proposals can be edited");
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "change.proposal-updated",
+          proposalId: proposal.id,
+          title,
+          summary,
+          impactNotes,
         },
       });
 

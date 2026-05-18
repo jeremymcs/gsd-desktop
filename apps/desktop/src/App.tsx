@@ -2171,6 +2171,9 @@ export default function App() {
               onWithdrawChangeProposal={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.withdrawPlanningChangeProposal(input))
               }
+              onUpdateChangeProposal={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.updatePlanningChangeProposal(input))
+              }
               onApproveChangeProposal={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.approvePlanningChangeProposal(input))
               }

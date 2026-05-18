@@ -596,6 +596,60 @@ test("replays withdrawn change proposals", async () => {
   }
 });
 
+test("replays draft change proposal updates", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Update Draft Proposal" });
+    const drafted = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-1",
+          title: "Original draft",
+          summary: "Draft summary before revision.",
+          impactNotes: "Initial impact notes.",
+        },
+      },
+    });
+    const proposalId = drafted.changeProposals[0]?.id;
+    assert.ok(proposalId);
+
+    const updated = store.appendEvent({
+      planId: created.id,
+      expectedRevision: drafted.revision,
+      event: {
+        type: "change.proposal-updated",
+        proposalId,
+        title: "Updated draft",
+        summary: "Draft summary after revision.",
+        impactNotes: "Updated impact notes.",
+      },
+    });
+
+    assert.equal(updated.changeProposals[0]?.title, "Updated draft");
+    assert.equal(updated.changeProposals[0]?.summary, "Draft summary after revision.");
+    assert.equal(updated.changeProposals[0]?.impactNotes, "Updated impact notes.");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+
+    assert.ok(reopened);
+    assert.equal(reopened.changeProposals[0]?.title, "Updated draft");
+    assert.equal(reopened.changeProposals[0]?.summary, "Draft summary after revision.");
+    assert.equal(reopened.changeProposals[0]?.impactNotes, "Updated impact notes.");
+    assert.equal(reopened.events.length, 2);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("rejects stale writes with a revision conflict", async () => {
   const workspaceRoot = await makeWorkspace();
 

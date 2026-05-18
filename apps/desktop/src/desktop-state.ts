@@ -278,6 +278,16 @@ export interface WithdrawPlanningChangeProposalInput {
   readonly proposalId: string;
 }
 
+export interface UpdatePlanningChangeProposalInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly proposalId: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly impactNotes: string;
+}
+
 export interface ApprovePlanningChangeProposalInput {
   readonly workspaceId: string;
   readonly planId: string;

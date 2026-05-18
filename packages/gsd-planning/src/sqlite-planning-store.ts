@@ -510,6 +510,19 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "change.proposal-updated": {
+        const current = changeProposals.get(payload.proposalId);
+        if (current) {
+          changeProposals.set(payload.proposalId, {
+            ...current,
+            title: payload.title,
+            summary: payload.summary,
+            impactNotes: payload.impactNotes,
+            updatedAt: event.createdAt,
+          });
+        }
+        break;
+      }
       case "change.proposal-approved": {
         const current = changeProposals.get(payload.proposalId);
         const injectionId = payload.injection.id ?? event.id;
@@ -713,6 +726,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "idea.reviewed":
     case "change.proposal-drafted":
     case "change.proposal-withdrawn":
+    case "change.proposal-updated":
     case "change.proposal-approved":
     case "change.proposal-modification-approved":
     case "plan.item-hidden":
