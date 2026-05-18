@@ -139,6 +139,15 @@ export interface ShipSummaryRecord {
   readonly createdAt: string;
 }
 
+export interface LegacyReferenceRecord {
+  readonly id: string;
+  readonly path: string;
+  readonly title: string;
+  readonly excerpt: string;
+  readonly contentHash: string;
+  readonly discoveredAt: string;
+}
+
 export type WorkflowCommitPolicy = "per-task";
 export type WorkflowBranchModel = "single";
 export type WorkflowResearchMode = "skip" | "research";
@@ -457,6 +466,12 @@ export type PlanEvent =
       };
     }
   | {
+      readonly type: "legacy-reference.discovered";
+      readonly reference: Omit<LegacyReferenceRecord, "discoveredAt"> & {
+        readonly discoveredAt?: string;
+      };
+    }
+  | {
       readonly type: "idea.parked";
       readonly item: Omit<ParkedItemRecord, "id" | "createdAt" | "reviewStatus" | "reviewNote" | "reviewedAt"> & {
         readonly id?: string;
@@ -561,6 +576,7 @@ export interface PlanSnapshot extends PlanListEntry {
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
+  readonly legacyReferences: readonly LegacyReferenceRecord[];
   readonly workflowPreferences?: WorkflowPreferencesRecord;
   readonly parkedItems: readonly ParkedItemRecord[];
   readonly changeProposals: readonly ChangeProposalRecord[];

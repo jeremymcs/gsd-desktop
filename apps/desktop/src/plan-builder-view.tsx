@@ -6,6 +6,7 @@ import type {
   AnswerRecord,
   ChangeProposalRecord,
   GeneratedOutputRecord,
+  LegacyReferenceRecord,
   ParkedItemReviewStatus,
   ParkedItemRecord,
   PlanPhase,
@@ -1943,6 +1944,10 @@ export function PlanBuilderView({
               />
             ) : null}
 
+            {snapshot?.legacyReferences.length ? (
+              <LegacyReferencesPanel references={snapshot.legacyReferences} />
+            ) : null}
+
             <div className="plan-outline-card">
               <div className="plan-outline-card__title" data-testid="plan-outline-title">
                 {snapshot?.name ?? "No plan selected"}
@@ -2585,6 +2590,23 @@ function PlanDashboard({
           <span>{row.nextWork}</span>
           <span>Projection: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
         </button>
+      ))}
+    </section>
+  );
+}
+
+function LegacyReferencesPanel({ references }: { readonly references: readonly LegacyReferenceRecord[] }) {
+  return (
+    <section className="plan-legacy-references" data-testid="legacy-reference-list">
+      <div className="plan-memory__title">Legacy references</div>
+      {references.map((reference) => (
+        <article className="plan-legacy-reference" data-testid="legacy-reference-item" key={reference.path}>
+          <div className="plan-legacy-reference__header">
+            <strong>{reference.title}</strong>
+            <span>{reference.path}</span>
+          </div>
+          {reference.excerpt ? <p>{reference.excerpt}</p> : null}
+        </article>
       ))}
     </section>
   );

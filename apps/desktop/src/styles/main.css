@@ -3643,6 +3643,41 @@
   white-space: nowrap;
 }
 
+.plan-legacy-references {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-legacy-reference {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #292d35;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.plan-legacy-reference__header {
+  display: grid;
+  gap: 2px;
+}
+
+.plan-legacy-reference__header strong {
+  overflow: hidden;
+  color: #f4f4f5;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-legacy-reference__header span,
+.plan-legacy-reference p {
+  margin: 0;
+  color: #aeb4c0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .plan-outline-stat {
   min-height: 76px;
   display: grid;
@@ -4048,6 +4083,7 @@
 .canvas--plans .plan-outline-stat span,
 .canvas--plans .plan-memory__title,
 .canvas--plans .plan-memory__item-header span,
+.canvas--plans .plan-legacy-reference__header strong,
 .canvas--plans .plan-change-draft label {
   color: var(--plan-text);
 }
@@ -4093,7 +4129,9 @@
 .canvas--plans .plan-depth-card p,
 .canvas--plans .plan-guidance-card p,
 .canvas--plans .plan-requirements-contract__header p,
-.canvas--plans .plan-memory__item p {
+.canvas--plans .plan-memory__item p,
+.canvas--plans .plan-legacy-reference__header span,
+.canvas--plans .plan-legacy-reference p {
   color: var(--plan-muted-text);
 }
 
@@ -4209,6 +4247,7 @@
 .canvas--plans .plan-roadmap-card,
 .canvas--plans .plan-roadmap-nested,
 .canvas--plans .plan-dashboard__row,
+.canvas--plans .plan-legacy-reference,
 .canvas--plans .plan-guidance-card,
 .canvas--plans .plan-composer__field,
 .canvas--plans .plan-side__workspace select,

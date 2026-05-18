@@ -8,6 +8,7 @@ import {
   defaultWorkflowAutonomousRunPolicy,
   normalizeWorkflowAutonomousRunPolicy,
   computeNextWorkQueue,
+  discoverLegacyMarkdownReferences,
   type ApprovedPlanInjectionRecord,
   type PlanEvent,
   type PlanListEntry,
@@ -106,11 +107,13 @@ export async function loadPlanningWorkspace(
       });
     }
 
-    return withPlanningStore(workspace.path, (planningStore) => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
       const existing = store.state.planningByWorkspace[workspace.id];
-      const plans = planningStore.listPlans();
+      let plans = planningStore.listPlans();
       const selectedPlanId = resolveSelectedPlanId(plans, existing?.selectedPlanId);
-      const selectedPlan = selectedPlanId ? planningStore.getPlanSnapshot(selectedPlanId) : undefined;
+      let selectedPlan = selectedPlanId ? planningStore.getPlanSnapshot(selectedPlanId) : undefined;
+      selectedPlan = await refreshLegacyReferences(planningStore, workspace.path, selectedPlan);
+      plans = planningStore.listPlans();
       const planSnapshots = getPlanSnapshots(planningStore, plans);
       return publishPlanningState(store, workspace.id, workspace.path, plans, selectedPlan, {
         activeView: "plans",
@@ -131,7 +134,7 @@ export async function createPlanningPlan(
   }
 
   return store.withErrorHandling(async () => {
-    return withPlanningStore(workspace.path, (planningStore) => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
       let snapshot = planningStore.createPlan({
         name: input.name,
         initialPhase: "discuss",
@@ -146,6 +149,7 @@ export async function createPlanningPlan(
           activeQuestionId: firstQuestion.id,
         });
       }
+      snapshot = (await refreshLegacyReferences(planningStore, workspace.path, snapshot)) ?? snapshot;
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });
@@ -162,11 +166,12 @@ export async function selectPlanningPlan(
   }
 
   return store.withErrorHandling(async () => {
-    return withPlanningStore(workspace.path, (planningStore) => {
-      const snapshot = planningStore.getPlanSnapshot(input.planId);
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = planningStore.getPlanSnapshot(input.planId);
       if (!snapshot) {
         throw new Error(`Unknown plan: ${input.planId}`);
       }
+      snapshot = await refreshLegacyReferences(planningStore, workspace.path, snapshot);
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });
@@ -1751,6 +1756,36 @@ function appendEvent(planningStore: PlanningStore, snapshot: PlanSnapshot, event
     expectedRevision: snapshot.revision,
     event,
   });
+}
+
+async function refreshLegacyReferences(
+  planningStore: PlanningStore,
+  workspacePath: string,
+  snapshot: PlanSnapshot | undefined,
+): Promise<PlanSnapshot | undefined> {
+  if (!snapshot) {
+    return undefined;
+  }
+
+  const discovered = await discoverLegacyMarkdownReferences({ workspaceRoot: workspacePath });
+  const knownByPath = new Map(snapshot.legacyReferences.map((reference) => [reference.path, reference.contentHash]));
+  let updated = snapshot;
+
+  for (const reference of discovered) {
+    if (knownByPath.get(reference.path) === reference.contentHash) {
+      continue;
+    }
+    updated = appendEvent(planningStore, updated, {
+      type: "legacy-reference.discovered",
+      reference: {
+        ...reference,
+        discoveredAt: new Date().toISOString(),
+      },
+    });
+    knownByPath.set(reference.path, reference.contentHash);
+  }
+
+  return updated;
 }
 
 function defaultWorkflowPreferences(): Omit<WorkflowPreferencesRecord, "capturedAt"> {

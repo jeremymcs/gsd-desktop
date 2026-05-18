@@ -10,6 +10,43 @@ import {
   PlanningRevisionConflictError,
 } from "../dist/index.js";
 
+test("replays persisted legacy reference metadata without importing it as plan state", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Legacy Reference Plan" });
+    const withReference = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "legacy-reference.discovered",
+        reference: {
+          id: "legacy:.gsd/legacy.md",
+          path: ".gsd/legacy.md",
+          title: "Legacy Notes",
+          excerpt: "Existing planning notes should inform discussion.",
+          contentHash: "abc123",
+        },
+      },
+    });
+
+    assert.equal(withReference.legacyReferences.length, 1);
+    assert.equal(withReference.legacyReferences[0]?.title, "Legacy Notes");
+    assert.equal(withReference.project.title, undefined);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.legacyReferences[0]?.path, ".gsd/legacy.md");
+    assert.equal(reopened.project.title, undefined);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("creates a repo-local planning database and replays event-backed plan state after reopen", async () => {
   const workspaceRoot = await makeWorkspace();
 

@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Legacy Reference Discovery** `risk:high` `depends:[M032]`
+- [x] **S01: Legacy Reference Discovery** `risk:high` `depends:[M032]`
   > After this: existing GSD Markdown is listed as reference material for a plan.
-

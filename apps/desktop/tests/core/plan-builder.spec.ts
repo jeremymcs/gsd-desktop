@@ -1,4 +1,4 @@
-import { access, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
@@ -408,6 +408,59 @@ test("shows a cross-plan dashboard and switches selected plans", async () => {
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Ready dashboard plan");
     await draftRow.click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Draft dashboard plan");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("shows legacy GSD Markdown references and ignores generated projections", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-legacy-reference");
+  await mkdir(join(workspacePath, ".gsd", "legacy"), { recursive: true });
+  await writeFile(
+    join(workspacePath, ".gsd", "legacy", "BLUEPRINT.md"),
+    "# Legacy Blueprint\n\nUse prior planning notes as context, not canonical plan state.\n",
+    "utf8",
+  );
+  await writeFile(
+    join(workspacePath, ".gsd", "PROJECT.md"),
+    "<!-- pi-gui-plan-builder-generated\nsource: .gsd/gsd.db\n-->\n\n# Generated Project\n",
+    "utf8",
+  );
+
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Reference import plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+
+    const references = window.getByTestId("legacy-reference-list");
+    await expect(references).toContainText("Legacy Blueprint");
+    await expect(references).toContainText(".gsd/legacy/BLUEPRINT.md");
+    await expect(references).toContainText("Use prior planning notes as context, not canonical plan state.");
+    await expect(references).not.toContainText("Generated Project");
+
+    const state = await getDesktopState(window);
+    const selectedPlan = state.planningByWorkspace[state.selectedWorkspaceId]?.selectedPlan;
+    expect(selectedPlan?.legacyReferences).toHaveLength(1);
+    expect(selectedPlan?.legacyReferences[0]?.path).toBe(".gsd/legacy/BLUEPRINT.md");
+    expect(selectedPlan?.project.title).toBeUndefined();
+
+    await harness.close();
+    harness = await launchDesktop(userDataDir, {
+      initialWorkspaces: [workspacePath],
+      testMode: "background",
+    });
+    const reopenedWindow = await harness.firstWindow();
+    await waitForWorkspaceByPath(reopenedWindow, workspacePath);
+    await reopenedWindow.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(reopenedWindow.getByTestId("legacy-reference-list")).toContainText("Legacy Blueprint");
   } finally {
     await harness.close();
   }
