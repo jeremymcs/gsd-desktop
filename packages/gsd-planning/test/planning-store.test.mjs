@@ -545,6 +545,57 @@ test("replays hidden plan item restoration", async () => {
   }
 });
 
+test("replays withdrawn change proposals", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Withdraw Draft Proposal" });
+    const drafted = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-1",
+          title: "Draft cleanup",
+          summary: "Remove a draft before approval.",
+          impactNotes: "No active plan impact.",
+        },
+      },
+    });
+    const proposalId = drafted.changeProposals[0]?.id;
+
+    assert.ok(proposalId);
+    assert.equal(drafted.changeProposals[0]?.status, "draft");
+
+    const withdrawn = store.appendEvent({
+      planId: created.id,
+      expectedRevision: drafted.revision,
+      event: {
+        type: "change.proposal-withdrawn",
+        proposalId,
+      },
+    });
+
+    assert.equal(withdrawn.changeProposals[0]?.status, "withdrawn");
+    assert.equal(Boolean(withdrawn.changeProposals[0]?.withdrawnAt), true);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+
+    assert.ok(reopened);
+    assert.equal(reopened.changeProposals[0]?.status, "withdrawn");
+    assert.equal(Boolean(reopened.changeProposals[0]?.withdrawnAt), true);
+    assert.equal(reopened.events.length, 2);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("rejects stale writes with a revision conflict", async () => {
   const workspaceRoot = await makeWorkspace();
 

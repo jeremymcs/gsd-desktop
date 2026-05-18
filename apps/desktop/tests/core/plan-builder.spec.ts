@@ -778,6 +778,16 @@ test("starts a change draft from a prepared composer idea", async () => {
     await expect(
       window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-injection-target-select"),
     ).toBeFocused();
+    const firstProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" });
+    await firstProposal.getByRole("button", { name: "Delete draft" }).click();
+    await expect(firstProposal.getByTestId("plan-change-proposal-status")).toHaveText("Deleted");
+    await expect(idea.getByRole("button", { name: "Draft change" })).toBeEnabled();
+    await idea.getByRole("button", { name: "Draft change" }).click();
+    await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
+    await idea.getByTestId("plan-change-title-input").fill("Retry budget replacement");
+    await idea.getByRole("button", { name: "Save draft" }).click();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
+    await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -785,11 +795,19 @@ test("starts a change draft from a prepared composer idea", async () => {
       )?.selectedPlan;
       return {
         activePhase: plan?.activePhase ?? "",
-        proposalTitle: plan?.changeProposals.at(-1)?.title ?? "",
+        replacementDrafted:
+          plan?.changeProposals.some(
+            (proposal) => proposal.title === "Retry budget replacement" && proposal.status === "draft",
+          ) ?? false,
+        firstDraftDeleted:
+          plan?.changeProposals.some(
+            (proposal) => proposal.title === "Retry budget change" && proposal.status === "withdrawn",
+          ) ?? false,
       };
     }).toEqual({
       activePhase: "execute",
-      proposalTitle: "Retry budget change",
+      replacementDrafted: true,
+      firstDraftDeleted: true,
     });
   } finally {
     await harness.close();
@@ -808,6 +826,10 @@ test("starts a change draft from a prepared composer idea", async () => {
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer change draft plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
+    await expect(
+      window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-change-proposal-status"),
+    ).toHaveText("Deleted");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
   } finally {
     await harness.close();
   }

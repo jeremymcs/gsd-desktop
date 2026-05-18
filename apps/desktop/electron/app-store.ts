@@ -79,6 +79,7 @@ import {
   type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
   type UpsertPlanningRequirementsInput,
+  type WithdrawPlanningChangeProposalInput,
   type WorkspaceSessionTarget,
 } from "../src/desktop-state";
 import {
@@ -414,6 +415,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState> {
     return plans.draftPlanningChangeProposal(this, input);
+  }
+
+  async withdrawPlanningChangeProposal(input: WithdrawPlanningChangeProposalInput): Promise<DesktopAppState> {
+    return plans.withdrawPlanningChangeProposal(this, input);
   }
 
   async approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState> {

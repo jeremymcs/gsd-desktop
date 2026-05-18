@@ -60,6 +60,7 @@ import type {
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
+  WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
 
@@ -185,6 +186,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.reviewPlanningIdea, input) as Promise<DesktopAppState>,
   draftPlanningChangeProposal: (input: DraftPlanningChangeProposalInput) =>
     ipcRenderer.invoke(desktopIpc.draftPlanningChangeProposal, input) as Promise<DesktopAppState>,
+  withdrawPlanningChangeProposal: (input: WithdrawPlanningChangeProposalInput) =>
+    ipcRenderer.invoke(desktopIpc.withdrawPlanningChangeProposal, input) as Promise<DesktopAppState>,
   approvePlanningChangeProposal: (input: ApprovePlanningChangeProposalInput) =>
     ipcRenderer.invoke(desktopIpc.approvePlanningChangeProposal, input) as Promise<DesktopAppState>,
   approvePlanningTaskModification: (input: ApprovePlanningTaskModificationInput) =>

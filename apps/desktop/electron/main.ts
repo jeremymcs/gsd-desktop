@@ -66,6 +66,7 @@ import type {
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
+  WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
 } from "../src/desktop-state";
 import type { SessionDriverEvent } from "@pi-gui/session-driver";
@@ -576,6 +577,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.draftPlanningChangeProposal, (_event, input: DraftPlanningChangeProposalInput) =>
     store.draftPlanningChangeProposal(input),
+  );
+  ipcMain.handle(desktopIpc.withdrawPlanningChangeProposal, (_event, input: WithdrawPlanningChangeProposalInput) =>
+    store.withdrawPlanningChangeProposal(input),
   );
   ipcMain.handle(desktopIpc.approvePlanningChangeProposal, (_event, input: ApprovePlanningChangeProposalInput) =>
     store.approvePlanningChangeProposal(input),

@@ -168,7 +168,7 @@ export interface ParkedItemRecord {
   readonly createdAt: string;
 }
 
-export type ChangeProposalStatus = "draft" | "approved";
+export type ChangeProposalStatus = "draft" | "approved" | "withdrawn";
 
 export interface ChangeProposalRecord {
   readonly id: string;
@@ -179,6 +179,7 @@ export interface ChangeProposalRecord {
   readonly impactNotes: string;
   readonly status: ChangeProposalStatus;
   readonly approvedAt?: string;
+  readonly withdrawnAt?: string;
   readonly injectedTaskPath?: string;
   readonly modifiedTaskPath?: string;
   readonly acceptedOutputId?: string;
@@ -326,11 +327,23 @@ export type PlanEvent =
       readonly type: "change.proposal-drafted";
       readonly proposal: Omit<
         ChangeProposalRecord,
-        "id" | "createdAt" | "updatedAt" | "status" | "approvedAt" | "injectedTaskPath" | "acceptedOutputId"
+        | "id"
+        | "createdAt"
+        | "updatedAt"
+        | "status"
+        | "approvedAt"
+        | "withdrawnAt"
+        | "injectedTaskPath"
+        | "modifiedTaskPath"
+        | "acceptedOutputId"
       > & {
         readonly id?: string;
         readonly status?: ChangeProposalStatus;
       };
+    }
+  | {
+      readonly type: "change.proposal-withdrawn";
+      readonly proposalId: string;
     }
   | {
       readonly type: "change.proposal-approved";

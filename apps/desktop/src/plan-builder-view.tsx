@@ -61,6 +61,7 @@ import type {
   WorkspacePlanningState,
   WorkspaceRecord,
   WorkspaceSessionTarget,
+  WithdrawPlanningChangeProposalInput,
 } from "./desktop-state";
 import { buildModelOptions, type ComposerModelOption } from "./composer-commands";
 import { ArrowUpIcon, PlanIcon } from "./icons";
@@ -129,6 +130,7 @@ interface PlanBuilderViewProps {
   readonly onUpsertRequirements: (input: UpsertPlanningRequirementsInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
+  readonly onWithdrawChangeProposal: (input: WithdrawPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveTaskModification: (input: ApprovePlanningTaskModificationInput) => Promise<DesktopAppState>;
   readonly onHidePlanningTask: (input: HidePlanningTaskInput) => Promise<DesktopAppState>;
@@ -177,6 +179,7 @@ export function PlanBuilderView({
   onUpsertRequirements,
   onReviewIdea,
   onDraftChangeProposal,
+  onWithdrawChangeProposal,
   onApproveChangeProposal,
   onApproveTaskModification,
   onHidePlanningTask,
@@ -318,7 +321,12 @@ export function PlanBuilderView({
   );
   const planValidationIssues = useMemo(() => validatePlanProposal(planProposal), [planProposal]);
   const changeProposalsBySource = useMemo(
-    () => new Map((snapshot?.changeProposals ?? []).map((proposal) => [proposal.sourceParkedItemId, proposal])),
+    () =>
+      new Map(
+        (snapshot?.changeProposals ?? [])
+          .filter((proposal) => proposal.status !== "withdrawn")
+          .map((proposal) => [proposal.sourceParkedItemId, proposal]),
+      ),
     [snapshot],
   );
   const composerReviewItem = snapshot?.parkedItems.find(
@@ -654,6 +662,21 @@ export function PlanBuilderView({
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const withdrawChangeProposal = (proposal: ChangeProposalRecord) => {
+    if (!snapshot || submitting || proposal.status !== "draft") {
+      return;
+    }
+    setSubmitting(true);
+    void onWithdrawChangeProposal({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      proposalId: proposal.id,
+    }).finally(() => {
+      setSubmitting(false);
+    });
   };
 
   const approveChangeProposal = (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => {
@@ -2057,6 +2080,7 @@ export function PlanBuilderView({
                     onApproveModification={approveTaskModification}
                     onHideTask={hidePlanningTask}
                     onRestoreTask={restorePlanningTask}
+                    onWithdraw={withdrawChangeProposal}
                   />
                 ))}
               </div>
@@ -3761,6 +3785,7 @@ function ChangeProposalCard({
   onApproveModification,
   onHideTask,
   onRestoreTask,
+  onWithdraw,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly focusToken: number;
@@ -3770,6 +3795,7 @@ function ChangeProposalCard({
   readonly onApproveModification: (proposal: ChangeProposalRecord, draft: PlanTaskModificationDraft) => void;
   readonly onHideTask: (taskPath: string, reason: string) => void;
   readonly onRestoreTask: (taskPath: string) => void;
+  readonly onWithdraw: (proposal: ChangeProposalRecord) => void;
 }) {
   const cardRef = useRef<HTMLElement | null>(null);
   const approvalFocusRef = useRef<HTMLSelectElement | null>(null);
@@ -3936,6 +3962,18 @@ function ChangeProposalCard({
             type="button"
           >
             Restore injected task
+          </button>
+        </div>
+      ) : null}
+      {proposal.status === "draft" ? (
+        <div className="plan-memory__editor-actions">
+          <button
+            className="plan-secondary-button plan-secondary-button--compact"
+            disabled={submitting}
+            onClick={() => onWithdraw(proposal)}
+            type="button"
+          >
+            Delete draft
           </button>
         </div>
       ) : null}
@@ -4342,6 +4380,8 @@ function formatChangeProposalStatus(status: ChangeProposalRecord["status"]): str
       return "Draft";
     case "approved":
       return "Approved";
+    case "withdrawn":
+      return "Deleted";
   }
 }
 

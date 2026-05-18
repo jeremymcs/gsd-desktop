@@ -46,6 +46,7 @@ import type {
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
+  WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
 } from "./desktop-state";
 
@@ -86,6 +87,7 @@ export const desktopIpc = {
   upsertPlanningRequirements: "pi-gui:upsert-planning-requirements",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
+  withdrawPlanningChangeProposal: "pi-gui:withdraw-planning-change-proposal",
   approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
   approvePlanningTaskModification: "pi-gui:approve-planning-task-modification",
   hidePlanningTask: "pi-gui:hide-planning-task",
@@ -301,6 +303,7 @@ export interface PiDesktopApi {
   upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
+  withdrawPlanningChangeProposal(input: WithdrawPlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningTaskModification(input: ApprovePlanningTaskModificationInput): Promise<DesktopAppState>;
   hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState>;

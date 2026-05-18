@@ -50,6 +50,7 @@ import type {
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
+  WithdrawPlanningChangeProposalInput,
   WorkspacePlanningState,
 } from "../src/desktop-state";
 import {
@@ -457,7 +458,11 @@ export async function draftPlanningChangeProposal(
       if (source.reviewStatus !== "promotion-ready") {
         throw new Error("Only ideas prepared for promotion can draft a change proposal");
       }
-      if (current.changeProposals.some((proposal) => proposal.sourceParkedItemId === source.id)) {
+      if (
+        current.changeProposals.some(
+          (proposal) => proposal.sourceParkedItemId === source.id && proposal.status !== "withdrawn",
+        )
+      ) {
         throw new Error("A change proposal already exists for this idea");
       }
 
@@ -473,6 +478,41 @@ export async function draftPlanningChangeProposal(
             summary,
             impactNotes,
           },
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function withdrawPlanningChangeProposal(
+  store: AppStoreInternals,
+  input: WithdrawPlanningChangeProposalInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const proposal = current.changeProposals.find((entry) => entry.id === input.proposalId);
+      if (!proposal) {
+        throw new Error(`Unknown change proposal: ${input.proposalId}`);
+      }
+      if (proposal.status !== "draft") {
+        throw new Error("Only draft change proposals can be deleted");
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "change.proposal-withdrawn",
+          proposalId: proposal.id,
         },
       });
 
