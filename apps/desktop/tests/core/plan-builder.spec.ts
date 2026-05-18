@@ -44,6 +44,32 @@ function planDashboardRowByTitle(window: Page, title: string): Locator {
   });
 }
 
+async function expectPhaseStripTextNotClipped(window: Page): Promise<void> {
+  const phaseStripMetrics = await window.locator(".plan-phase-strip").evaluate((strip) => {
+    const stripRect = strip.getBoundingClientRect();
+    const clippedText: string[] = [];
+    const textNodes = strip.querySelectorAll<HTMLElement>(
+      ".plan-phase__index, .plan-phase__label, .plan-phase__status",
+    );
+
+    for (const node of textNodes) {
+      const rect = node.getBoundingClientRect();
+      const verticallyClipped = rect.top < stripRect.top - 1 || rect.bottom > stripRect.bottom + 1;
+      if (verticallyClipped) {
+        clippedText.push(node.textContent?.trim() ?? node.className);
+      }
+    }
+
+    return {
+      clippedText,
+      stripHeight: stripRect.height,
+    };
+  });
+
+  expect(phaseStripMetrics.stripHeight).toBeGreaterThanOrEqual(50);
+  expect(phaseStripMetrics.clippedText).toEqual([]);
+}
+
 async function completeDiscussFromComposer(window: Page): Promise<void> {
   for (const [prompt, answer] of discussAnswers) {
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
@@ -983,6 +1009,11 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    await harness.electronApp.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1180, height: 520 });
+    });
+    await window.locator(".plan-phase-strip").scrollIntoViewIfNeeded();
+    await expectPhaseStripTextNotClipped(window);
     const phaseStripBox = await window.locator(".plan-phase-strip").boundingBox();
     const workflowPreferencesBox = await window.getByTestId("workflow-preferences-card").boundingBox();
     expect(phaseStripBox).not.toBeNull();
