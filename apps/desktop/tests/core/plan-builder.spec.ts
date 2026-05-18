@@ -979,6 +979,11 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
+    const phaseIndexFontFamily = await window
+      .locator(".plan-phase__index")
+      .first()
+      .evaluate((node) => getComputedStyle(node).fontFamily);
+    expect(phaseIndexFontFamily).not.toMatch(/mono/i);
 
     const readableTargets = [
       { name: "plan title", locator: window.getByTestId("plan-builder-title") },

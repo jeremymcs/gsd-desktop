@@ -2972,9 +2972,10 @@
 .plan-execution-task__header span {
   flex: 0 0 auto;
   color: #8ea2ff;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 12px;
-  font-weight: 740;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .plan-execution-milestone__header strong,
@@ -3249,9 +3250,10 @@
   min-width: 0;
   overflow: hidden;
   color: #8ea2ff;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 12px;
-  font-weight: 740;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3651,8 +3653,10 @@
 
 .plan-phase__index {
   color: #69707e;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 11px;
+  font-weight: 680;
+  letter-spacing: 0.04em;
 }
 
 .plan-phase__label {
@@ -3952,7 +3956,8 @@
 .gsd-ops-inspector__rows strong {
   overflow: hidden;
   color: var(--plan-header-text);
-  font: 12px/1.25 var(--font-mono);
+  font: 680 12px/1.25 var(--font-ui);
+  letter-spacing: 0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
