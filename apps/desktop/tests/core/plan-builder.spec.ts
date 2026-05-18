@@ -55,7 +55,8 @@ async function expectPhaseStripTextNotClipped(window: Page): Promise<void> {
     for (const node of textNodes) {
       const rect = node.getBoundingClientRect();
       const verticallyClipped = rect.top < stripRect.top - 1 || rect.bottom > stripRect.bottom + 1;
-      if (verticallyClipped) {
+      const internallyClipped = node.scrollHeight > node.clientHeight + 1;
+      if (verticallyClipped || internallyClipped) {
         clippedText.push(node.textContent?.trim() ?? node.className);
       }
     }
@@ -999,6 +1000,11 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
+    await harness.electronApp.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1180, height: 520 });
+    });
+    await window.locator(".plan-phase-strip").scrollIntoViewIfNeeded();
+    await expectPhaseStripTextNotClipped(window);
     await window.getByTestId("plan-name-input").fill("Theme plan");
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
