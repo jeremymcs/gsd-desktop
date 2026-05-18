@@ -12,6 +12,7 @@ import type {
   TaskSessionLinkRecord,
   TaskVerificationRecord,
   WorkflowAutonomousRunPolicy,
+  WorkflowPhaseModelPreferences,
 } from "./types.js";
 import { defaultWorkflowAutonomousRunPolicy } from "./types.js";
 import { computeNextWorkQueue, type NextWorkQueueItem } from "./next-work.js";
@@ -413,6 +414,10 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
     "",
     renderAutonomousRunPolicy(plan),
     "",
+    "## Model Routing",
+    "",
+    renderModelRouting(plan.workflowPreferences?.models.phaseOverrides),
+    "",
     "## Recovery Summary",
     "",
     renderRunRecoverySummary(plan),
@@ -481,6 +486,20 @@ function renderAutonomousRunPolicy(plan: PlanSnapshot): string {
 
 function formatAutonomousStopConditions(policy: WorkflowAutonomousRunPolicy): string {
   return policy.stopConditions.join(", ");
+}
+
+function renderModelRouting(phaseOverrides: WorkflowPhaseModelPreferences | undefined): string {
+  const lines = workflowPhases().map((phase) => {
+    const override = phaseOverrides?.[phase];
+    return override
+      ? `${formatPhase(phase)}: project override - ${override.providerId}/${override.modelId}`
+      : `${formatPhase(phase)}: not configured in project - resolve from global or session default at runtime`;
+  });
+  return renderBullets(lines);
+}
+
+function workflowPhases(): readonly PlanPhase[] {
+  return ["discuss", "research", "plan", "execute", "verify", "ship"];
 }
 
 function renderRunRecoverySummary(plan: PlanSnapshot): string {

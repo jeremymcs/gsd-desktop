@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Model Routing Handoff Summary** `risk:medium` `depends:[M025,M028]`
+- [x] **S01: Model Routing Handoff Summary** `risk:medium` `depends:[M025,M028]`
   > After this: users can see which model will run each phase before starting work.

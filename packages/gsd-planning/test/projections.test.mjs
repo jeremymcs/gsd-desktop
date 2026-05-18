@@ -61,6 +61,8 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(nextWork, /Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete/);
     assert.match(nextWork, /Guardrail tests-fail: Tests fail - Stop when a required typecheck, build, test, lint, or verification command fails/);
     assert.match(nextWork, /Guardrail dirty-conflict: Dirty worktree conflict - Stop when unrelated local changes overlap/);
+    assert.match(nextWork, /## Model Routing/);
+    assert.match(nextWork, /Execute: not configured in project - resolve from global or session default at runtime/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
@@ -386,6 +388,11 @@ test("writes workflow preference projections and runtime research decision", asy
     });
 
     await writeWorkflowPreferenceFiles({ workspaceRoot, plan: snapshot });
+
+    const nextWorkWithPrefs =
+      generatePlanningProjections(makeProjectionInput(snapshot)).find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
+    assert.match(nextWorkWithPrefs, /Execute: project override - openai\/gpt-5/);
+    assert.match(nextWorkWithPrefs, /Verify: project override - openai\/gpt-4o/);
 
     const preferences = await readFile(join(workspaceRoot, ".gsd/PREFERENCES.md"), "utf8");
     assert.match(preferences, /^---\ncommit_policy: per-task\nbranch_model: single\nuat_dispatch: true\nresearch: skip\n/);

@@ -114,6 +114,8 @@ import {
   phaseModelPreferenceFromValue,
   phaseModelPreferenceToValue,
   planningPhaseModelOptions,
+  resolveWorkflowPhaseModel,
+  type ResolvedWorkflowPhaseModel,
   workflowPhaseModelSourceLabel,
   workflowPhaseModelValueLabel,
 } from "./planning-phase-models";
@@ -179,6 +181,12 @@ interface GuidanceRollupItem {
   readonly high: number;
   readonly medium: number;
   readonly signals: readonly string[];
+}
+
+interface PhaseModelRoutingRow {
+  readonly phase: PlanPhase;
+  readonly label: string;
+  readonly model: ResolvedWorkflowPhaseModel;
 }
 
 export function PlanBuilderView({
@@ -1743,8 +1751,10 @@ export function PlanBuilderView({
             ) : allDiscussConfirmed && executeStarted ? (
               <PlanExecutionQueue
                 acceptedPlanProposal={acceptedPlanProposal}
+                globalPlanningPreferences={globalPlanningPreferences}
                 plan={snapshot}
                 projectionSummary={planningState?.projectionSummary}
+                runtime={runtime}
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
                 runActivity={snapshot.runActivity ?? []}
@@ -3666,8 +3676,10 @@ function formatAutonomousGuardrails(preferences: WorkflowPreferencesRecord | und
 
 function PlanExecutionQueue({
   acceptedPlanProposal,
+  globalPlanningPreferences,
   plan,
   projectionSummary,
+  runtime,
   submitting,
   taskExecutions,
   runActivity,
@@ -3683,8 +3695,10 @@ function PlanExecutionQueue({
   onRegenerateProjections,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly plan: PlanSnapshot;
   readonly projectionSummary?: PlanningProjectionSummary;
+  readonly runtime?: RuntimeSnapshot;
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly runActivity: readonly RunActivityRecord[];
@@ -3732,14 +3746,19 @@ function PlanExecutionQueue({
       }),
     [planTasks, taskExecutions, taskVerifications],
   );
+  const phaseModelRouting = useMemo(
+    () => buildPhaseModelRoutingRows(plan.workflowPreferences, globalPlanningPreferences, runtime),
+    [globalPlanningPreferences, plan.workflowPreferences, runtime],
+  );
   const handoffText = useMemo(
     () =>
       buildPlanHandoffBundle({
+        phaseModelRouting,
         plan,
         proposal: acceptedPlanProposal,
         projectionSummary,
       }),
-    [acceptedPlanProposal, plan, projectionSummary],
+    [acceptedPlanProposal, phaseModelRouting, plan, projectionSummary],
   );
   const verifyReady =
     planTasks.length > 0 &&
@@ -3832,6 +3851,8 @@ function PlanExecutionQueue({
           <span data-testid="run-guardrails-summary">{formatAutonomousGuardrails(workflowPreferences)}</span>
         </div>
       </div>
+
+      <PhaseModelRoutingCard rows={phaseModelRouting} />
 
       <RunRecoverySummaryCard
         summary={runRecoverySummary}
@@ -4022,6 +4043,32 @@ function PlanExecutionQueue({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRoutingRow[] }) {
+  const missingCount = rows.filter((row) => row.model.source === "not-configured").length;
+
+  return (
+    <section className="plan-projection-card plan-model-routing" data-testid="phase-model-routing-summary">
+      <div className="plan-model-routing__header">
+        <strong>Phase model routing</strong>
+        <span>
+          {missingCount > 0
+            ? `${missingCount} phase${missingCount === 1 ? "" : "s"} not configured`
+            : "All phases have a resolved model"}
+        </span>
+      </div>
+      <div className="plan-model-routing__rows">
+        {rows.map((row) => (
+          <article className="plan-model-routing__row" data-testid="phase-model-routing-row" key={row.phase}>
+            <span>{row.label}</span>
+            <strong>{workflowPhaseModelValueLabel(row.model)}</strong>
+            <small>{workflowPhaseModelSourceLabel(row.model.source)}</small>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -5225,10 +5272,12 @@ function emptyPlanProposal(): PlanningPlanProposalDraft {
 }
 
 function buildPlanHandoffBundle({
+  phaseModelRouting,
   plan,
   proposal,
   projectionSummary,
 }: {
+  readonly phaseModelRouting: readonly PhaseModelRoutingRow[];
   readonly plan: PlanSnapshot;
   readonly proposal: PlanningPlanProposalDraft | undefined;
   readonly projectionSummary?: PlanningProjectionSummary;
@@ -5282,6 +5331,10 @@ function buildPlanHandoffBundle({
     `Stop conditions: ${policy.stopConditions.join(", ")}`,
     ...policy.guardrails.map((guardrail) => `- ${guardrail.label}: ${guardrail.description}`),
     "",
+    "## Model Routing",
+    "",
+    ...formatHandoffModelRouting(phaseModelRouting),
+    "",
     "## Evidence",
     "",
     `Task evidence: ${evidenceCount} item${evidenceCount === 1 ? "" : "s"}`,
@@ -5291,6 +5344,34 @@ function buildPlanHandoffBundle({
     "",
     ...formatHandoffRunActivity(plan.runActivity),
   ].join("\n");
+}
+
+function buildPhaseModelRoutingRows(
+  preferences: WorkflowPreferencesRecord | undefined,
+  globalPlanningPreferences: GlobalPlanningPreferences,
+  runtime: RuntimeSnapshot | undefined,
+): readonly PhaseModelRoutingRow[] {
+  const sessionDefault =
+    runtime?.settings.defaultProvider && runtime.settings.defaultModelId
+      ? { providerId: runtime.settings.defaultProvider, modelId: runtime.settings.defaultModelId }
+      : undefined;
+
+  return planningPhaseModelOptions.map((phase) => ({
+    phase: phase.id,
+    label: phase.label,
+    model: resolveWorkflowPhaseModel({
+      phase: phase.id,
+      projectOverrides: preferences?.models.phaseOverrides,
+      globalPhaseModels: globalPlanningPreferences.phaseModels,
+      sessionDefault,
+    }),
+  }));
+}
+
+function formatHandoffModelRouting(rows: readonly PhaseModelRoutingRow[]): readonly string[] {
+  return rows.map((row) => (
+    `- ${row.label}: ${workflowPhaseModelSourceLabel(row.model.source)} - ${workflowPhaseModelValueLabel(row.model)}`
+  ));
 }
 
 function buildProjectionReferencePaths(proposal: PlanningPlanProposalDraft | undefined): readonly string[] {

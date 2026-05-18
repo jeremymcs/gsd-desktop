@@ -2453,6 +2453,51 @@
   white-space: normal;
 }
 
+.plan-model-routing {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.plan-model-routing__header {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-model-routing__rows {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-model-routing__row {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(12, 14, 18, 0.28);
+}
+
+.plan-model-routing__row span,
+.plan-model-routing__row strong,
+.plan-model-routing__row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-model-routing__row small {
+  color: #a9d8b1;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .plan-model-routing__rows {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plan-run-activity {
   align-items: stretch;
   flex-direction: column;
@@ -4365,7 +4410,8 @@
 }
 
 .canvas--plans .plan-execution-task,
-.canvas--plans .plan-task-row {
+.canvas--plans .plan-task-row,
+.canvas--plans .plan-model-routing__row {
   border-color: var(--plan-pane-border);
   background: var(--plan-pane-raised-bg);
 }
@@ -4509,6 +4555,7 @@
 }
 
 .canvas--plans .plan-projection-card span,
+.canvas--plans .plan-model-routing__row small,
 .canvas--plans .plan-execution-task__link,
 .canvas--plans .plan-outline-card__meta,
 .canvas--plans .plan-validation--passed,

@@ -276,6 +276,15 @@ test("uses global EXECUTE model when the project has no override", async () => {
 
     await createAcceptedPlanFromComposer(window, "Global fallback plan");
     await window.getByTestId("start-execution-button").click();
+    const routing = window.getByTestId("phase-model-routing-summary");
+    await expect(routing).toContainText("All phases have a resolved model");
+    await expect(routing.getByTestId("phase-model-routing-row").filter({ hasText: "DISCUSS" })).toContainText(
+      "session default",
+    );
+    const executeRoute = routing.getByTestId("phase-model-routing-row").filter({ hasText: "EXECUTE" });
+    await expect(executeRoute).toContainText("openai/gpt-5");
+    await expect(executeRoute).toContainText("global default");
+    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/EXECUTE: global default - openai\/gpt-5/);
     const task = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
     await task.getByTestId("link-task-session-button").click();
     await expect(task.getByTestId("execution-task-link")).toContainText("Execution model: global default (openai/gpt-5)");
@@ -2330,6 +2339,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("execute-task.md");
     await expect(window.getByTestId("plan-execution-panel")).toContainText("Plan Builder vertical slice");
     await expect(window.getByTestId("plan-execution-panel")).not.toContainText("Review integration impact");
+    const executeRoute = window
+      .getByTestId("phase-model-routing-summary")
+      .getByTestId("phase-model-routing-row")
+      .filter({ hasText: "EXECUTE" });
+    await expect(executeRoute).toContainText("openai/gpt-4o");
+    await expect(executeRoute).toContainText("project override");
+    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/EXECUTE: project override - openai\/gpt-4o/);
     const primaryExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
     await primaryExecutionTask.getByTestId("link-task-session-button").click();
     await expect(primaryExecutionTask.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
