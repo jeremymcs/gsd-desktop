@@ -80,6 +80,132 @@ async function createAcceptedPlanFromComposer(window: Page, planName: string): P
   await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
 }
 
+async function createAcceptedDependencyPlanViaIpc(window: Page, planName: string): Promise<void> {
+  await window.evaluate(async (name) => {
+    const app = window.piApp;
+    if (!app) {
+      throw new Error("piApp IPC bridge is unavailable");
+    }
+    const readPlan = (state: Awaited<ReturnType<typeof app.getState>>) => {
+      const plan = state.planningByWorkspace[state.selectedWorkspaceId]?.selectedPlan;
+      if (!plan) {
+        throw new Error("Expected selected plan");
+      }
+      return plan;
+    };
+
+    let state = await app.getState();
+    const workspaceId = state.selectedWorkspaceId;
+    state = await app.createPlanningPlan({ workspaceId, name });
+
+    for (const stage of ["project", "requirements", "milestone"] as const) {
+      const plan = readPlan(state);
+      state = await app.confirmPlanningStage({
+        workspaceId,
+        planId: plan.id,
+        expectedRevision: plan.revision,
+        stage,
+      });
+    }
+
+    let plan = readPlan(state);
+    state = await app.startPlanningResearch({ workspaceId, planId: plan.id, expectedRevision: plan.revision });
+    plan = readPlan(state);
+    state = await app.proposePlanningResearch({
+      workspaceId,
+      planId: plan.id,
+      expectedRevision: plan.revision,
+      title: `${name} research`,
+      content: "Dependency ordering should drive the next work queue.",
+    });
+    plan = readPlan(state);
+    const researchOutput = plan.generatedOutputs.find(
+      (output) => output.stage === "research" && output.status === "proposed",
+    );
+    if (!researchOutput) {
+      throw new Error("Expected proposed research output");
+    }
+    state = await app.reviewPlanningResearch({
+      workspaceId,
+      planId: plan.id,
+      expectedRevision: plan.revision,
+      outputId: researchOutput.id,
+      status: "accepted",
+    });
+
+    plan = readPlan(state);
+    state = await app.startPlanningPlan({ workspaceId, planId: plan.id, expectedRevision: plan.revision });
+    plan = readPlan(state);
+    state = await app.proposePlanningPlan({
+      workspaceId,
+      planId: plan.id,
+      expectedRevision: plan.revision,
+      proposal: {
+        version: 1,
+        boundaryMap: "Use dependencies to order next execution work.",
+        ideaPool: "No parked work.",
+        phases: [{ id: "P1", title: "Dependency pass", goal: "Show unblocked work first." }],
+        milestones: [
+          {
+            id: "M1",
+            title: "Next work milestone",
+            phase: "P1",
+            outcome: "Execution queue exposes ready and blocked tasks.",
+            slices: [
+              {
+                id: "S1",
+                title: "Next work slice",
+                goal: "Compute ready and blocked task order.",
+                boundary: "Plan Builder next work panel.",
+                tasks: [
+                  {
+                    id: "T1",
+                    title: "Build foundation",
+                    acceptance: "Foundation evidence exists.",
+                    dependencies: [],
+                    requirementIds: [],
+                  },
+                  {
+                    id: "T2",
+                    title: "Use foundation",
+                    acceptance: "Dependent task can start after T1.",
+                    dependencies: ["T1"],
+                    requirementIds: [],
+                  },
+                  {
+                    id: "T3",
+                    title: "Independent check",
+                    acceptance: "Independent task is available immediately.",
+                    dependencies: [],
+                    requirementIds: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    plan = readPlan(state);
+    const planOutput = plan.generatedOutputs.find(
+      (output) => output.stage === "roadmap" && output.status === "proposed",
+    );
+    if (!planOutput) {
+      throw new Error("Expected proposed plan output");
+    }
+    state = await app.reviewPlanningPlan({
+      workspaceId,
+      planId: plan.id,
+      expectedRevision: plan.revision,
+      outputId: planOutput.id,
+      status: "accepted",
+    });
+    plan = readPlan(state);
+    state = await app.startPlanningExecution({ workspaceId, planId: plan.id, expectedRevision: plan.revision });
+    await app.setActiveView("plans");
+  }, planName);
+}
+
 async function saveDoneExecutionEvidenceForAllTasks(window: Page): Promise<void> {
   const tasks = window.getByTestId("execution-task");
   await expect(tasks.first()).toBeVisible();
@@ -163,6 +289,60 @@ test("uses global EXECUTE model when the project has no override", async () => {
       providerId: "openai",
       modelId: "gpt-5",
     });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("shows next work ordering and updates after dependency completion", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-next-work-panel");
+  let harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await createAcceptedDependencyPlanViaIpc(window, "Next work plan");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+
+    const panel = window.getByTestId("next-work-panel");
+    await expect(panel).toContainText("2 ready / 1 blocked");
+    await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T1: Build foundation");
+    await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
+    await expect(panel.getByTestId("next-work-item").nth(2)).toContainText("M1/S1/T2: Use foundation");
+    await expect(panel.getByTestId("next-work-item").nth(2)).toContainText(
+      "M1/S1/T1: Dependency is not done with evidence",
+    );
+    await expect(panel.getByTestId("next-work-item").nth(2).getByRole("button", { name: "Create session" })).toBeDisabled();
+
+    await panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Create session" }).click();
+    await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open session" })).toBeVisible();
+
+    const foundationTask = window.getByTestId("execution-task").filter({ hasText: "Build foundation" });
+    await foundationTask.getByTestId("task-status-select").selectOption("done");
+    await foundationTask.getByTestId("task-note-textarea").fill("Foundation complete.");
+    await foundationTask.getByTestId("task-evidence-textarea").fill("T1 evidence recorded.");
+    await foundationTask.getByTestId("update-task-execution-button").click();
+
+    await expect(panel).toContainText("2 ready / 0 blocked");
+    await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
+    await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
+  } finally {
+    await harness.close();
+  }
+
+  harness = await launchDesktop(userDataDir, { testMode: "background" });
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    const panel = window.getByTestId("next-work-panel");
+    await expect(panel).toContainText("2 ready / 0 blocked");
+    await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
+    await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
   } finally {
     await harness.close();
   }

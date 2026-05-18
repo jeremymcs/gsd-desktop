@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import { computeNextWorkQueue, type NextWorkQueueItem } from "@pi-gui/gsd-planning/next-work";
 import type {
   AnswerRecord,
   ChangeProposalRecord,
@@ -1652,6 +1653,7 @@ export function PlanBuilderView({
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
+                taskVerifications={snapshot.taskVerifications ?? []}
                 onLinkTaskSession={linkTaskSession}
                 onStartVerify={startVerify}
                 onUpdateTaskExecution={updateTaskExecution}
@@ -3297,6 +3299,7 @@ function PlanExecutionQueue({
   submitting,
   taskExecutions,
   taskSessionLinks,
+  taskVerifications,
   onLinkTaskSession,
   onStartVerify,
   onUpdateTaskExecution,
@@ -3308,6 +3311,7 @@ function PlanExecutionQueue({
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
+  readonly taskVerifications: readonly TaskVerificationRecord[];
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
   readonly onStartVerify: () => void;
   readonly onUpdateTaskExecution: (task: PlanningTaskDraft, taskPath: string, draft: TaskExecutionDraft) => void;
@@ -3327,6 +3331,21 @@ function PlanExecutionQueue({
   const planTasks = useMemo(
     () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
     [acceptedPlanProposal],
+  );
+  const taskEntryMap = useMemo(() => new Map(planTasks.map((entry) => [entry.task.id, entry])), [planTasks]);
+  const nextWorkQueue = useMemo(
+    () =>
+      computeNextWorkQueue({
+        tasks: planTasks.map((entry) => ({
+          taskId: entry.task.id,
+          taskPath: entry.taskPath,
+          title: entry.task.title,
+          dependencies: entry.task.dependencies,
+        })),
+        taskExecutions,
+        taskVerifications,
+      }),
+    [planTasks, taskExecutions, taskVerifications],
   );
   const verifyReady =
     planTasks.length > 0 &&
@@ -3411,6 +3430,17 @@ function PlanExecutionQueue({
           Start verify
         </button>
       </div>
+
+      {acceptedPlanProposal ? (
+        <NextWorkPanel
+          items={[...nextWorkQueue.ready, ...nextWorkQueue.blocked]}
+          submitting={submitting}
+          taskEntryMap={taskEntryMap}
+          taskLinks={taskLinks}
+          onLinkTaskSession={onLinkTaskSession}
+          onOpenTaskSession={onOpenTaskSession}
+        />
+      ) : null}
 
       {acceptedPlanProposal ? (
         <div className="plan-execution-list">
@@ -3568,6 +3598,76 @@ function PlanExecutionQueue({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function NextWorkPanel({
+  items,
+  submitting,
+  taskEntryMap,
+  taskLinks,
+  onLinkTaskSession,
+  onOpenTaskSession,
+}: {
+  readonly items: readonly NextWorkQueueItem[];
+  readonly submitting: boolean;
+  readonly taskEntryMap: ReadonlyMap<string, PlanTaskEntry>;
+  readonly taskLinks: ReadonlyMap<string, TaskSessionLinkRecord>;
+  readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
+  readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
+}) {
+  const readyCount = items.filter((item) => item.state === "ready").length;
+  const blockedCount = items.length - readyCount;
+
+  return (
+    <section className="plan-projection-card plan-next-work" data-testid="next-work-panel">
+      <div className="plan-next-work__header">
+        <strong>Next work</strong>
+        <span>{items.length > 0 ? `${readyCount} ready / ${blockedCount} blocked` : "No pending execution work"}</span>
+      </div>
+      {items.length > 0 ? (
+        <div className="plan-next-work__list">
+          {items.map((item) => {
+            const entry = taskEntryMap.get(item.taskId);
+            const linkedSession = taskLinks.get(item.taskId);
+            return (
+              <article
+                className={`plan-next-work__item plan-next-work__item--${item.state}`}
+                data-testid="next-work-item"
+                key={item.taskPath}
+              >
+                <span className={`plan-execution-task__status plan-execution-task__status--${item.state}`}>
+                  {item.state === "ready" ? "Ready" : "Blocked"}
+                </span>
+                <div>
+                  <strong>{item.taskPath}: {item.title}</strong>
+                  <small>{formatNextWorkReason(item)}</small>
+                </div>
+                {linkedSession ? (
+                  <button
+                    className="plan-secondary-button plan-secondary-button--compact"
+                    disabled={submitting}
+                    onClick={() => onOpenTaskSession(linkedSession)}
+                    type="button"
+                  >
+                    Open session
+                  </button>
+                ) : entry ? (
+                  <button
+                    className="plan-action-button plan-action-button--compact"
+                    disabled={submitting || item.state === "blocked"}
+                    onClick={() => onLinkTaskSession(entry.task, entry.taskPath)}
+                    type="button"
+                  >
+                    Create session
+                  </button>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -4704,6 +4804,16 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
 
 function formatTaskEvidenceSummary(evidence: TaskEvidenceRecord): string {
   return evidence.sourceSessionTitle ? `${evidence.text} · Source: ${evidence.sourceSessionTitle}` : evidence.text;
+}
+
+function formatNextWorkReason(item: NextWorkQueueItem): string {
+  if (item.state === "ready") {
+    return "Ready to start";
+  }
+  const dependencyReasons = item.blockingDependencies.map((dependency) =>
+    dependency.taskPath ? `${dependency.taskPath}: ${dependency.reason}` : `${dependency.taskId}: ${dependency.reason}`,
+  );
+  return [...dependencyReasons, item.blocker].filter(Boolean).join(" · ");
 }
 
 function formatTaskSessionExecutionModel(link: TaskSessionLinkRecord): string {

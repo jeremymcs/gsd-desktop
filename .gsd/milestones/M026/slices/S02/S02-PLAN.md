@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add a compact next work panel near the execution queue.
-- [ ] Show why each item is next or blocked.
-- [ ] Link next items to their task session controls.
-- [ ] Cover visible ordering and restart behavior in Electron.
+- [x] Add a compact next work panel near the execution queue.
+- [x] Show why each item is next or blocked.
+- [x] Link next items to their task session controls.
+- [x] Cover visible ordering and restart behavior in Electron.
 
 ## Acceptance
 

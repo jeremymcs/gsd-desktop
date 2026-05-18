@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./next-work": {
+      "types": "./dist/next-work.d.ts",
+      "default": "./dist/next-work.js"
     }
   },
   "files": [
