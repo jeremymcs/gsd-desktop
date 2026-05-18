@@ -3880,7 +3880,16 @@ function PlanExecutionQueue({
 
       <PhaseModelRoutingCard rows={phaseModelRouting} />
 
-      <GuardrailWarningsCard warnings={guardrailWarnings} />
+      <GuardrailWarningsCard
+        runRecoverySummary={runRecoverySummary}
+        submitting={submitting}
+        taskEntryMap={taskEntryMap}
+        taskLinks={taskLinks}
+        warnings={guardrailWarnings}
+        onOpenTaskSession={onOpenTaskSession}
+        onRegenerateProjections={onRegenerateProjections}
+        onStartTaskSession={onStartTaskSession}
+      />
 
       <RunRecoverySummaryCard
         summary={runRecoverySummary}
@@ -4139,17 +4148,36 @@ function AutopilotPreflightCard({
   );
 }
 
-function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly GuardrailWarning[] }) {
+function GuardrailWarningsCard({
+  runRecoverySummary,
+  submitting,
+  taskEntryMap,
+  taskLinks,
+  warnings,
+  onOpenTaskSession,
+  onRegenerateProjections,
+  onStartTaskSession,
+}: {
+  readonly runRecoverySummary?: RunRecoverySummaryRecord;
+  readonly submitting: boolean;
+  readonly taskEntryMap: ReadonlyMap<string, PlanTaskEntry>;
+  readonly taskLinks: ReadonlyMap<string, TaskSessionLinkRecord>;
+  readonly warnings: readonly GuardrailWarning[];
+  readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
+  readonly onRegenerateProjections: (allowLegacyOverwrite?: boolean) => void;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
+}) {
   if (warnings.length === 0) {
     return null;
   }
+  const blockingCount = warnings.filter(isAutopilotBlockingWarning).length;
 
   return (
     <section className="plan-projection-card plan-guardrail-warnings" data-testid="guardrail-warning-list">
       <div className="plan-guardrail-warnings__header">
         <strong>Guardrail warnings</strong>
         <span>
-          {warnings.length} detected before autonomous work starts
+          {blockingCount} blocking / {warnings.length - blockingCount} informational
         </span>
       </div>
       <div className="plan-guardrail-warnings__rows">
@@ -4159,7 +4187,10 @@ function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly Guard
               <strong>{warning.title}</strong>
               <span>{warning.detail}</span>
             </div>
-            <small>{formatAutonomousStopCondition(warning.condition)}</small>
+            <small>
+              {isAutopilotBlockingWarning(warning) ? "Blocking" : "Informational"} ·{" "}
+              {formatAutonomousStopCondition(warning.condition)}
+            </small>
             {warning.evidence.length > 0 ? (
               <ul>
                 {warning.evidence.map((item) => (
@@ -4167,10 +4198,95 @@ function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly Guard
                 ))}
               </ul>
             ) : null}
+            <GuardrailWarningAction
+              runRecoverySummary={runRecoverySummary}
+              submitting={submitting}
+              taskEntryMap={taskEntryMap}
+              taskLinks={taskLinks}
+              warning={warning}
+              onOpenTaskSession={onOpenTaskSession}
+              onRegenerateProjections={onRegenerateProjections}
+              onStartTaskSession={onStartTaskSession}
+            />
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function GuardrailWarningAction({
+  runRecoverySummary,
+  submitting,
+  taskEntryMap,
+  taskLinks,
+  warning,
+  onOpenTaskSession,
+  onRegenerateProjections,
+  onStartTaskSession,
+}: {
+  readonly runRecoverySummary?: RunRecoverySummaryRecord;
+  readonly submitting: boolean;
+  readonly taskEntryMap: ReadonlyMap<string, PlanTaskEntry>;
+  readonly taskLinks: ReadonlyMap<string, TaskSessionLinkRecord>;
+  readonly warning: GuardrailWarning;
+  readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
+  readonly onRegenerateProjections: (allowLegacyOverwrite?: boolean) => void;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
+}) {
+  if (warning.kind === "projection-drift") {
+    return (
+      <button
+        className="plan-secondary-button plan-secondary-button--compact"
+        data-testid="guardrail-regenerate-projections-button"
+        disabled={submitting}
+        onClick={() => onRegenerateProjections()}
+        type="button"
+      >
+        Regenerate projections
+      </button>
+    );
+  }
+
+  if (warning.kind === "projection-conflict") {
+    return (
+      <button
+        className="plan-secondary-button plan-secondary-button--compact"
+        data-testid="guardrail-overwrite-projections-button"
+        disabled={submitting}
+        onClick={() => onRegenerateProjections(true)}
+        type="button"
+      >
+        Overwrite legacy projections
+      </button>
+    );
+  }
+
+  const resumeTarget = runRecoverySummary?.resumeTarget;
+  if (!resumeTarget) {
+    return null;
+  }
+
+  const resumeEntry = taskEntryMap.get(resumeTarget.taskId);
+  const resumeLink = taskLinks.get(resumeTarget.taskId);
+  const resumeUnavailable = !resumeEntry && !resumeLink;
+
+  return (
+    <button
+      className="plan-action-button plan-action-button--compact"
+      data-testid="guardrail-resume-button"
+      disabled={submitting || resumeUnavailable}
+      onClick={() => {
+        if (resumeLink) {
+          onOpenTaskSession(resumeLink);
+        } else if (resumeEntry) {
+          onStartTaskSession(resumeEntry.task, resumeEntry.taskPath);
+        }
+      }}
+      type="button"
+    >
+      {resumeUnavailable ? "Resume target unavailable" : `Resume ${resumeTarget.taskPath}`}
+    </button>
   );
 }
 

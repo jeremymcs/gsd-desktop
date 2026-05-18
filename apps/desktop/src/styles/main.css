@@ -2563,6 +2563,11 @@
   padding-left: 18px;
 }
 
+.plan-guardrail-warning button {
+  grid-column: 2;
+  justify-self: end;
+}
+
 .plan-model-routing__rows {
   display: grid;
   gap: 8px;

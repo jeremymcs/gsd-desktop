@@ -12,5 +12,9 @@
 
 ## Slices
 
-- [ ] **S01: Stop Surface Actions** `risk:medium` `depends:[M043]`
+- [x] **S01: Stop Surface Actions** `risk:medium` `depends:[M043]`
   > After this: users can act on blocking guardrails directly from EXECUTE.
+
+## Status
+
+- S01 complete: guardrail warnings now distinguish blocking and informational states and expose deterministic repair/resume actions.

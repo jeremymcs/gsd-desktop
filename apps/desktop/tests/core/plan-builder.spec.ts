@@ -422,10 +422,14 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     const guardrails = window.getByTestId("guardrail-warning-list");
     const autopilot = window.getByTestId("autopilot-preflight");
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(2);
+    await expect(guardrails).toContainText("1 blocking / 1 informational");
     await expect(guardrails).toContainText("Projection drift was detected");
+    await expect(guardrails).toContainText("Informational · scope-ambiguous");
+    await expect(guardrails.getByTestId("guardrail-regenerate-projections-button")).toBeVisible();
     await expect(guardrails).toContainText("Previous run stopped before clean completion");
     await expect(guardrails).toContainText("Waiting on credentials.");
-    await expect(guardrails).toContainText("scope-ambiguous");
+    await expect(guardrails).toContainText("Blocking · scope-ambiguous");
+    await expect(guardrails.getByTestId("guardrail-resume-button")).toHaveText("Resume M1/S1/T3");
     await expect(autopilot).toContainText("1 blocking guardrail");
     await expect(autopilot.getByTestId("autopilot-blocking-warnings")).toContainText(
       "Previous run stopped before clean completion",
@@ -468,29 +472,22 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     expect(nextProjection).toContain("Waiting on credentials.");
 
     await writeFile(join(workspacePath, ".gsd", "NEXT.md"), "# Hand-written next work\n", "utf8");
-    await window.getByRole("button", { name: "Regenerate projections" }).click();
+    await window
+      .getByTestId("execution-projection-summary")
+      .getByRole("button", { name: "Regenerate projections" })
+      .click();
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(2);
+    await expect(guardrails).toContainText("2 blocking / 0 informational");
     await expect(guardrails).toContainText("Projection write is blocked");
     await expect(guardrails).toContainText(".gsd/NEXT.md");
     await expect(guardrails).toContainText("dirty-conflict");
+    await expect(guardrails.getByTestId("guardrail-overwrite-projections-button")).toHaveText(
+      "Overwrite legacy projections",
+    );
     await expect(autopilot).toContainText("2 blocking guardrails");
-    await window.evaluate(async () => {
-      const app = window.piApp;
-      if (!app) {
-        throw new Error("piApp IPC bridge is unavailable");
-      }
-      const state = await app.getState();
-      const workspaceId = state.selectedWorkspaceId;
-      const plan = state.planningByWorkspace[workspaceId]?.selectedPlan;
-      if (!plan) {
-        throw new Error("Expected selected plan before restoring generated projections");
-      }
-      await app.regeneratePlanningProjections({
-        workspaceId,
-        planId: plan.id,
-        allowLegacyOverwrite: true,
-      });
-    });
+    await guardrails.getByTestId("guardrail-overwrite-projections-button").click();
+    await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(1);
+    await expect(guardrails).not.toContainText("Projection write is blocked");
   } finally {
     await harness.close();
   }
@@ -502,14 +499,13 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     const recovery = window.getByTestId("run-recovery-summary");
     await expect(recovery).toContainText("Waiting on credentials.");
-    await expect(window.getByTestId("guardrail-warning-list")).toContainText(
-      "Previous run stopped before clean completion",
-    );
+    const guardrails = window.getByTestId("guardrail-warning-list");
+    await expect(guardrails).toContainText("Previous run stopped before clean completion");
     const activity = window.getByTestId("run-activity-ledger");
     await expect(activity).toContainText("Stop updated");
     await expect(activity).toContainText("M1/S1/T1: Build foundation");
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
-    await recovery.getByTestId("resume-recovery-target-button").click();
+    await guardrails.getByTestId("guardrail-resume-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
     await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T3: Independent check/);
     const resumedSessionId = (await getDesktopState(window)).selectedSessionId;
