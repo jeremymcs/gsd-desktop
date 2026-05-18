@@ -460,6 +460,35 @@ test("shows a cross-plan dashboard and switches selected plans", async () => {
     const window = await harness.firstWindow();
     await waitForWorkspaceByPath(window, workspacePath);
     await createAcceptedDependencyPlanViaIpc(window, "Ready dashboard plan");
+    await createAcceptedDependencyPlanViaIpc(window, "Risk dashboard plan");
+    await window.evaluate(async () => {
+      const app = window.piApp;
+      if (!app) {
+        throw new Error("piApp IPC bridge is unavailable");
+      }
+      const state = await app.getState();
+      const workspaceId = state.selectedWorkspaceId;
+      const plan = state.planningByWorkspace[workspaceId]?.selectedPlan;
+      if (!plan) {
+        throw new Error("Expected risk dashboard plan");
+      }
+      await app.updatePlanningTaskExecution({
+        workspaceId,
+        planId: plan.id,
+        expectedRevision: plan.revision,
+        taskId: "T1",
+        taskPath: "M1/S1/T1",
+        status: "blocked",
+        note: "Blocked during health check.",
+        blocker: "Waiting on access.",
+        evidence: "",
+      });
+    });
+    await writeFile(
+      join(workspacePath, ".gsd", "NEXT.md"),
+      "<!-- pi-gui-plan-builder-generated\nsource: .gsd/gsd.db\n-->\n\n# Stale dashboard projection\n",
+      "utf8",
+    );
     await window.evaluate(async () => {
       const app = window.piApp;
       if (!app) {
@@ -472,12 +501,18 @@ test("shows a cross-plan dashboard and switches selected plans", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     const readyRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Ready dashboard plan" });
+    const riskRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Risk dashboard plan" });
     const draftRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Draft dashboard plan" });
     await expect(readyRow).toContainText("EXECUTE");
     await expect(readyRow).toContainText("2 ready / 1 blocked");
     await expect(readyRow).toContainText("M1/S1/T1: Build foundation");
+    await expect(riskRow).toContainText("1 blocker");
+    await expect(riskRow).toContainText("1 recovery stop");
+    await expect(riskRow).toContainText("1 evidence gap");
+    await expect(riskRow).toContainText("1 projection issue");
     await expect(draftRow).toContainText("DISCUSS");
     await expect(draftRow).toContainText("No accepted plan");
+    await expect(draftRow.getByTestId("plan-dashboard-health")).toHaveText("Health: healthy");
 
     await readyRow.click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Ready dashboard plan");

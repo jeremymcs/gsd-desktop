@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Dashboard Health Signals** `risk:medium` `depends:[M032,M034]`
+- [x] **S01: Dashboard Health Signals** `risk:medium` `depends:[M032,M034]`
   > After this: the project dashboard shows which plans need intervention.

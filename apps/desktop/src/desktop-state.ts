@@ -189,6 +189,10 @@ export interface PlanningPlanDashboardRow {
   readonly blockedCount: number;
   readonly nextWork: string;
   readonly projectionState: "not-ready" | "ready";
+  readonly blockerCount: number;
+  readonly recoveryStopCount: number;
+  readonly evidenceGapCount: number;
+  readonly projectionIssueCount: number;
 }
 
 export interface PlanningProjectionSummary {

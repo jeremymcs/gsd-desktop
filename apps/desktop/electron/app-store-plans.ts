@@ -119,7 +119,7 @@ export async function loadPlanningWorkspace(
       const planSnapshots = getPlanSnapshots(planningStore, plans);
       return publishPlanningState(store, workspace.id, workspace.path, plans, selectedPlan, {
         activeView: "plans",
-        planDashboardRows: buildPlanDashboardRows(planSnapshots),
+        planDashboardRows: await buildPlanDashboardRows(workspace.path, planSnapshots),
       });
     });
   });
@@ -2565,9 +2565,12 @@ function getPlanSnapshots(planningStore: PlanningStore, plans: readonly PlanList
   });
 }
 
-function buildPlanDashboardRows(snapshots: readonly PlanSnapshot[]): readonly PlanningPlanDashboardRow[] {
-  return snapshots
-    .map((snapshot): PlanningPlanDashboardRow => {
+async function buildPlanDashboardRows(
+  workspacePath: string,
+  snapshots: readonly PlanSnapshot[],
+): Promise<readonly PlanningPlanDashboardRow[]> {
+  const rows = await Promise.all(
+    snapshots.map(async (snapshot): Promise<PlanningPlanDashboardRow> => {
       const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
       const acceptedPlan = acceptedOutput ? tryParsePlanProposal(acceptedOutput.content) : undefined;
       const queue = acceptedPlan
@@ -2580,6 +2583,12 @@ function buildPlanDashboardRows(snapshots: readonly PlanSnapshot[]): readonly Pl
           })
         : undefined;
       const firstReady = queue?.ready[0];
+      const projectionDrift = acceptedPlan
+        ? await compareGeneratedProjections({
+            workspaceRoot: workspacePath,
+            projectionInput: buildPlanningProjectionInput(snapshot),
+          })
+        : undefined;
       return {
         planId: snapshot.id,
         readableId: snapshot.readableId,
@@ -2590,9 +2599,36 @@ function buildPlanDashboardRows(snapshots: readonly PlanSnapshot[]): readonly Pl
         blockedCount: queue?.blocked.length ?? 0,
         nextWork: firstReady ? `${firstReady.taskPath}: ${firstReady.title}` : acceptedPlan ? "No ready work" : "No accepted plan",
         projectionState: acceptedPlan ? "ready" : "not-ready",
+        blockerCount: snapshot.taskExecutions.filter((execution) => execution.status === "blocked").length,
+        recoveryStopCount: isActionableRecoveryStop(snapshot.runRecoverySummary) ? 1 : 0,
+        evidenceGapCount: countEvidenceGaps(snapshot, acceptedPlan),
+        projectionIssueCount: projectionDrift
+          ? projectionDrift.missing.length + projectionDrift.stale.length + projectionDrift.conflicts.length
+          : 0,
       };
-    })
-    .sort((left, right) => left.readableId.localeCompare(right.readableId));
+    }),
+  );
+  return rows.sort((left, right) => left.readableId.localeCompare(right.readableId));
+}
+
+function isActionableRecoveryStop(summary: PlanSnapshot["runRecoverySummary"]): boolean {
+  return !!summary && summary.stopReason !== "task-completed" && summary.stopReason !== "verification-passed";
+}
+
+function countEvidenceGaps(
+  snapshot: PlanSnapshot,
+  acceptedPlan: PlanningPlanProposalDraft | undefined,
+): number {
+  if (!acceptedPlan) {
+    return 0;
+  }
+  const acceptedTaskIds = new Set(getDashboardTaskEntries(acceptedPlan).map((task) => task.taskId));
+  return snapshot.taskExecutions.filter(
+    (execution) =>
+      acceptedTaskIds.has(execution.taskId) &&
+      execution.status !== "not-started" &&
+      execution.evidence.length === 0,
+  ).length;
 }
 
 function getDashboardTaskEntries(
@@ -2618,7 +2654,7 @@ function tryParsePlanProposal(content: string): PlanningPlanProposalDraft | unde
   }
 }
 
-function publishCurrentPlanningState(
+async function publishCurrentPlanningState(
   store: AppStoreInternals,
   planningStore: PlanningStore,
   workspaceId: string,
@@ -2628,10 +2664,11 @@ function publishCurrentPlanningState(
 ): Promise<DesktopAppState> {
   const plans = planningStore.listPlans();
   const planSnapshots = getPlanSnapshots(planningStore, plans);
+  const planDashboardRows = await buildPlanDashboardRows(workspacePath, planSnapshots);
   return publishPlanningState(store, workspaceId, workspacePath, plans, selectedPlan, {
     activeView: "plans",
     ...(options.projectionSummary ? { projectionSummary: options.projectionSummary } : {}),
-    planDashboardRows: buildPlanDashboardRows(planSnapshots),
+    planDashboardRows,
   });
 }
 

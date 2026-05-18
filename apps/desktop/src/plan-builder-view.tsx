@@ -2593,6 +2593,7 @@ function PlanDashboard({
           <span>{row.readyCount} ready / {row.blockedCount} blocked</span>
           <span>{row.nextWork}</span>
           <span>Projection: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
+          <span data-testid="plan-dashboard-health">{formatPlanDashboardHealth(row)}</span>
         </button>
       ))}
     </section>
@@ -3315,6 +3316,23 @@ function formatProjectionSummary(summary: PlanningProjectionSummary): string {
     ? `${driftCount} drift repaired (${summary.missing} missing / ${summary.stale} stale)`
     : `${summary.current} current`;
   return `${driftStatus} · ${summary.written} written / ${summary.skipped} unchanged`;
+}
+
+function formatPlanDashboardHealth(row: PlanningPlanDashboardRow): string {
+  const signals = [
+    countLabel(row.blockerCount, "blocker"),
+    countLabel(row.recoveryStopCount, "recovery stop"),
+    countLabel(row.evidenceGapCount, "evidence gap"),
+    countLabel(row.projectionIssueCount, "projection issue"),
+  ].filter(Boolean);
+  return signals.length > 0 ? `Health: ${signals.join(" / ")}` : "Health: healthy";
+}
+
+function countLabel(count: number, noun: string): string | undefined {
+  if (count === 0) {
+    return undefined;
+  }
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function WorkflowPreferencesCard({
