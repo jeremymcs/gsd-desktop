@@ -320,6 +320,12 @@ async function generateAndApplyAutoTitle(
 
     store.clearPendingAutoTitle(sessionRef);
     await store.driver.renameSession(sessionRef, generatedTitle);
+    await store.refreshState({
+      selectedWorkspaceId: store.state.selectedWorkspaceId,
+      selectedSessionId: store.state.selectedSessionId,
+      clearLastError: true,
+      hydrateSelectedSession: false,
+    });
   } catch {
     clearMatchingPendingTitle();
   }
