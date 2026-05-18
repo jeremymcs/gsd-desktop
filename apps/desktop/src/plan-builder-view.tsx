@@ -2929,6 +2929,7 @@ function PlanProposalEditor({
   const projectionStatus = projectionSummary
     ? formatProjectionSummary(projectionSummary)
     : "Ready to regenerate generated Markdown files";
+  const hasProjectionConflict = hasProjectionConflicts(projectionSummary);
 
   return (
     <div className="plan-roadmap" data-testid="plan-proposal-panel">
@@ -2942,7 +2943,7 @@ function PlanProposalEditor({
         <>
           <div
             className={`plan-projection-card ${
-              projectionSummary?.conflicts.length ? "plan-projection-card--blocked" : ""
+              hasProjectionConflict ? "plan-projection-card--blocked" : ""
             }`}
             data-testid="projection-summary"
           >
@@ -2950,30 +2951,17 @@ function PlanProposalEditor({
               <strong>Projections</strong>
               <span>{projectionStatus}</span>
             </div>
-            <button
-              className="plan-secondary-button plan-secondary-button--compact"
-              data-testid="regenerate-projections-button"
-              disabled={submitting}
-              onClick={() => onRegenerateProjections()}
-              type="button"
-            >
-              Regenerate projections
-            </button>
-            {projectionSummary?.conflicts.length ? (
-              <button
-                className="plan-secondary-button plan-secondary-button--compact"
-                data-testid="overwrite-legacy-projections-button"
-                disabled={submitting}
-                onClick={() => onRegenerateProjections(true)}
-                type="button"
-              >
-                Overwrite legacy files
-              </button>
-            ) : null}
+            <ProjectionRepairControls
+              projectionSummary={projectionSummary}
+              regenerateTestId="regenerate-projections-button"
+              submitting={submitting}
+              overwriteTestId="overwrite-legacy-projections-button"
+              onRegenerateProjections={onRegenerateProjections}
+            />
             <button
               className="plan-action-button plan-action-button--compact"
               data-testid="start-execution-button"
-              disabled={submitting || Boolean(projectionSummary?.conflicts.length)}
+              disabled={submitting || hasProjectionConflict}
               onClick={onStartExecution}
               type="button"
             >
@@ -3559,6 +3547,54 @@ function formatProjectionSummary(summary: PlanningProjectionSummary): string {
   return `${driftStatus} · ${summary.written} written / ${summary.skipped} unchanged`;
 }
 
+function ProjectionRepairControls({
+  projectionSummary,
+  regenerateTestId,
+  submitting,
+  overwriteTestId,
+  onRegenerateProjections,
+}: {
+  readonly projectionSummary?: PlanningProjectionSummary;
+  readonly regenerateTestId: string;
+  readonly submitting: boolean;
+  readonly overwriteTestId: string;
+  readonly onRegenerateProjections: (allowLegacyOverwrite?: boolean) => void;
+}) {
+  if (hasProjectionConflicts(projectionSummary)) {
+    return (
+      <button
+        className="plan-secondary-button plan-secondary-button--compact"
+        data-testid={overwriteTestId}
+        disabled={submitting}
+        onClick={() => onRegenerateProjections(true)}
+        type="button"
+      >
+        Overwrite legacy projections
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="plan-secondary-button plan-secondary-button--compact"
+      data-testid={regenerateTestId}
+      disabled={submitting}
+      onClick={() => onRegenerateProjections()}
+      type="button"
+    >
+      {hasProjectionDrift(projectionSummary) ? "Repair projection drift" : "Regenerate projections"}
+    </button>
+  );
+}
+
+function hasProjectionConflicts(summary: PlanningProjectionSummary | undefined): boolean {
+  return Boolean(summary?.conflicts.length);
+}
+
+function hasProjectionDrift(summary: PlanningProjectionSummary | undefined): boolean {
+  return Boolean(summary && summary.missing + summary.stale > 0);
+}
+
 function formatPlanDashboardHealth(row: PlanningPlanDashboardRow): string {
   const signals = [
     countLabel(row.blockerCount, "blocker"),
@@ -3932,14 +3968,13 @@ function PlanExecutionQueue({
               : "Generated files are available from the accepted plan"}
           </span>
         </div>
-        <button
-          className="plan-secondary-button plan-secondary-button--compact"
-          disabled={submitting}
-          onClick={() => onRegenerateProjections()}
-          type="button"
-        >
-          Regenerate projections
-        </button>
+        <ProjectionRepairControls
+          projectionSummary={projectionSummary}
+          regenerateTestId="execution-regenerate-projections-button"
+          submitting={submitting}
+          overwriteTestId="execution-overwrite-legacy-projections-button"
+          onRegenerateProjections={onRegenerateProjections}
+        />
         <button
           className="plan-action-button plan-action-button--compact"
           data-testid="start-verify-button"
@@ -4324,7 +4359,7 @@ function GuardrailWarningAction({
         onClick={() => onRegenerateProjections()}
         type="button"
       >
-        Regenerate projections
+        Repair projection drift
       </button>
     );
   }

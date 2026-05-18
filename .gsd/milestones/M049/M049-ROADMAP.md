@@ -12,5 +12,12 @@
 
 ## Slices
 
-- [ ] **S01: Projection Repair Controls** `risk:medium` `depends:[M031,M042]`
+- [x] **S01: Projection Repair Controls** `risk:medium` `depends:[M031,M042]`
   > After this: users can repair projection health from the warning or projection surfaces.
+
+## Verification
+
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "persists run recovery summary"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "persists DISCUSS memory"`

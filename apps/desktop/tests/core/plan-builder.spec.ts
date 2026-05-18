@@ -534,7 +534,9 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText("1 blocking / 1 informational");
     await expect(guardrails).toContainText("Projection drift was detected");
     await expect(guardrails).toContainText("Informational · scope-ambiguous");
-    await expect(guardrails.getByTestId("guardrail-regenerate-projections-button")).toBeVisible();
+    await expect(guardrails.getByTestId("guardrail-regenerate-projections-button")).toHaveText(
+      "Repair projection drift",
+    );
     await expect(guardrails).toContainText("Previous run stopped before clean completion");
     await expect(guardrails).toContainText("Waiting on credentials.");
     await expect(guardrails).toContainText("Blocking · scope-ambiguous");
@@ -545,6 +547,9 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     );
     await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Autopilot blocked");
     await expect(autopilot.getByTestId("autopilot-start-button")).toBeDisabled();
+    await guardrails.getByTestId("guardrail-regenerate-projections-button").click();
+    await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(1);
+    await expect(guardrails).not.toContainText("Projection drift was detected");
     const activity = window.getByTestId("run-activity-ledger");
     await expect(activity.getByTestId("run-activity-entry")).toHaveCount(1);
     await expect(activity).toContainText("Stop updated");
@@ -590,6 +595,9 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText("Projection write is blocked");
     await expect(guardrails).toContainText(".gsd/NEXT.md");
     await expect(guardrails).toContainText("dirty-conflict");
+    await expect(window.getByTestId("execution-overwrite-legacy-projections-button")).toHaveText(
+      "Overwrite legacy projections",
+    );
     await expect(guardrails.getByTestId("guardrail-overwrite-projections-button")).toHaveText(
       "Overwrite legacy projections",
     );
@@ -2482,6 +2490,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("projection-summary")).toContainText("written");
     await expect(window.getByTestId("projection-summary")).toContainText("drift repaired");
     await expect(window.getByTestId("projection-summary")).toContainText("1 missing / 2 stale");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Repair projection drift");
 
     const projectProjection = await readFile(projectProjectionPath, "utf8");
     expect(projectProjection).toContain("pi-gui-plan-builder-generated");
@@ -2490,10 +2499,15 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(projectProjection).toContain(
       "**Why:** complex - database-backed planning, projections, and execution lifecycle state.",
     );
+    await window.getByTestId("regenerate-projections-button").click();
+    await expect(window.getByTestId("projection-summary")).toContainText("current");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Regenerate projections");
     const requirementsProjectionPath = join(workspacePath, ".gsd", "REQUIREMENTS.md");
     await writeFile(requirementsProjectionPath, "# Hand-written requirements\n", "utf8");
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("1 legacy file conflict");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveCount(0);
+    await expect(window.getByTestId("overwrite-legacy-projections-button")).toHaveText("Overwrite legacy projections");
     await expect(window.getByTestId("start-execution-button")).toBeDisabled();
     await window.getByTestId("overwrite-legacy-projections-button").click();
     await expect(window.getByTestId("projection-summary")).not.toContainText("legacy file conflict");
