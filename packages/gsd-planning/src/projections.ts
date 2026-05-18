@@ -9,7 +9,9 @@ import type {
   TaskExecutionRecord,
   TaskSessionLinkRecord,
   TaskVerificationRecord,
+  WorkflowAutonomousRunPolicy,
 } from "./types.js";
+import { defaultWorkflowAutonomousRunPolicy } from "./types.js";
 import { computeNextWorkQueue, type NextWorkQueueItem } from "./next-work.js";
 
 export const GENERATED_PROJECTION_MARKER = "pi-gui-plan-builder-generated";
@@ -405,6 +407,10 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
     `**Phase:** ${formatPhase(plan.activePhase)}`,
     `**Queue:** ${queue.ready.length} ready / ${queue.blocked.length} blocked`,
     "",
+    "## Autonomous Run Policy",
+    "",
+    renderAutonomousRunPolicy(plan),
+    "",
     "## Ready",
     "",
     queue.ready.length > 0
@@ -443,6 +449,21 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
       ? renderBullets(taskRefs.map((task) => `${task.path}: ${task.filePath}`))
       : "- No task plan files projected.",
   ].join("\n");
+}
+
+function renderAutonomousRunPolicy(plan: PlanSnapshot): string {
+  const policy = plan.workflowPreferences?.autonomousRun ?? defaultWorkflowAutonomousRunPolicy;
+  return renderBullets([
+    `Captured: ${plan.workflowPreferences ? "yes" : "no - using default stop policy until workflow preferences are applied"}`,
+    `Mode: ${policy.mode}`,
+    `Commit cadence: ${policy.commitCadence}`,
+    `Verification required: ${policy.verificationRequired ? "true" : "false"}`,
+    `Stop conditions: ${formatAutonomousStopConditions(policy)}`,
+  ]);
+}
+
+function formatAutonomousStopConditions(policy: WorkflowAutonomousRunPolicy): string {
+  return policy.stopConditions.join(", ");
 }
 
 function renderDecisions(decisions: readonly DecisionProjection[]): string {

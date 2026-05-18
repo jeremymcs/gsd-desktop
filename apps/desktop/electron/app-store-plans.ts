@@ -4,6 +4,7 @@ import {
   ProjectionWriteConflictError,
   regenerateProjections,
   writeWorkflowPreferenceFiles,
+  defaultWorkflowAutonomousRunPolicy,
   type ApprovedPlanInjectionRecord,
   type PlanEvent,
   type PlanListEntry,
@@ -11,6 +12,7 @@ import {
   type PlanningStore,
   type RequirementRecord,
   type TaskSessionLinkExecutionModelRecord,
+  type WorkflowAutonomousRunPolicy,
   type WorkflowPreferencesRecord,
 } from "@pi-gui/gsd-planning";
 import {
@@ -1752,6 +1754,7 @@ function defaultWorkflowPreferences(): Omit<WorkflowPreferencesRecord, "captured
     branchModel: "single",
     uatDispatch: true,
     research: "skip",
+    autonomousRun: defaultWorkflowAutonomousRunPolicy,
     workflowPrefsCaptured: true,
     models: {
       executorClass: "balanced",
@@ -1826,11 +1829,26 @@ function normalizeWorkflowPreferences(
     branchModel: preferences.branchModel,
     uatDispatch: preferences.uatDispatch,
     research: preferences.research,
+    autonomousRun: normalizeAutonomousRunPolicy(preferences.autonomousRun),
     workflowPrefsCaptured: preferences.workflowPrefsCaptured,
     models: {
       executorClass: preferences.models.executorClass,
       phaseOverrides: normalizeWorkflowPhaseModelPreferences(preferences.models.phaseOverrides),
     },
+  };
+}
+
+function normalizeAutonomousRunPolicy(
+  policy: WorkflowAutonomousRunPolicy | undefined,
+): WorkflowAutonomousRunPolicy {
+  const validStopConditions = new Set(defaultWorkflowAutonomousRunPolicy.stopConditions);
+  const stopConditions = policy?.stopConditions.filter((condition) => validStopConditions.has(condition)) ?? [];
+  return {
+    mode: policy?.mode === "supervised" ? policy.mode : defaultWorkflowAutonomousRunPolicy.mode,
+    commitCadence:
+      policy?.commitCadence === "per-task" ? policy.commitCadence : defaultWorkflowAutonomousRunPolicy.commitCadence,
+    verificationRequired: policy?.verificationRequired ?? defaultWorkflowAutonomousRunPolicy.verificationRequired,
+    stopConditions: stopConditions.length > 0 ? stopConditions : defaultWorkflowAutonomousRunPolicy.stopConditions,
   };
 }
 

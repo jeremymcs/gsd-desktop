@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
+import { defaultWorkflowAutonomousRunPolicy } from "@pi-gui/gsd-planning/types";
 import { computeNextWorkQueue, type NextWorkQueueItem } from "@pi-gui/gsd-planning/next-work";
 import type {
   AnswerRecord,
@@ -1687,6 +1688,7 @@ export function PlanBuilderView({
                 taskExecutions={snapshot.taskExecutions ?? []}
                 taskSessionLinks={snapshot.taskSessionLinks ?? []}
                 taskVerifications={snapshot.taskVerifications ?? []}
+                workflowPreferences={snapshot.workflowPreferences}
                 onLinkTaskSession={linkTaskSession}
                 onStartVerify={startVerify}
                 onStartTaskSession={startTaskSession}
@@ -3240,7 +3242,8 @@ function WorkflowPreferencesCard({
       <div className="plan-workflow-preferences">
         <strong>{saved ? "Workflow preferences saved" : "Workflow preferences"}</strong>
         <span data-testid="workflow-preferences-summary">
-          commit_policy: per-task · branch_model: single · uat_dispatch: true · research: skip
+          commit_policy: per-task · branch_model: single · uat_dispatch: true · research: skip · autonomous_run:
+          supervised
         </span>
         {saved ? (
           <div className="plan-phase-model-grid">
@@ -3305,6 +3308,7 @@ function buildWorkflowPreferenceUpdate(
     branchModel: preferences.branchModel,
     uatDispatch: preferences.uatDispatch,
     research: preferences.research,
+    autonomousRun: preferences.autonomousRun,
     workflowPrefsCaptured: preferences.workflowPrefsCaptured,
     models: {
       executorClass: preferences.models.executorClass,
@@ -3327,6 +3331,17 @@ function formatPhaseModelPreference(
   );
 }
 
+function formatAutonomousRunPolicy(preferences: WorkflowPreferencesRecord | undefined): string {
+  const policy = preferences?.autonomousRun ?? defaultWorkflowAutonomousRunPolicy;
+  return [
+    `captured: ${preferences ? "yes" : "no"}`,
+    `mode: ${policy.mode}`,
+    `commit_cadence: ${policy.commitCadence}`,
+    `verify: ${policy.verificationRequired ? "required" : "optional"}`,
+    `stop: ${policy.stopConditions.join(", ")}`,
+  ].join(" · ");
+}
+
 function PlanExecutionQueue({
   acceptedPlanProposal,
   projectionSummary,
@@ -3334,6 +3349,7 @@ function PlanExecutionQueue({
   taskExecutions,
   taskSessionLinks,
   taskVerifications,
+  workflowPreferences,
   onLinkTaskSession,
   onStartVerify,
   onStartTaskSession,
@@ -3347,6 +3363,7 @@ function PlanExecutionQueue({
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
+  readonly workflowPreferences: WorkflowPreferencesRecord | undefined;
   readonly onLinkTaskSession: (task: PlanningTaskDraft, taskPath: string) => void;
   readonly onStartVerify: () => void;
   readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
@@ -3465,6 +3482,13 @@ function PlanExecutionQueue({
         >
           Start verify
         </button>
+      </div>
+
+      <div className="plan-projection-card plan-run-policy-summary" data-testid="run-policy-summary">
+        <div>
+          <strong>Autonomous run policy</strong>
+          <span>{formatAutonomousRunPolicy(workflowPreferences)}</span>
+        </div>
       </div>
 
       {acceptedPlanProposal ? (

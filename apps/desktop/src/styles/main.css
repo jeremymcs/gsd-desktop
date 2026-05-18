@@ -2447,6 +2447,12 @@
   color: #f1a5a5;
 }
 
+.plan-run-policy-summary span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .plan-next-work {
   align-items: stretch;
   flex-direction: column;

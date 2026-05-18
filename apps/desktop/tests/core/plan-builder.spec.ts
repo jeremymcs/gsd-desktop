@@ -309,6 +309,8 @@ test("shows next work ordering and updates after dependency completion", async (
     await window.getByRole("button", { name: "Plans", exact: true }).click();
 
     const panel = window.getByTestId("next-work-panel");
+    await expect(window.getByTestId("run-policy-summary")).toContainText("captured: no");
+    await expect(window.getByTestId("run-policy-summary")).toContainText("stop: tests-fail");
     await expect(panel).toContainText("2 ready / 1 blocked");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T1: Build foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
@@ -482,6 +484,7 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
 
     const readableTargets = [
       { name: "plan title", locator: window.getByTestId("plan-builder-title") },
@@ -1681,6 +1684,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences saved");
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("autonomous_run: supervised");
     await window.getByTestId("phase-model-select-execute").selectOption("openai:gpt-4o");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -1692,6 +1696,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(preferencesProjection).toContain("commit_policy: per-task");
     expect(preferencesProjection).toContain("branch_model: single");
     expect(preferencesProjection).toContain("workflow_prefs_captured: true");
+    expect(preferencesProjection).toContain("autonomous_run:");
+    expect(preferencesProjection).toContain("milestone-complete");
     expect(preferencesProjection).toContain("phase_overrides:");
     expect(preferencesProjection).toContain("execute:");
     expect(preferencesProjection).toContain("model: gpt-4o");
@@ -2138,6 +2144,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
             entry.selectedPlan.activePhase === "ship" &&
             entry.selectedPlan.workflowPreferences?.commitPolicy === "per-task" &&
             entry.selectedPlan.workflowPreferences?.branchModel === "single" &&
+            entry.selectedPlan.workflowPreferences?.autonomousRun.mode === "supervised" &&
+            entry.selectedPlan.workflowPreferences?.autonomousRun.stopConditions.includes("milestone-complete") &&
             entry.selectedPlan.workflowPreferences?.models.executorClass === "balanced" &&
             entry.selectedPlan.workflowPreferences?.models.phaseOverrides?.execute?.modelId === "gpt-4o" &&
             entry.selectedPlan.requirements.some(

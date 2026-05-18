@@ -52,8 +52,12 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(requirements, /\| R003 \| deferred \| deferred \| _None_ \|/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Phase Sequence/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /P01: Foundation/);
-    assert.match(files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "", /# Next Work/);
-    assert.match(files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "", /\*\*Queue:\*\* 1 ready \/ 0 blocked/);
+    const nextWork = files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
+    assert.match(nextWork, /# Next Work/);
+    assert.match(nextWork, /\*\*Queue:\*\* 1 ready \/ 0 blocked/);
+    assert.match(nextWork, /## Autonomous Run Policy/);
+    assert.match(nextWork, /Mode: supervised/);
+    assert.match(nextWork, /Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
@@ -283,9 +287,13 @@ test("writes workflow preference projections and runtime research decision", asy
     const preferences = await readFile(join(workspaceRoot, ".gsd/PREFERENCES.md"), "utf8");
     assert.match(preferences, /^---\ncommit_policy: per-task\nbranch_model: single\nuat_dispatch: true\nresearch: skip\n/);
     assert.match(preferences, /workflow_prefs_captured: true/);
+    assert.match(preferences, /autonomous_run:\n  mode: supervised\n  commit_cadence: per-task\n  verification_required: true/);
+    assert.match(preferences, /stop_conditions:\n    - tests-fail\n    - scope-ambiguous\n    - destructive-action\n    - dirty-conflict\n    - milestone-complete/);
     assert.match(preferences, /models:\n  executor_class: balanced/);
     assert.match(preferences, /phase_overrides:\n    execute:\n      provider: openai\n      model: gpt-5/);
     assert.match(preferences, /verify:\n      provider: openai\n      model: gpt-4o/);
+    assert.match(preferences, /## Autonomous Run Policy/);
+    assert.match(preferences, /- Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete/);
     assert.match(preferences, /pi-gui-plan-builder-generated/);
 
     const decision = JSON.parse(await readFile(join(workspaceRoot, ".gsd/runtime/research-decision.json"), "utf8"));

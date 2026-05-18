@@ -9,7 +9,14 @@ import {
   type GeneratePlanningProjectionsInput,
   type ProjectionFile,
 } from "./projections.js";
-import type { PlanPhase, PlanSnapshot, WorkflowPhaseModelPreferences, WorkflowPreferencesRecord } from "./types.js";
+import { defaultWorkflowAutonomousRunPolicy } from "./types.js";
+import type {
+  PlanPhase,
+  PlanSnapshot,
+  WorkflowAutonomousRunPolicy,
+  WorkflowPhaseModelPreferences,
+  WorkflowPreferencesRecord,
+} from "./types.js";
 
 export interface WriteProjectionFilesInput {
   readonly workspaceRoot: string;
@@ -208,6 +215,7 @@ function isMissingFileError(error: unknown): boolean {
 }
 
 function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: WorkflowPreferencesRecord): string {
+  const autonomousRun = preferences.autonomousRun ?? defaultWorkflowAutonomousRunPolicy;
   const modelLines = [
     "models:",
     `  executor_class: ${preferences.models.executorClass}`,
@@ -221,6 +229,12 @@ function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: Workflow
     `uat_dispatch: ${preferences.uatDispatch ? "true" : "false"}`,
     `research: ${preferences.research}`,
     `workflow_prefs_captured: ${preferences.workflowPrefsCaptured ? "true" : "false"}`,
+    "autonomous_run:",
+    `  mode: ${autonomousRun.mode}`,
+    `  commit_cadence: ${autonomousRun.commitCadence}`,
+    `  verification_required: ${autonomousRun.verificationRequired ? "true" : "false"}`,
+    "  stop_conditions:",
+    ...autonomousRun.stopConditions.map((condition) => `    - ${condition}`),
     ...modelLines,
     "---",
     "",
@@ -236,7 +250,20 @@ function renderWorkflowPreferencesFile(plan: PlanSnapshot, preferences: Workflow
     "# Workflow Preferences",
     "",
     "Recommended workflow defaults captured by Plan Builder.",
+    "",
+    "## Autonomous Run Policy",
+    "",
+    ...renderAutonomousRunPolicyBullets(autonomousRun),
   ].join("\n").concat("\n");
+}
+
+function renderAutonomousRunPolicyBullets(policy: WorkflowAutonomousRunPolicy): readonly string[] {
+  return [
+    `- Mode: ${policy.mode}`,
+    `- Commit cadence: ${policy.commitCadence}`,
+    `- Verification required: ${policy.verificationRequired ? "true" : "false"}`,
+    `- Stop conditions: ${policy.stopConditions.join(", ")}`,
+  ];
 }
 
 function renderPhaseModelOverrides(phaseOverrides: WorkflowPhaseModelPreferences | undefined): readonly string[] {

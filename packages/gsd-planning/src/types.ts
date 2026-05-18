@@ -143,6 +143,34 @@ export type WorkflowCommitPolicy = "per-task";
 export type WorkflowBranchModel = "single";
 export type WorkflowResearchMode = "skip" | "research";
 export type WorkflowExecutorClass = "balanced";
+export type WorkflowAutonomousRunMode = "supervised";
+export type WorkflowAutonomousCommitCadence = "per-task";
+export type WorkflowAutonomousStopCondition =
+  | "tests-fail"
+  | "scope-ambiguous"
+  | "destructive-action"
+  | "dirty-conflict"
+  | "milestone-complete";
+
+export interface WorkflowAutonomousRunPolicy {
+  readonly mode: WorkflowAutonomousRunMode;
+  readonly commitCadence: WorkflowAutonomousCommitCadence;
+  readonly verificationRequired: boolean;
+  readonly stopConditions: readonly WorkflowAutonomousStopCondition[];
+}
+
+export const defaultWorkflowAutonomousRunPolicy: WorkflowAutonomousRunPolicy = {
+  mode: "supervised",
+  commitCadence: "per-task",
+  verificationRequired: true,
+  stopConditions: [
+    "tests-fail",
+    "scope-ambiguous",
+    "destructive-action",
+    "dirty-conflict",
+    "milestone-complete",
+  ],
+};
 
 export interface WorkflowPhaseModelPreference {
   readonly providerId: string;
@@ -156,6 +184,7 @@ export interface WorkflowPreferencesRecord {
   readonly branchModel: WorkflowBranchModel;
   readonly uatDispatch: boolean;
   readonly research: WorkflowResearchMode;
+  readonly autonomousRun: WorkflowAutonomousRunPolicy;
   readonly models: {
     readonly executorClass: WorkflowExecutorClass;
     readonly phaseOverrides?: WorkflowPhaseModelPreferences;

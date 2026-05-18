@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Persist Run Policy Defaults** `risk:medium` `depends:[M027]`
+- [x] **S01: Persist Run Policy Defaults** `risk:medium` `depends:[M027]`
   > After this: plans have durable autonomous-run policy defaults available to UI and projections.
 
 ## Boundary Map
@@ -24,4 +24,3 @@ Produces:
 
 Consumes:
   projection renderer -> handoff-ready policy summary
-
