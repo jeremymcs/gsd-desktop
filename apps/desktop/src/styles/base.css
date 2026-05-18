@@ -1,22 +1,33 @@
 :root {
   color-scheme: light;
-  --window: #eceef3;
-  --sidebar: #f4f5f8;
-  --main: #f8f8fb;
+  --window: #eef2f8;
+  --sidebar: #eef2f7;
+  --main: #f6f8fb;
   --surface: #ffffff;
-  --surface-muted: #f1f3f7;
-  --line: #dde1ea;
-  --line-strong: #d2d7e2;
-  --text: #39435b;
-  --text-strong: #1f2638;
-  --muted: #747d93;
-  --muted-strong: #556077;
-  --muted-soft: #8f97aa;
-  --muted-subtle: #a3a9b8;
-  --muted-icon: #8a92a8;
-  --muted-path: #a0a7b8;
-  --muted-settings: #8b92a4;
-  --accent: #6a55f2;
+  --surface-muted: #f4f6fa;
+  --line: #d9dfeb;
+  --line-strong: #cbd4e3;
+  --text: #344057;
+  --text-strong: #141923;
+  --muted: #6d778b;
+  --muted-strong: #4f5b70;
+  --muted-soft: #8791a4;
+  --muted-subtle: #9ca5b6;
+  --muted-icon: #7d879a;
+  --muted-path: #929cac;
+  --muted-settings: #818a9c;
+  --accent: #9a7431;
+  --accent-soft: #e0bd72;
+  --accent-ink: #6e4d13;
+  --run: #2f8f57;
+  --run-soft: #dff4e6;
+  --proof: #5968e6;
+  --proof-soft: #e9ecff;
+  --source-window: #12151d;
+  --source-surface: #181c26;
+  --source-line: #2b3240;
+  --source-text: #d7dce7;
+  --workbench-shadow: 0 18px 56px rgba(19, 27, 44, 0.1);
   --error: #c45666;
   --error-ink: #8f3040;
   --font-ui:
@@ -47,23 +58,34 @@
 
 :root.dark {
   color-scheme: dark;
-  --window: #1a1b1e;
-  --sidebar: #202124;
-  --main: #1e1f22;
-  --surface: #2b2d31;
-  --surface-muted: #232428;
-  --line: #3a3c42;
-  --line-strong: #4a4d55;
-  --text: #d4d4d8;
-  --text-strong: #f4f4f5;
-  --muted: #8b8d94;
-  --muted-strong: #9ea0a8;
-  --muted-soft: #6b6e76;
-  --muted-subtle: #5a5d65;
-  --muted-icon: #7a7d85;
-  --muted-path: #6e727a;
-  --muted-settings: #7b7e86;
-  --accent: #7c6bf5;
+  --window: #07090f;
+  --sidebar: #0b0d13;
+  --main: #0e1017;
+  --surface: #151821;
+  --surface-muted: #10131b;
+  --line: #242936;
+  --line-strong: #343b4c;
+  --text: #c8ced9;
+  --text-strong: #f4f6fb;
+  --muted: #969eaf;
+  --muted-strong: #b2bac8;
+  --muted-soft: #768091;
+  --muted-subtle: #596272;
+  --muted-icon: #7e8798;
+  --muted-path: #727b8c;
+  --muted-settings: #8b94a4;
+  --accent: #e0bd72;
+  --accent-soft: #a88443;
+  --accent-ink: #f5d88d;
+  --run: #65d68a;
+  --run-soft: rgba(101, 214, 138, 0.13);
+  --proof: #92a3ff;
+  --proof-soft: rgba(146, 163, 255, 0.14);
+  --source-window: #090b10;
+  --source-surface: #111520;
+  --source-line: #273042;
+  --source-text: #dce2ed;
+  --workbench-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
   --error: #e05467;
   --error-ink: #f87171;
   --border: var(--line);
@@ -202,7 +224,7 @@ svg {
 }
 
 .button--ghost {
-  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--surface) 76%, transparent 24%);
   border-color: var(--line);
 }
 
@@ -212,8 +234,8 @@ svg {
 }
 
 .button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.62);
-  border-color: rgba(210, 215, 226, 0.85);
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-muted) 12%);
+  border-color: var(--line-strong);
 }
 
 .button--primary:hover:not(:disabled) {
@@ -250,8 +272,8 @@ svg {
   font-size: 12px;
   font-weight: 500;
   color: var(--muted-strong);
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid #d9deea;
+  background: color-mix(in srgb, var(--surface) 82%, transparent 18%);
+  border: 1px solid var(--line);
 }
 
 .meta-chip--path {

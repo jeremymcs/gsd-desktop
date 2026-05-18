@@ -59,7 +59,7 @@ export function SkillsView({
             <div className="chat-header__eyebrow">Skills</div>
             <h1 className="view-header__title">Skills</h1>
             <p className="view-header__body">
-              Give pi workspace-specific capabilities and reusable workflows.
+              Give GSD runs workspace-specific capabilities, prompts, and reusable workflow moves.
             </p>
           </div>
           <div className="view-header__actions">

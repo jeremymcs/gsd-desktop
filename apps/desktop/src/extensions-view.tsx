@@ -76,7 +76,7 @@ export function ExtensionsView({
             <div className="chat-header__eyebrow">Extensions</div>
             <h1 className="view-header__title">Extensions</h1>
             <p className="view-header__body">
-              Inspect and manage first-class runtime extensions for this workspace.
+              Inspect runtime extensions that can add tools, commands, and GSD workflow behavior.
             </p>
           </div>
           <div className="view-header__actions">

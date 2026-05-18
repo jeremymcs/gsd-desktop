@@ -39,15 +39,15 @@ export function sectionTitle(section: SettingsSection): string {
 export function sectionDescription(section: SettingsSection, workspaceName: string): string {
   switch (section) {
     case "appearance":
-      return "Choose between light, dark, or automatic system theme.";
+      return "Choose the GSD workbench theme for planning, sessions, source proof, and review.";
     case "providers":
       return `Connect providers and manage auth for ${workspaceName}.`;
     case "models":
-      return "Choose the default model and which models appear in pickers.";
+      return "Choose app-wide defaults, phase models, and which models appear in GSD pickers.";
     case "notifications":
       return "Manage both macOS notification access and which background events should alert you.";
     default:
-      return "Keep the high-value app and runtime controls close to hand.";
+      return "Keep the high-value GSD workflow and runtime controls close to hand.";
   }
 }
 

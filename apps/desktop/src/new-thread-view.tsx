@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ClipboardEvent, type DragEvent, type KeyboardEvent, type RefObject } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { ComposerAttachment, NewThreadEnvironment, WorkspaceRecord } from "./desktop-state";
-import { ArrowUpIcon, PiLogoMark, PlanIcon, PlusIcon } from "./icons";
+import { ArrowUpIcon, PiLogoMark, PlanIcon, PlusIcon, SparkIcon, StatusIcon } from "./icons";
 import {
   MODEL_OPTIONS_EMPTY_TITLE,
   type ComposerSlashCommand,
@@ -137,8 +137,8 @@ export function NewThreadView({
           <div className="new-thread__logo" data-testid="new-thread-logo">
             <PiLogoMark />
           </div>
-          <div className="new-thread__eyebrow">New thread</div>
-          <h1 className="new-thread__title">Let&apos;s build</h1>
+          <div className="new-thread__eyebrow">GSD workflow</div>
+          <h1 className="new-thread__title">What should move from DISCUSS to SHIP?</h1>
           <label className="new-thread__workspace-picker">
             <span className="sr-only">Workspace</span>
             <select
@@ -155,10 +155,32 @@ export function NewThreadView({
           </label>
         </div>
 
-        <div className="new-thread__quick-actions" aria-label="New project options">
-          <button className="new-thread__quick-action" type="button" onClick={onNewPlan}>
+        <div className="new-thread__quick-actions" aria-label="GSD start options">
+          <button
+            className="new-thread__quick-action"
+            type="button"
+            onClick={() => {
+              onChangePrompt("DISCUSS: ");
+              composerRef.current?.focus();
+            }}
+          >
+            <SparkIcon />
+            <span>Start DISCUSS</span>
+          </button>
+          <button
+            className="new-thread__quick-action"
+            type="button"
+            onClick={() => {
+              onChangePrompt("RESEARCH: summarize this workspace before planning.");
+              composerRef.current?.focus();
+            }}
+          >
+            <StatusIcon />
+            <span>Research workspace</span>
+          </button>
+          <button aria-label="Plan a new project" className="new-thread__quick-action" type="button" onClick={onNewPlan}>
             <PlanIcon />
-            <span>Plan a new project</span>
+            <span>Build GSD plan</span>
           </button>
         </div>
 
@@ -201,7 +223,7 @@ export function NewThreadView({
               textareaLabel="New thread prompt"
               textareaTestId="new-thread-composer"
               textareaClassName="new-thread__textarea"
-              textareaPlaceholder="Ask pi anything, use / for commands and skills"
+              textareaPlaceholder="Describe the outcome, constraints, or next GSD step."
               footer={(
                 <NewThreadComposerFooter
                   runtime={runtime}

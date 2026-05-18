@@ -70,6 +70,7 @@ export function Topbar(props: TopbarProps) {
         <span className="topbar__workspace">
           {rootWorkspace ? rootWorkspace.name : "Open a folder to begin"}
         </span>
+        {rootWorkspace ? <span className="topbar__flow">DISCUSS &gt; VERIFY &gt; SHIP</span> : null}
         {selectedWorkspace && activeView === "threads" ? (
           <>
             <span className="topbar__separator">/</span>

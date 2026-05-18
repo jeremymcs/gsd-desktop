@@ -122,6 +122,16 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__top">
+        <div className="sidebar__brand" aria-label="GSD Workbench">
+          <div className="sidebar__brand-mark">
+            <PlanIcon />
+          </div>
+          <div className="sidebar__brand-copy">
+            <strong>GSD Workbench</strong>
+            <span>DISCUSS &gt; SHIP</span>
+          </div>
+        </div>
+
         <button
           className="sidebar__new"
           type="button"
