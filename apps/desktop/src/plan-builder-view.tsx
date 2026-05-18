@@ -36,6 +36,7 @@ import type {
   LinkPlanningTaskSessionInput,
   ParkPlanningIdeaInput,
   PlanningMilestoneDraft,
+  PlanningPlanDashboardRow,
   PlanningPhaseDraft,
   PlanningPlanProposalDraft,
   PlanningProjectionSummary,
@@ -1931,6 +1932,17 @@ export function PlanBuilderView({
               </label>
             ) : null}
 
+            {planningState?.planDashboardRows.length ? (
+              <PlanDashboard
+                rows={planningState.planDashboardRows}
+                selectedPlanId={planningState.selectedPlanId}
+                submitting={submitting}
+                onSelectPlan={(planId) => {
+                  void onSelectPlan({ workspaceId: workspace.id, planId });
+                }}
+              />
+            ) : null}
+
             <div className="plan-outline-card">
               <div className="plan-outline-card__title" data-testid="plan-outline-title">
                 {snapshot?.name ?? "No plan selected"}
@@ -2538,6 +2550,44 @@ function formatGuidanceRollupCount(item: GuidanceRollupItem): string {
     parts.push(`${item.medium} medium`);
   }
   return parts.join(" / ");
+}
+
+function PlanDashboard({
+  rows,
+  selectedPlanId,
+  submitting,
+  onSelectPlan,
+}: {
+  readonly rows: readonly PlanningPlanDashboardRow[];
+  readonly selectedPlanId: string;
+  readonly submitting: boolean;
+  readonly onSelectPlan: (planId: string) => void;
+}) {
+  return (
+    <section className="plan-dashboard" data-testid="plan-dashboard">
+      <div className="plan-memory__title">Plans dashboard</div>
+      {rows.map((row) => (
+        <button
+          aria-label={`Open ${row.readableId} plan`}
+          className={`plan-dashboard__row ${row.planId === selectedPlanId ? "plan-dashboard__row--active" : ""}`}
+          data-testid="plan-dashboard-row"
+          disabled={submitting}
+          key={row.planId}
+          onClick={() => onSelectPlan(row.planId)}
+          type="button"
+        >
+          <span className="plan-dashboard__row-title">
+            <strong>{row.readableId}</strong>
+            {row.name}
+          </span>
+          <span>{row.activePhase.toUpperCase()} / {stageLabel(row.activeStage)}</span>
+          <span>{row.readyCount} ready / {row.blockedCount} blocked</span>
+          <span>{row.nextWork}</span>
+          <span>Projection: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
+        </button>
+      ))}
+    </section>
+  );
 }
 
 function PlanProposalEditor({

@@ -373,6 +373,46 @@ test("shows next work ordering and updates after dependency completion", async (
   }
 });
 
+test("shows a cross-plan dashboard and switches selected plans", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-dashboard");
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+    await createAcceptedDependencyPlanViaIpc(window, "Ready dashboard plan");
+    await window.evaluate(async () => {
+      const app = window.piApp;
+      if (!app) {
+        throw new Error("piApp IPC bridge is unavailable");
+      }
+      const state = await app.getState();
+      await app.createPlanningPlan({ workspaceId: state.selectedWorkspaceId, name: "Draft dashboard plan" });
+      await app.setActiveView("plans");
+    });
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    const readyRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Ready dashboard plan" });
+    const draftRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Draft dashboard plan" });
+    await expect(readyRow).toContainText("EXECUTE");
+    await expect(readyRow).toContainText("2 ready / 1 blocked");
+    await expect(readyRow).toContainText("M1/S1/T1: Build foundation");
+    await expect(draftRow).toContainText("DISCUSS");
+    await expect(draftRow).toContainText("No accepted plan");
+
+    await readyRow.click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Ready dashboard plan");
+    await draftRow.click();
+    await expect(window.getByTestId("plan-outline-title")).toHaveText("Draft dashboard plan");
+  } finally {
+    await harness.close();
+  }
+});
+
 async function contrastRatioFor(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     type Rgba = { r: number; g: number; b: number; a: number };

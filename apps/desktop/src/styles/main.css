@@ -3607,6 +3607,42 @@
   gap: 8px;
 }
 
+.plan-dashboard {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-dashboard__row {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #292d35;
+  border-radius: 8px;
+  background: #15161a;
+  color: #aeb4c0;
+  text-align: left;
+}
+
+.plan-dashboard__row--active {
+  border-color: rgba(224, 184, 112, 0.48);
+  background: rgba(224, 184, 112, 0.1);
+}
+
+.plan-dashboard__row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #f4f4f5;
+}
+
+.plan-dashboard__row span {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .plan-outline-stat {
   min-height: 76px;
   display: grid;
@@ -4088,6 +4124,10 @@
   color: var(--plan-header-text);
 }
 
+.canvas--plans .plan-dashboard__row-title {
+  color: var(--plan-header-text);
+}
+
 .canvas--plans .plan-create,
 .canvas--plans .plan-question-card,
 .canvas--plans .plan-depth-card,
@@ -4168,6 +4208,7 @@
 .canvas--plans .plan-execution-slice,
 .canvas--plans .plan-roadmap-card,
 .canvas--plans .plan-roadmap-nested,
+.canvas--plans .plan-dashboard__row,
 .canvas--plans .plan-guidance-card,
 .canvas--plans .plan-composer__field,
 .canvas--plans .plan-side__workspace select,

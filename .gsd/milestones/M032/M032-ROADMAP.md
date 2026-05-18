@@ -12,6 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Cross-Plan Dashboard Rows** `risk:medium` `depends:[M031]`
+- [x] **S01: Cross-Plan Dashboard Rows** `risk:medium` `depends:[M031]`
   > After this: users can scan all project plans and jump to the one needing attention.
-

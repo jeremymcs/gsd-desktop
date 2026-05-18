@@ -2,6 +2,7 @@ import type { HostUiRequest, SessionConfig } from "@pi-gui/session-driver";
 import type { ModelSettingsSnapshot, RuntimeCommandRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type {
   PlanListEntry,
+  PlanPhase,
   PlanSnapshot,
   PlanStage,
   ParkedItemReviewStatus,
@@ -171,10 +172,23 @@ export interface WorkspacePlanningState {
   readonly workspaceId: string;
   readonly selectedPlanId: string;
   readonly plans: readonly PlanListEntry[];
+  readonly planDashboardRows: readonly PlanningPlanDashboardRow[];
   readonly selectedPlan?: PlanSnapshot;
   readonly databasePath?: string;
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly loadedAt: string;
+}
+
+export interface PlanningPlanDashboardRow {
+  readonly planId: string;
+  readonly readableId: string;
+  readonly name: string;
+  readonly activePhase: PlanPhase;
+  readonly activeStage: PlanStage;
+  readonly readyCount: number;
+  readonly blockedCount: number;
+  readonly nextWork: string;
+  readonly projectionState: "not-ready" | "ready";
 }
 
 export interface PlanningProjectionSummary {

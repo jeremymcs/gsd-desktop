@@ -4,12 +4,22 @@
 
 ## Tasks
 
-- [ ] Derive summary rows from plan list and selected snapshots.
-- [ ] Show active phase and next-work summary.
-- [ ] Link rows to plan selection.
-- [ ] Cover multi-plan navigation in Electron.
+- [x] Derive summary rows from plan list and selected snapshots.
+- [x] Show active phase and next-work summary.
+- [x] Link rows to plan selection.
+- [x] Cover multi-plan navigation in Electron.
 
 ## Acceptance
 
 - A user can identify which plan has ready work without opening each plan.
 
+## Evidence
+
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "cross-plan dashboard"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "persists DISCUSS memory"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:core`
+- `pnpm lint`
+- `pnpm run simplify`
+- `git diff --check`
