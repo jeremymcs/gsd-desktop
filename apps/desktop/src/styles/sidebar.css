@@ -796,9 +796,9 @@
 }
 
 :root.dark .sidebar__new {
-  background: linear-gradient(180deg, #e3c47e 0%, #b6904c 100%);
-  border-color: #cda95f;
-  color: #17140e;
+  background: linear-gradient(180deg, #8ea2ff 0%, #6658ff 100%);
+  border-color: rgba(142, 162, 255, 0.72);
+  color: #f8fbff;
 }
 
 :root.dark .sidebar__brand {
@@ -810,7 +810,7 @@
 
 :root.dark .sidebar__brand-mark {
   border-color: color-mix(in srgb, var(--accent) 38%, var(--line) 62%);
-  background: rgba(224, 189, 114, 0.12);
+  background: rgba(116, 131, 255, 0.16);
   color: var(--accent);
 }
 
