@@ -325,10 +325,14 @@ test("creates a blank plan without starter template output", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-template-select")).toHaveValue("blank");
+    await expect(window.getByTestId("gsd-source-proof")).toContainText("The proof is in the plan source");
+    await expect(window.getByTestId("gsd-source-proof")).toContainText(".gsd/NEXT.md");
     await window.getByTestId("plan-name-input").fill("Blank starter plan");
     await window.getByRole("button", { name: "Create plan" }).click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("gsd-operations-inspector")).toContainText(".gsd/gsd.db");
+    await expect(window.getByTestId("gsd-operations-inspector")).toContainText("VERIFY -> SHIP");
     await expect(window.getByTestId("plan-template-seed")).toHaveCount(0);
     await expect(window.getByTestId("plan-answer-history")).toHaveCount(0);
     await expect.poll(async () => {

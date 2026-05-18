@@ -1605,6 +1605,8 @@ export function PlanBuilderView({
 
             <WorkflowGuidanceCard guidance={workflowGuidance} />
 
+            {!snapshot ? <GsdSourceProofPanel /> : null}
+
             {snapshot ? (
               <WorkflowPreferencesCard
                 preferences={snapshot.workflowPreferences}
@@ -2147,6 +2149,13 @@ export function PlanBuilderView({
                 <small>{formatShipStatus(shipStarted, snapshot?.shipSummaries?.length ?? 0)}</small>
               </div>
             </div>
+
+            {snapshot ? (
+              <GsdOperationsInspector
+                activePhase={snapshot.activePhase}
+                activeStage={activePlanStage}
+              />
+            ) : null}
 
             {guidanceRollup.length > 0 ? <GuidanceRollupCard items={guidanceRollup} /> : null}
 
@@ -3534,6 +3543,114 @@ function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidanc
           </dd>
         </div>
       </dl>
+    </section>
+  );
+}
+
+function GsdSourceProofPanel() {
+  return (
+    <section className="gsd-source-proof" data-testid="gsd-source-proof">
+      <div className="gsd-source-proof__header">
+        <div>
+          <span>GSD source proof</span>
+          <strong>The proof is in the plan source</strong>
+        </div>
+        <small>{".gsd/gsd.db -> generated projections"}</small>
+      </div>
+      <div className="gsd-source-proof__windows">
+        <GsdSourceWindow
+          badge="canonical"
+          path=".gsd/gsd.db"
+          title="DISCUSS memory"
+          lines={[
+            "project: durable planning workspace",
+            "decision: database remains canonical",
+            "memory: questions, answers, revisions",
+            "status: ready for RESEARCH",
+          ]}
+        />
+        <GsdSourceWindow
+          badge="projection"
+          path=".gsd/NEXT.md"
+          title="Next work"
+          lines={[
+            "queue: milestones -> phases -> slices -> tasks",
+            "guardrails: stop before ambiguous scope",
+            "evidence: required before VERIFY",
+            "ship: summary from durable records",
+          ]}
+        />
+      </div>
+      <div className="gsd-source-proof__flow" aria-label="GSD workflow">
+        {planPhases.map((phase) => (
+          <span key={phase.id}>{phase.label}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GsdSourceWindow({
+  badge,
+  lines,
+  path,
+  title,
+}: {
+  readonly badge: string;
+  readonly lines: readonly string[];
+  readonly path: string;
+  readonly title: string;
+}) {
+  return (
+    <article className="gsd-source-window">
+      <div className="gsd-source-window__bar">
+        <div className="gsd-source-window__traffic" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span>{path}</span>
+        <small>{badge}</small>
+      </div>
+      <div className="gsd-source-window__body">
+        <strong>{title}</strong>
+        <pre>{lines.join("\n")}</pre>
+      </div>
+    </article>
+  );
+}
+
+function GsdOperationsInspector({
+  activePhase,
+  activeStage,
+}: {
+  readonly activePhase: PlanPhase;
+  readonly activeStage: PlanStage;
+}) {
+  return (
+    <section className="gsd-ops-inspector" data-testid="gsd-operations-inspector">
+      <div className="gsd-ops-inspector__header">
+        <strong>GSD source</strong>
+        <span>{formatPlanningPhase(activePhase)} / {stageLabel(activeStage)}</span>
+      </div>
+      <div className="gsd-ops-inspector__rows">
+        <div>
+          <span>Canonical</span>
+          <strong>.gsd/gsd.db</strong>
+        </div>
+        <div>
+          <span>Projection</span>
+          <strong>REQUIREMENTS.md</strong>
+        </div>
+        <div>
+          <span>Queue</span>
+          <strong>NEXT.md</strong>
+        </div>
+        <div>
+          <span>Evidence</span>
+          <strong>{"VERIFY -> SHIP"}</strong>
+        </div>
+      </div>
     </section>
   );
 }
