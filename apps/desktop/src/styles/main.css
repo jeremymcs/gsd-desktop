@@ -2473,6 +2473,52 @@
   gap: 4px;
 }
 
+.plan-autopilot-preflight {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.plan-autopilot-preflight__header {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-autopilot-preflight__target {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(12, 14, 18, 0.28);
+}
+
+.plan-autopilot-preflight__target span,
+.plan-autopilot-preflight__target strong,
+.plan-autopilot-preflight__target small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-autopilot-preflight__target small {
+  color: #a9d8b1;
+  font-size: 12px;
+}
+
+.plan-autopilot-preflight__warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-autopilot-preflight__warnings span {
+  padding: 4px 7px;
+  border: 1px solid rgba(236, 118, 118, 0.42);
+  border-radius: 999px;
+  background: rgba(236, 118, 118, 0.1);
+  color: #f1a5a5;
+}
+
 .plan-guardrail-warnings__rows {
   display: grid;
   gap: 8px;
@@ -4639,6 +4685,21 @@
 .canvas--plans .plan-guardrail-warning {
   border-color: var(--plan-accent-border);
   background: var(--plan-pane-raised-bg);
+}
+
+.canvas--plans .plan-autopilot-preflight__target {
+  border-color: var(--plan-success-border);
+  background: var(--plan-pane-raised-bg);
+}
+
+.canvas--plans .plan-autopilot-preflight__target small {
+  color: var(--plan-success-text);
+}
+
+.canvas--plans .plan-autopilot-preflight__warnings span {
+  border-color: var(--plan-danger-border);
+  background: var(--plan-danger-bg);
+  color: var(--plan-danger-text);
 }
 
 .canvas--plans .plan-execution-evidence span {

@@ -3765,6 +3765,17 @@ function PlanExecutionQueue({
       }),
     [projectionSummary, runRecoverySummary],
   );
+  const nextWorkItems = useMemo(
+    () => [...nextWorkQueue.ready, ...nextWorkQueue.blocked],
+    [nextWorkQueue],
+  );
+  const firstReadyItem = nextWorkQueue.ready[0];
+  const firstReadyEntry = firstReadyItem ? taskEntryMap.get(firstReadyItem.taskId) : undefined;
+  const firstReadyLink = firstReadyItem ? taskLinks.get(firstReadyItem.taskId) : undefined;
+  const autopilotBlockingWarnings = useMemo(
+    () => guardrailWarnings.filter(isAutopilotBlockingWarning),
+    [guardrailWarnings],
+  );
   const handoffText = useMemo(
     () =>
       buildPlanHandoffBundle({
@@ -3885,8 +3896,19 @@ function PlanExecutionQueue({
       <PlanHandoffBundleCard handoffText={handoffText} />
 
       {acceptedPlanProposal ? (
+        <AutopilotPreflightCard
+          blockingWarnings={autopilotBlockingWarnings}
+          firstReadyEntry={firstReadyEntry}
+          firstReadyItem={firstReadyItem}
+          firstReadyLink={firstReadyLink}
+          submitting={submitting}
+          onStartTaskSession={onStartTaskSession}
+        />
+      ) : null}
+
+      {acceptedPlanProposal ? (
         <NextWorkPanel
-          items={[...nextWorkQueue.ready, ...nextWorkQueue.blocked]}
+          items={nextWorkItems}
           submitting={submitting}
           taskEntryMap={taskEntryMap}
           taskLinks={taskLinks}
@@ -4063,6 +4085,60 @@ function PlanExecutionQueue({
   );
 }
 
+function AutopilotPreflightCard({
+  blockingWarnings,
+  firstReadyEntry,
+  firstReadyItem,
+  firstReadyLink,
+  submitting,
+  onStartTaskSession,
+}: {
+  readonly blockingWarnings: readonly GuardrailWarning[];
+  readonly firstReadyEntry: PlanTaskEntry | undefined;
+  readonly firstReadyItem: NextWorkQueueItem | undefined;
+  readonly firstReadyLink: TaskSessionLinkRecord | undefined;
+  readonly submitting: boolean;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
+}) {
+  const canStart = Boolean(firstReadyItem && firstReadyEntry && blockingWarnings.length === 0);
+
+  return (
+    <section className="plan-projection-card plan-autopilot-preflight" data-testid="autopilot-preflight">
+      <div className="plan-autopilot-preflight__header">
+        <strong>Autopilot preflight</strong>
+        <span>{formatAutopilotPreflightStatus(firstReadyItem, blockingWarnings)}</span>
+      </div>
+      {firstReadyItem ? (
+        <div className="plan-autopilot-preflight__target">
+          <span>{firstReadyItem.taskPath}</span>
+          <strong>{firstReadyItem.title}</strong>
+          <small>{firstReadyLink ? "Existing task session will open" : "A task session will be created"}</small>
+        </div>
+      ) : null}
+      {blockingWarnings.length > 0 ? (
+        <div className="plan-autopilot-preflight__warnings" data-testid="autopilot-blocking-warnings">
+          {blockingWarnings.map((warning) => (
+            <span key={warning.id}>{warning.title}</span>
+          ))}
+        </div>
+      ) : null}
+      <button
+        className="plan-action-button plan-action-button--compact"
+        data-testid="autopilot-start-button"
+        disabled={submitting || !canStart}
+        onClick={() => {
+          if (firstReadyEntry) {
+            onStartTaskSession(firstReadyEntry.task, firstReadyEntry.taskPath, firstReadyLink);
+          }
+        }}
+        type="button"
+      >
+        {formatAutopilotButtonLabel(firstReadyItem, firstReadyLink, blockingWarnings)}
+      </button>
+    </section>
+  );
+}
+
 function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly GuardrailWarning[] }) {
   if (warnings.length === 0) {
     return null;
@@ -4096,6 +4172,10 @@ function GuardrailWarningsCard({ warnings }: { readonly warnings: readonly Guard
       </div>
     </section>
   );
+}
+
+function isAutopilotBlockingWarning(warning: GuardrailWarning): boolean {
+  return warning.kind !== "projection-drift";
 }
 
 function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRoutingRow[] }) {
@@ -5710,6 +5790,30 @@ function formatAutonomousStopCondition(condition: GuardrailWarning["condition"])
     case "milestone-complete":
       return "milestone-complete";
   }
+}
+
+function formatAutopilotPreflightStatus(
+  firstReadyItem: NextWorkQueueItem | undefined,
+  blockingWarnings: readonly GuardrailWarning[],
+): string {
+  if (blockingWarnings.length > 0) {
+    return `${blockingWarnings.length} blocking guardrail${blockingWarnings.length === 1 ? "" : "s"}`;
+  }
+  return firstReadyItem ? `Ready to run ${firstReadyItem.taskPath}` : "No ready queue item";
+}
+
+function formatAutopilotButtonLabel(
+  firstReadyItem: NextWorkQueueItem | undefined,
+  firstReadyLink: TaskSessionLinkRecord | undefined,
+  blockingWarnings: readonly GuardrailWarning[],
+): string {
+  if (blockingWarnings.length > 0) {
+    return "Autopilot blocked";
+  }
+  if (!firstReadyItem) {
+    return "No ready work";
+  }
+  return `${firstReadyLink ? "Open" : "Run"} ${firstReadyItem.taskPath}`;
 }
 
 function formatTaskEvidenceSummary(evidence: TaskEvidenceRecord): string {

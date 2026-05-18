@@ -319,10 +319,15 @@ test("shows next work ordering and updates after dependency completion", async (
     await window.getByRole("button", { name: "Plans", exact: true }).click();
 
     const panel = window.getByTestId("next-work-panel");
+    const autopilot = window.getByTestId("autopilot-preflight");
     await expect(window.getByTestId("run-policy-summary")).toContainText("captured: no");
     await expect(window.getByTestId("run-policy-summary")).toContainText("stop: tests-fail");
     await expect(window.getByTestId("run-guardrails-summary")).toContainText("Tests fail");
     await expect(window.getByTestId("run-guardrails-summary")).toContainText("Dirty worktree conflict");
+    await expect(autopilot).toContainText("Ready to run M1/S1/T1");
+    await expect(autopilot).toContainText("Build foundation");
+    await expect(autopilot).toContainText("A task session will be created");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Run M1/S1/T1");
     await expect(panel).toContainText("2 ready / 1 blocked");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T1: Build foundation");
     await expect(panel.getByTestId("next-work-item").nth(1)).toContainText("M1/S1/T3: Independent check");
@@ -333,7 +338,7 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(panel.getByTestId("next-work-item").nth(2).getByRole("button", { name: "Create session" })).toBeDisabled();
 
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T1");
-    await panel.getByTestId("start-next-work-button").click();
+    await autopilot.getByTestId("autopilot-start-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
     await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T1: Build foundation/);
     const linkedSessionId = (await getDesktopState(window)).selectedSessionId;
@@ -341,8 +346,10 @@ test("shows next work ordering and updates after dependency completion", async (
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open session" })).toBeVisible();
+    await expect(autopilot).toContainText("Existing task session will open");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Open M1/S1/T1");
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Open M1/S1/T1");
-    await panel.getByTestId("start-next-work-button").click();
+    await autopilot.getByTestId("autopilot-start-button").click();
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
 
@@ -357,6 +364,9 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(ledgerRow).toContainText("Evidence: 1 evidence item");
     await expect(ledgerRow).toContainText("Source: Task T1 - Build foundation");
     await expect(ledgerRow).toContainText("Verification: Pending");
+    await expect(autopilot).toContainText("Ready to run M1/S1/T2");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Run M1/S1/T2");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toBeEnabled();
     await expect(panel).toContainText("2 ready / 0 blocked");
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T2");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T2: Use foundation");
@@ -410,11 +420,18 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(recovery).toContainText("Resume target: M1/S1/T3: Independent check");
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
     const guardrails = window.getByTestId("guardrail-warning-list");
+    const autopilot = window.getByTestId("autopilot-preflight");
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(2);
     await expect(guardrails).toContainText("Projection drift was detected");
     await expect(guardrails).toContainText("Previous run stopped before clean completion");
     await expect(guardrails).toContainText("Waiting on credentials.");
     await expect(guardrails).toContainText("scope-ambiguous");
+    await expect(autopilot).toContainText("1 blocking guardrail");
+    await expect(autopilot.getByTestId("autopilot-blocking-warnings")).toContainText(
+      "Previous run stopped before clean completion",
+    );
+    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Autopilot blocked");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toBeDisabled();
     const activity = window.getByTestId("run-activity-ledger");
     await expect(activity.getByTestId("run-activity-entry")).toHaveCount(1);
     await expect(activity).toContainText("Stop updated");
@@ -456,6 +473,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText("Projection write is blocked");
     await expect(guardrails).toContainText(".gsd/NEXT.md");
     await expect(guardrails).toContainText("dirty-conflict");
+    await expect(autopilot).toContainText("2 blocking guardrails");
     await window.evaluate(async () => {
       const app = window.piApp;
       if (!app) {

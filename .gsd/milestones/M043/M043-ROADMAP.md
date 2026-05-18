@@ -12,5 +12,9 @@
 
 ## Slices
 
-- [ ] **S01: Autopilot Preflight Action** `risk:medium` `depends:[M042]`
+- [x] **S01: Autopilot Preflight Action** `risk:medium` `depends:[M042]`
   > After this: EXECUTE can launch or open the next safe queued task from a dedicated autopilot preflight.
+
+## Status
+
+- S01 complete: EXECUTE now shows an autopilot preflight that follows next-work ordering and blocks on active guardrails.
