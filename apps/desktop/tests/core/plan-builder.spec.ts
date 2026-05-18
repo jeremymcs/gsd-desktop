@@ -398,6 +398,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(recovery).toContainText("Stop reason: Task blocked");
     await expect(recovery).toContainText("Stop detail: Waiting on credentials.");
     await expect(recovery).toContainText("Resume target: M1/S1/T3: Independent check");
+    await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
 
     const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
     expect(nextProjection).toContain("## Recovery Summary");
@@ -413,7 +414,19 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     const window = await harness.firstWindow();
     await waitForWorkspaceByPath(window, workspacePath);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
-    await expect(window.getByTestId("run-recovery-summary")).toContainText("Waiting on credentials.");
+    const recovery = window.getByTestId("run-recovery-summary");
+    await expect(recovery).toContainText("Waiting on credentials.");
+    await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
+    await recovery.getByTestId("resume-recovery-target-button").click();
+    await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
+    await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T3: Independent check/);
+    const resumedSessionId = (await getDesktopState(window)).selectedSessionId;
+    expect(resumedSessionId).not.toBe("");
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Open M1/S1/T3");
+    await recovery.getByTestId("resume-recovery-target-button").click();
+    await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(resumedSessionId);
   } finally {
     await harness.close();
   }

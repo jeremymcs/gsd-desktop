@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Recovery Resume Action** `risk:medium` `depends:[M034]`
+- [x] **S01: Recovery Resume Action** `risk:medium` `depends:[M034]`
   > After this: the recovery summary can restart the safest task directly.

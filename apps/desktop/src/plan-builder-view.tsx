@@ -3600,7 +3600,14 @@ function PlanExecutionQueue({
         </div>
       </div>
 
-      <RunRecoverySummaryCard summary={runRecoverySummary} />
+      <RunRecoverySummaryCard
+        summary={runRecoverySummary}
+        submitting={submitting}
+        taskEntryMap={taskEntryMap}
+        taskLinks={taskLinks}
+        onOpenTaskSession={onOpenTaskSession}
+        onStartTaskSession={onStartTaskSession}
+      />
 
       {acceptedPlanProposal ? (
         <NextWorkPanel
@@ -3819,7 +3826,26 @@ function PlanEvidenceLedger({
   );
 }
 
-function RunRecoverySummaryCard({ summary }: { readonly summary?: RunRecoverySummaryRecord }) {
+function RunRecoverySummaryCard({
+  summary,
+  submitting,
+  taskEntryMap,
+  taskLinks,
+  onOpenTaskSession,
+  onStartTaskSession,
+}: {
+  readonly summary?: RunRecoverySummaryRecord;
+  readonly submitting: boolean;
+  readonly taskEntryMap: ReadonlyMap<string, PlanTaskEntry>;
+  readonly taskLinks: ReadonlyMap<string, TaskSessionLinkRecord>;
+  readonly onOpenTaskSession: (link: TaskSessionLinkRecord) => void;
+  readonly onStartTaskSession: (task: PlanningTaskDraft, taskPath: string, existingLink?: TaskSessionLinkRecord) => void;
+}) {
+  const resumeTarget = summary?.resumeTarget;
+  const resumeEntry = resumeTarget ? taskEntryMap.get(resumeTarget.taskId) : undefined;
+  const resumeLink = resumeTarget ? taskLinks.get(resumeTarget.taskId) : undefined;
+  const resumeUnavailable = !resumeTarget || (!resumeEntry && !resumeLink);
+
   return (
     <section className="plan-projection-card plan-run-recovery" data-testid="run-recovery-summary">
       <div>
@@ -3837,6 +3863,25 @@ function RunRecoverySummaryCard({ summary }: { readonly summary?: RunRecoverySum
           <span>No run handoff has been captured yet.</span>
         )}
       </div>
+      <button
+        className="plan-action-button plan-action-button--compact"
+        data-testid="resume-recovery-target-button"
+        disabled={submitting || resumeUnavailable}
+        onClick={() => {
+          if (resumeLink) {
+            onOpenTaskSession(resumeLink);
+          } else if (resumeEntry) {
+            onStartTaskSession(resumeEntry.task, resumeEntry.taskPath);
+          }
+        }}
+        type="button"
+      >
+        {resumeTarget
+          ? resumeUnavailable
+            ? "Resume target unavailable"
+            : `${resumeLink ? "Open" : "Resume"} ${resumeTarget.taskPath}`
+          : "No resume target"}
+      </button>
     </section>
   );
 }
