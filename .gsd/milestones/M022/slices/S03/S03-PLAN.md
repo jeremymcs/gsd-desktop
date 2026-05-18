@@ -4,9 +4,9 @@
 
 ## Tasks
 
-- [ ] Seed draft proposal fields from the current parked idea text after edits.
-- [ ] Keep duplicate proposal protection intact.
-- [ ] Cover edit -> prepare -> draft -> restart in Electron.
+- [x] Seed draft proposal fields from the current parked idea text after edits.
+- [x] Keep duplicate proposal protection intact.
+- [x] Cover edit -> prepare -> draft -> restart in Electron.
 
 ## Acceptance
 

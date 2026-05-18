@@ -18,7 +18,7 @@
 - [x] **S02: Restore Dismissed Ideas** `risk:medium` `depends:[S01]`
   > After this: a dismissed parked idea can be restored to parked status and prepared for promotion again.
 
-- [ ] **S03: Draft From Latest Idea Text** `risk:low` `depends:[S01,S02]`
+- [x] **S03: Draft From Latest Idea Text** `risk:low` `depends:[S01,S02]`
   > After this: change drafts seeded from parked ideas always use the latest edited idea text.
 
 ## Boundary Map

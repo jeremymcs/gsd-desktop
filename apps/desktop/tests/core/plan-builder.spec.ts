@@ -764,6 +764,8 @@ test("starts a change draft from a prepared composer idea", async () => {
     testMode: "background",
   });
   const ideaText = "Add retry budget review before verification.";
+  const revisedIdeaText = "Add retry budget review with edited acceptance.";
+  const replacementIdeaText = "Add retry budget replacement after draft deletion.";
 
   try {
     const window = await harness.firstWindow();
@@ -776,17 +778,25 @@ test("starts a change draft from a prepared composer idea", async () => {
     await window.getByLabel("Park composer idea").click();
 
     const review = window.getByTestId("plan-composer-parked-review");
+    const originalIdea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await originalIdea.getByRole("button", { name: "Edit idea" }).click();
+    const editForm = window.getByTestId("plan-idea-edit-form");
+    await editForm.getByTestId("plan-idea-text-textarea").fill(revisedIdeaText);
+    await editForm.getByRole("button", { name: "Save idea" }).click();
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: revisedIdeaText });
+    await expect(review).toContainText(revisedIdeaText);
     await review.getByRole("button", { name: "Prepare" }).click();
     await expect(review.getByRole("button", { name: "Draft change" })).toBeEnabled();
     await review.getByRole("button", { name: "Draft change" }).click();
 
-    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
     const titleInput = idea.getByTestId("plan-change-title-input");
     await expect(titleInput).toBeFocused();
+    await expect(idea.getByTestId("plan-change-summary-textarea")).toHaveValue(revisedIdeaText);
     await titleInput.fill("Retry budget change");
     await idea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
+    await expect(window.getByTestId("plan-change-proposals")).toContainText(revisedIdeaText);
     await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
     await expect(idea.getByRole("button", { name: "Drafted" })).toHaveCount(0);
     await idea.getByRole("button", { name: "Review proposal" }).click();
@@ -801,13 +811,20 @@ test("starts a change draft from a prepared composer idea", async () => {
     const firstProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" });
     await firstProposal.getByRole("button", { name: "Delete draft" }).click();
     await expect(firstProposal.getByTestId("plan-change-proposal-status")).toHaveText("Deleted");
-    await expect(idea.getByRole("button", { name: "Draft change" })).toBeEnabled();
-    await idea.getByRole("button", { name: "Draft change" }).click();
-    await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
-    await idea.getByTestId("plan-change-title-input").fill("Retry budget replacement");
-    await idea.getByRole("button", { name: "Save draft" }).click();
+    await idea.getByRole("button", { name: "Edit idea" }).click();
+    const replacementEditForm = window.getByTestId("plan-idea-edit-form");
+    await replacementEditForm.getByTestId("plan-idea-text-textarea").fill(replacementIdeaText);
+    await replacementEditForm.getByRole("button", { name: "Save idea" }).click();
+    const replacementIdea = window.getByTestId("plan-idea-item").filter({ hasText: replacementIdeaText });
+    await expect(replacementIdea.getByRole("button", { name: "Draft change" })).toBeEnabled();
+    await replacementIdea.getByRole("button", { name: "Draft change" }).click();
+    await expect(replacementIdea.getByTestId("plan-change-draft-form")).toBeVisible();
+    await expect(replacementIdea.getByTestId("plan-change-summary-textarea")).toHaveValue(replacementIdeaText);
+    await replacementIdea.getByTestId("plan-change-title-input").fill("Retry budget replacement");
+    await replacementIdea.getByRole("button", { name: "Save draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
-    await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
+    await expect(window.getByTestId("plan-change-proposals")).toContainText(replacementIdeaText);
+    await expect(replacementIdea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
     const replacementProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget replacement" });
     await replacementProposal.getByRole("button", { name: "Edit draft details" }).click();
     await expect(replacementProposal.getByTestId("plan-change-proposal-edit-form")).toBeVisible();
