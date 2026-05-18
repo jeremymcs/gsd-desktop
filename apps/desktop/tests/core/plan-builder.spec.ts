@@ -404,6 +404,26 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(activity).toContainText("Stop updated");
     await expect(activity).toContainText("M1/S1/T1: Build foundation");
     await expect(activity).toContainText("Waiting on credentials.");
+    await expect(window.getByTestId("copy-handoff-button")).toHaveText("Copy handoff");
+    const handoffText = await window.getByTestId("handoff-bundle-text").inputValue();
+    expect(handoffText).toContain("# Handoff Bundle");
+    expect(handoffText).toContain("Recovery handoff plan");
+    expect(handoffText).toContain("Projection status:");
+    expect(handoffText).toContain("- .gsd/NEXT.md");
+    expect(handoffText).toContain("- .gsd/milestones/M1/M1-ROADMAP.md");
+    expect(handoffText).toContain("Queue: 1 ready / 2 blocked");
+    expect(handoffText).toContain("- Ready: M1/S1/T3 - Independent check");
+    expect(handoffText).toContain("- Blocked: M1/S1/T1 - Build foundation - Waiting on credentials.");
+    expect(handoffText).toContain(
+      "- Blocked: M1/S1/T2 - Use foundation - M1/S1/T1: Dependency is not done with evidence",
+    );
+    expect(handoffText).toContain("Last attempted: M1/S1/T1: Build foundation");
+    expect(handoffText).toContain("Resume: M1/S1/T3: Independent check");
+    expect(handoffText).toContain(
+      "Stop conditions: tests-fail, scope-ambiguous, destructive-action, dirty-conflict, milestone-complete",
+    );
+    expect(handoffText).toContain("Task evidence: 0 items");
+    expect(handoffText).toContain("Stop updated: M1/S1/T1: Build foundation");
 
     const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
     expect(nextProjection).toContain("## Recovery Summary");
@@ -438,6 +458,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(activity.getByTestId("run-activity-entry")).toHaveCount(2);
     await expect(activity).toContainText("Resume attempted");
     await expect(activity).toContainText("M1/S1/T3: Independent check");
+    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/Resume attempted: M1\/S1\/T3: Independent check/);
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Open M1/S1/T3");
     await recovery.getByTestId("resume-recovery-target-button").click();
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(resumedSessionId);

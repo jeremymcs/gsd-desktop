@@ -12,5 +12,5 @@
 
 ## Slices
 
-- [ ] **S01: Active Plan Handoff Text** `risk:medium` `depends:[M034]`
+- [x] **S01: Active Plan Handoff Text** `risk:medium` `depends:[M034]`
   > After this: users can copy a restart-safe handoff summary.

@@ -1711,6 +1711,7 @@ export function PlanBuilderView({
             ) : allDiscussConfirmed && executeStarted ? (
               <PlanExecutionQueue
                 acceptedPlanProposal={acceptedPlanProposal}
+                plan={snapshot}
                 projectionSummary={planningState?.projectionSummary}
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
@@ -3509,6 +3510,7 @@ function formatAutonomousGuardrails(preferences: WorkflowPreferencesRecord | und
 
 function PlanExecutionQueue({
   acceptedPlanProposal,
+  plan,
   projectionSummary,
   submitting,
   taskExecutions,
@@ -3525,6 +3527,7 @@ function PlanExecutionQueue({
   onRegenerateProjections,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly plan: PlanSnapshot;
   readonly projectionSummary?: PlanningProjectionSummary;
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
@@ -3572,6 +3575,15 @@ function PlanExecutionQueue({
         taskVerifications,
       }),
     [planTasks, taskExecutions, taskVerifications],
+  );
+  const handoffText = useMemo(
+    () =>
+      buildPlanHandoffBundle({
+        plan,
+        proposal: acceptedPlanProposal,
+        projectionSummary,
+      }),
+    [acceptedPlanProposal, plan, projectionSummary],
   );
   const verifyReady =
     planTasks.length > 0 &&
@@ -3675,6 +3687,8 @@ function PlanExecutionQueue({
       />
 
       <RunActivityLedgerCard activity={runActivity} />
+
+      <PlanHandoffBundleCard handoffText={handoffText} />
 
       {acceptedPlanProposal ? (
         <NextWorkPanel
@@ -3852,6 +3866,47 @@ function PlanExecutionQueue({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PlanHandoffBundleCard({ handoffText }: { readonly handoffText: string }) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+
+  const copyHandoff = () => {
+    textareaRef.current?.select();
+    const write = navigator.clipboard?.writeText(handoffText);
+    if (!write) {
+      setCopyState("failed");
+      return;
+    }
+    void write.then(() => setCopyState("copied")).catch(() => setCopyState("failed"));
+  };
+
+  return (
+    <section className="plan-projection-card plan-handoff-bundle" data-testid="plan-handoff-bundle">
+      <div className="plan-handoff-bundle__header">
+        <div>
+          <strong>Handoff bundle</strong>
+          <span>Copy this into another session to resume from the current database state.</span>
+        </div>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="copy-handoff-button"
+          onClick={copyHandoff}
+          type="button"
+        >
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy handoff"}
+        </button>
+      </div>
+      <textarea
+        aria-label="Active plan handoff bundle"
+        data-testid="handoff-bundle-text"
+        readOnly
+        ref={textareaRef}
+        value={handoffText}
+      />
+    </section>
   );
 }
 
@@ -5011,6 +5066,124 @@ function emptyPlanProposal(): PlanningPlanProposalDraft {
     phases: [],
     milestones: [],
   };
+}
+
+function buildPlanHandoffBundle({
+  plan,
+  proposal,
+  projectionSummary,
+}: {
+  readonly plan: PlanSnapshot;
+  readonly proposal: PlanningPlanProposalDraft | undefined;
+  readonly projectionSummary?: PlanningProjectionSummary;
+}): string {
+  const taskEntries = proposal ? getPlanTaskEntries(proposal) : [];
+  const queue = computeNextWorkQueue({
+    tasks: taskEntries.map((entry) => ({
+      taskId: entry.task.id,
+      taskPath: entry.taskPath,
+      title: entry.task.title,
+      dependencies: entry.task.dependencies,
+    })),
+    taskExecutions: plan.taskExecutions,
+    taskVerifications: plan.taskVerifications,
+  });
+  const passedCount = plan.taskVerifications.filter((verification) => verification.status === "passed").length;
+  const failedCount = plan.taskVerifications.filter((verification) => verification.status === "failed").length;
+  const evidenceCount = plan.taskExecutions.reduce(
+    (total, execution) => total + execution.evidence.length,
+    0,
+  );
+  const policy = plan.workflowPreferences?.autonomousRun ?? defaultWorkflowAutonomousRunPolicy;
+
+  return [
+    "# Handoff Bundle",
+    "",
+    `Active plan: ${plan.readableId} - ${plan.name}`,
+    `Phase: ${formatPlanningPhase(plan.activePhase)}`,
+    `Revision: ${plan.revision}`,
+    "",
+    "## Projection References",
+    "",
+    `Projection status: ${projectionSummary ? formatProjectionSummary(projectionSummary) : "not generated in this view"}`,
+    ...buildProjectionReferencePaths(proposal).map((path) => `- ${path}`),
+    "",
+    "## Next Work",
+    "",
+    `Queue: ${queue.ready.length} ready / ${queue.blocked.length} blocked`,
+    ...formatHandoffQueue("Ready", queue.ready),
+    ...formatHandoffQueue("Blocked", queue.blocked),
+    "",
+    "## Recovery",
+    "",
+    ...formatHandoffRecovery(plan.runRecoverySummary),
+    "",
+    "## Autonomous Run Policy",
+    "",
+    `Mode: ${policy.mode}`,
+    `Commit cadence: ${policy.commitCadence}`,
+    `Verification required: ${policy.verificationRequired ? "yes" : "no"}`,
+    `Stop conditions: ${policy.stopConditions.join(", ")}`,
+    ...policy.guardrails.map((guardrail) => `- ${guardrail.label}: ${guardrail.description}`),
+    "",
+    "## Evidence",
+    "",
+    `Task evidence: ${evidenceCount} item${evidenceCount === 1 ? "" : "s"}`,
+    `Verification: ${passedCount} passed / ${failedCount} failed / ${taskEntries.length} task${taskEntries.length === 1 ? "" : "s"}`,
+    "",
+    "## Recent Run Activity",
+    "",
+    ...formatHandoffRunActivity(plan.runActivity),
+  ].join("\n");
+}
+
+function buildProjectionReferencePaths(proposal: PlanningPlanProposalDraft | undefined): readonly string[] {
+  const paths = [".gsd/STATE.md", ".gsd/NEXT.md", ".gsd/PROJECT.md", ".gsd/REQUIREMENTS.md"];
+  for (const milestone of proposal?.milestones ?? []) {
+    paths.push(`.gsd/milestones/${milestone.id}/${milestone.id}-CONTEXT.md`);
+    paths.push(`.gsd/milestones/${milestone.id}/${milestone.id}-ROADMAP.md`);
+    for (const slice of milestone.slices) {
+      paths.push(`.gsd/milestones/${milestone.id}/slices/${slice.id}/${slice.id}-PLAN.md`);
+    }
+  }
+  return paths;
+}
+
+function formatHandoffQueue(label: "Ready" | "Blocked", items: readonly NextWorkQueueItem[]): readonly string[] {
+  if (items.length === 0) {
+    return [`- ${label}: none`];
+  }
+  return items.map((item) => {
+    const reason = item.state === "blocked" ? ` - ${formatNextWorkReason(item)}` : "";
+    return `- ${label}: ${item.taskPath} - ${item.title}${reason}`;
+  });
+}
+
+function formatHandoffRecovery(summary: RunRecoverySummaryRecord | undefined): readonly string[] {
+  if (!summary) {
+    return ["No run recovery summary captured."];
+  }
+  return [
+    `Last attempted: ${formatRunRecoveryTarget(summary.lastAttemptedTask)}`,
+    `Stop reason: ${formatRunRecoveryStopReason(summary.stopReason)}`,
+    `Stop detail: ${summary.stopDetail || "No detail recorded"}`,
+    `Resume: ${summary.resumeTarget ? formatRunRecoveryTarget(summary.resumeTarget) : "No safe resume target"}`,
+  ];
+}
+
+function formatHandoffRunActivity(activity: readonly RunActivityRecord[]): readonly string[] {
+  const recentActivity = activity.slice(-3).reverse();
+  if (recentActivity.length === 0) {
+    return ["- None"];
+  }
+  return recentActivity.map((entry) => {
+    const detail = entry.detail ? ` - ${entry.detail}` : "";
+    return `- ${formatRunActivityKind(entry.kind)}: ${formatRunRecoveryTarget(entry.task)} - ${entry.summary}${detail}`;
+  });
+}
+
+function formatPlanningPhase(phase: PlanPhase): string {
+  return phase.charAt(0).toUpperCase() + phase.slice(1);
 }
 
 function getPlanTaskEntries(proposal: PlanningPlanProposalDraft): readonly PlanTaskEntry[] {
