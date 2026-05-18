@@ -26,6 +26,7 @@ test("renders the planning-phase projection file set with generated ownership he
         ".gsd/PROJECT.md",
         ".gsd/REQUIREMENTS.md",
         ".gsd/STATE.md",
+        ".gsd/NEXT.md",
         ".gsd/DECISIONS.md",
         ".gsd/milestones/M001/M001-CONTEXT.md",
         ".gsd/milestones/M001/M001-RESEARCH.md",
@@ -51,11 +52,50 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(requirements, /\| R003 \| deferred \| deferred \| _None_ \|/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Phase Sequence/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /P01: Foundation/);
+    assert.match(files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "", /# Next Work/);
+    assert.match(files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "", /\*\*Queue:\*\* 1 ready \/ 0 blocked/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /### Key Links/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /\*\*Requirements:\*\* R001/);
+
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("projects the next work queue with blockers and evidence gaps", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    const store = openPlanningStore({ workspaceRoot, updateGitignore: false });
+    let snapshot = seedSnapshot(store);
+    snapshot = store.appendEvent({
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "task.status-updated",
+        task: {
+          taskId: "T01",
+          taskPath: "M001/S01/T01",
+          status: "done",
+          note: "Package scaffold is complete.",
+          blocker: "",
+        },
+      },
+    });
+
+    const files = generatePlanningProjections(makeProjectionInput(snapshot, { includeSecondTask: true }));
+    const nextWork = files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
+
+    assert.match(nextWork, /\*\*Active Plan:\*\* .+ - Plan Builder/);
+    assert.match(nextWork, /\*\*Queue:\*\* 0 ready \/ 1 blocked/);
+    assert.match(nextWork, /### M001\/S01\/T02: Second generated task/);
+    assert.match(nextWork, /M001\/S01\/T01: Dependency is not done with evidence/);
+    assert.match(nextWork, /M001\/S01\/T01: done without evidence/);
+    assert.match(nextWork, /A dependency unblocks only after it is done with evidence or has passed verification/);
 
     store.close();
   } finally {
@@ -424,6 +464,7 @@ function makeProjectionInput(snapshot, options = {}) {
       id: "T02",
       title: "Second generated task",
       status: "pending",
+      dependencies: ["T01"],
       requirementIds: [],
       description: "Create a removable generated task.",
       goal: "Prove stale generated files are removed.",

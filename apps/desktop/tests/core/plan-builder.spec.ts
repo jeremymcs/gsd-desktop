@@ -1859,6 +1859,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "REQUIREMENTS.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
+    await access(join(workspacePath, ".gsd", "NEXT.md"));
     const modificationProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Primary task acceptance update" });
     await expect(modificationProposal.getByTestId("plan-modification-form")).toBeVisible();
     await modificationProposal.getByTestId("plan-modification-task-select").selectOption("M1/S1/T1");
@@ -1967,6 +1968,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(requirementsProjection).toContain("| R001 | active | covered | M1/S1/T1 |");
     expect(requirementsProjection).toContain("| R003 | active | uncovered | _None_ |");
     expect(requirementsProjection).toContain("Active: 4");
+    const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
+    expect(nextProjection).toContain("# Next Work");
+    expect(nextProjection).toContain("**Active Plan:**");
+    expect(nextProjection).toContain("**Queue:** 1 ready / 0 blocked");
+    expect(nextProjection).toContain("M1/S1/T1: Implement and verify the slice");
+    expect(nextProjection).toContain(".gsd/milestones/M1/slices/S1/tasks/T1-PLAN.md");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
     expect(roadmapProjection).toContain("**Phase:** P2 - Hardening");

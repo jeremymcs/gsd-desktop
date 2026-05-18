@@ -18,7 +18,7 @@
 - [x] **S02: Next Work Panel** `risk:medium` `depends:[S01]`
   > After this: Plan Builder shows the next actionable items with dependency and evidence context.
 
-- [ ] **S03: Handoff Projection** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Handoff Projection** `risk:medium` `depends:[S01,S02]`
   > After this: generated `.gsd/NEXT.md` summarizes the active queue for another session or agent.
 
 ## Boundary Map

@@ -6,7 +6,11 @@ import type {
   PlanSnapshot,
   RequirementRecord,
   RequirementStatus,
+  TaskExecutionRecord,
+  TaskSessionLinkRecord,
+  TaskVerificationRecord,
 } from "./types.js";
+import { computeNextWorkQueue, type NextWorkQueueItem } from "./next-work.js";
 
 export const GENERATED_PROJECTION_MARKER = "pi-gui-plan-builder-generated";
 export const GENERATED_PROJECTION_SOURCE = ".gsd/gsd.db";
@@ -15,6 +19,7 @@ export type ProjectionFileKind =
   | "project"
   | "requirements"
   | "state"
+  | "next-work"
   | "decisions"
   | "milestone-context"
   | "milestone-research"
@@ -105,6 +110,7 @@ export interface TaskProjection {
   readonly id: string;
   readonly title: string;
   readonly status?: "pending" | "active" | "done";
+  readonly dependencies?: readonly string[];
   readonly requirementIds?: readonly string[];
   readonly description: string;
   readonly goal: string;
@@ -136,6 +142,11 @@ export function generatePlanningProjections(input: GeneratePlanningProjectionsIn
       kind: "state",
       path: ".gsd/STATE.md",
       content: withHeader(header, renderState(input.plan, input.state, milestones)),
+    },
+    {
+      kind: "next-work",
+      path: ".gsd/NEXT.md",
+      content: withHeader(header, renderNextWork(input.plan, milestones)),
     },
     {
       kind: "decisions",
@@ -365,6 +376,72 @@ function renderState(
     "## Change Log",
     "",
     renderChangeLog(plan.changeProposals),
+  ].join("\n");
+}
+
+function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjection[]): string {
+  const taskRefs = getProjectedTaskRefs(milestones);
+  const taskById = new Map(taskRefs.map((task) => [task.id, task]));
+  const executionById = new Map(plan.taskExecutions.map((execution) => [execution.taskId, execution]));
+  const verificationById = new Map(plan.taskVerifications.map((verification) => [verification.taskId, verification]));
+  const linkById = new Map(plan.taskSessionLinks.map((link) => [link.taskId, link]));
+  const queue = computeNextWorkQueue({
+    tasks: taskRefs.map((task) => ({
+      taskId: task.id,
+      taskPath: task.path,
+      title: task.title,
+      dependencies: task.dependencies,
+    })),
+    taskExecutions: plan.taskExecutions,
+    taskVerifications: plan.taskVerifications,
+  });
+  const doneWithoutEvidence = getDoneWithoutEvidence(taskRefs, executionById, verificationById);
+  const failedVerifications = plan.taskVerifications.filter((verification) => verification.status === "failed");
+
+  return [
+    "# Next Work",
+    "",
+    `**Active Plan:** ${plan.readableId} - ${plan.name}`,
+    `**Phase:** ${formatPhase(plan.activePhase)}`,
+    `**Queue:** ${queue.ready.length} ready / ${queue.blocked.length} blocked`,
+    "",
+    "## Ready",
+    "",
+    queue.ready.length > 0
+      ? queue.ready
+          .map((item, index) =>
+            renderNextWorkItem(item, index + 1, taskById, linkById, executionById, verificationById),
+          )
+          .join("\n\n")
+      : "_No ready tasks._",
+    "",
+    "## Blocked",
+    "",
+    queue.blocked.length > 0
+      ? queue.blocked.map((item) => renderBlockedWorkItem(item, taskById, executionById, verificationById)).join("\n\n")
+      : "_No blocked tasks._",
+    "",
+    "## Evidence Gaps",
+    "",
+    doneWithoutEvidence.length > 0
+      ? renderBullets(doneWithoutEvidence.map((task) => `${task.path}: done without evidence`))
+      : "- None",
+    "",
+    "## Verification Gates",
+    "",
+    renderBullets([
+      "A dependency unblocks only after it is done with evidence or has passed verification.",
+      "SHIP should wait until accepted tasks are done with evidence or have passed verification.",
+      ...failedVerifications.map(
+        (verification) => `${verification.taskPath}: failed verification - ${verification.note || verification.acceptance}`,
+      ),
+    ]),
+    "",
+    "## Task Plan Files",
+    "",
+    taskRefs.length > 0
+      ? renderBullets(taskRefs.map((task) => `${task.path}: ${task.filePath}`))
+      : "- No task plan files projected.",
   ].join("\n");
 }
 
@@ -633,6 +710,103 @@ function renderTaskPlan(milestone: MilestoneProjection, slice: SliceProjection, 
     "## Context",
     renderBullets(task.context),
   ].join("\n");
+}
+
+interface ProjectedTaskRef {
+  readonly id: string;
+  readonly path: string;
+  readonly filePath: string;
+  readonly title: string;
+  readonly goal: string;
+  readonly dependencies: readonly string[];
+}
+
+function getProjectedTaskRefs(milestones: readonly MilestoneProjection[]): readonly ProjectedTaskRef[] {
+  return milestones.flatMap((milestone) =>
+    milestone.slices.flatMap((slice) =>
+      slice.tasks.map((task) => ({
+        id: task.id,
+        path: `${milestone.id}/${slice.id}/${task.id}`,
+        filePath: `.gsd/milestones/${milestone.id}/slices/${slice.id}/tasks/${task.id}-PLAN.md`,
+        title: task.title,
+        goal: task.goal,
+        dependencies: task.dependencies ?? [],
+      })),
+    ),
+  );
+}
+
+function renderNextWorkItem(
+  item: NextWorkQueueItem,
+  index: number,
+  taskById: ReadonlyMap<string, ProjectedTaskRef>,
+  linkById: ReadonlyMap<string, TaskSessionLinkRecord>,
+  executionById: ReadonlyMap<string, TaskExecutionRecord>,
+  verificationById: ReadonlyMap<string, TaskVerificationRecord>,
+): string {
+  const task = taskById.get(item.taskId);
+  const link = linkById.get(item.taskId);
+  return [
+    `### ${index}. ${item.taskPath}: ${item.title}`,
+    "",
+    "- **Why next:** Ready to start.",
+    `- **Acceptance:** ${task?.goal ?? "Not captured."}`,
+    `- **Execution:** ${formatExecutionState(executionById.get(item.taskId))}`,
+    `- **Verification:** ${formatVerificationState(verificationById.get(item.taskId))}`,
+    `- **Session:** ${link ? `${link.title} (${link.sessionId})` : "No linked session yet."}`,
+    `- **Task plan:** ${task?.filePath ?? "No task plan projected."}`,
+  ].join("\n");
+}
+
+function renderBlockedWorkItem(
+  item: NextWorkQueueItem,
+  taskById: ReadonlyMap<string, ProjectedTaskRef>,
+  executionById: ReadonlyMap<string, TaskExecutionRecord>,
+  verificationById: ReadonlyMap<string, TaskVerificationRecord>,
+): string {
+  const task = taskById.get(item.taskId);
+  return [
+    `### ${item.taskPath}: ${item.title}`,
+    "",
+    `- **Blocked by:** ${formatNextWorkBlockers(item)}`,
+    `- **Acceptance:** ${task?.goal ?? "Not captured."}`,
+    `- **Execution:** ${formatExecutionState(executionById.get(item.taskId))}`,
+    `- **Verification:** ${formatVerificationState(verificationById.get(item.taskId))}`,
+    `- **Task plan:** ${task?.filePath ?? "No task plan projected."}`,
+  ].join("\n");
+}
+
+function getDoneWithoutEvidence(
+  tasks: readonly ProjectedTaskRef[],
+  executionById: ReadonlyMap<string, TaskExecutionRecord>,
+  verificationById: ReadonlyMap<string, TaskVerificationRecord>,
+): readonly ProjectedTaskRef[] {
+  return tasks.filter((task) => {
+    const execution = executionById.get(task.id);
+    const verification = verificationById.get(task.id);
+    return execution?.status === "done" && execution.evidence.length === 0 && verification?.status !== "passed";
+  });
+}
+
+function formatNextWorkBlockers(item: NextWorkQueueItem): string {
+  const dependencyReasons = item.blockingDependencies.map((dependency) =>
+    dependency.taskPath ? `${dependency.taskPath}: ${dependency.reason}` : `${dependency.taskId}: ${dependency.reason}`,
+  );
+  return [...dependencyReasons, item.blocker].filter(Boolean).join("; ") || "Blocked.";
+}
+
+function formatExecutionState(execution: TaskExecutionRecord | undefined): string {
+  if (!execution) {
+    return "not-started";
+  }
+  return execution.blocker ? `${execution.status} - ${execution.blocker}` : execution.status;
+}
+
+function formatVerificationState(verification: TaskVerificationRecord | undefined): string {
+  if (!verification) {
+    return "not verified";
+  }
+  return verification.note ? `${verification.status} - ${verification.note}` : verification.status;
 }
 
 function renderBullets(items: readonly string[]): string {

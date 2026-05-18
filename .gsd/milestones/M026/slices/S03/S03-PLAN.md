@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Add `.gsd/NEXT.md` projection from queue state.
-- [ ] Include active plan, next tasks, blockers, evidence gaps, and verification gates.
-- [ ] Write atomically and only when content changes.
-- [ ] Cover projection output in tests.
+- [x] Add `.gsd/NEXT.md` projection from queue state.
+- [x] Include active plan, next tasks, blockers, evidence gaps, and verification gates.
+- [x] Write atomically and only when content changes.
+- [x] Cover projection output in tests.
 
 ## Acceptance
 
