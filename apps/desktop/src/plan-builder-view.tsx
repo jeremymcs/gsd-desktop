@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import { computeGuardrailWarnings, type GuardrailWarning } from "@pi-gui/gsd-planning/guardrails";
 import { defaultWorkflowAutonomousRunPolicy } from "@pi-gui/gsd-planning/types";
-import { computeNextWorkQueue, type NextWorkQueueItem } from "@pi-gui/gsd-planning/next-work";
+import { computeNextWorkQueue, type NextWorkQueue, type NextWorkQueueItem } from "@pi-gui/gsd-planning/next-work";
 import type {
   AnswerRecord,
   ChangeProposalRecord,
@@ -1771,6 +1771,8 @@ export function PlanBuilderView({
             ) : allDiscussConfirmed && shipStarted ? (
               <PlanShipGate
                 acceptedPlanProposal={acceptedPlanProposal}
+                plan={snapshot}
+                projectionSummary={planningState?.projectionSummary}
                 shipSummaries={snapshot.shipSummaries ?? []}
                 submitting={submitting}
                 taskExecutions={snapshot.taskExecutions ?? []}
@@ -3903,6 +3905,15 @@ function PlanExecutionQueue({
       }),
     [acceptedPlanProposal, phaseModelRouting, plan, projectionSummary],
   );
+  const overnightReportText = useMemo(
+    () =>
+      buildOvernightRunReport({
+        plan,
+        proposal: acceptedPlanProposal,
+        projectionSummary,
+      }),
+    [acceptedPlanProposal, plan, projectionSummary],
+  );
   const verifyReady =
     planTasks.length > 0 &&
     planTasks.every(({ task }) => {
@@ -4019,6 +4030,8 @@ function PlanExecutionQueue({
       <RunActivityLedgerCard activity={runActivity} />
 
       <PlanHandoffBundleCard handoffText={handoffText} />
+
+      <PlanOvernightReportCard reportText={overnightReportText} />
 
       {acceptedPlanProposal ? (
         <AutopilotPreflightCard
@@ -4481,6 +4494,47 @@ function PlanHandoffBundleCard({ handoffText }: { readonly handoffText: string }
   );
 }
 
+function PlanOvernightReportCard({ reportText }: { readonly reportText: string }) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+
+  const copyReport = () => {
+    textareaRef.current?.select();
+    const write = navigator.clipboard?.writeText(reportText);
+    if (!write) {
+      setCopyState("failed");
+      return;
+    }
+    void write.then(() => setCopyState("copied")).catch(() => setCopyState("failed"));
+  };
+
+  return (
+    <section className="plan-projection-card plan-overnight-report" data-testid="overnight-run-report">
+      <div className="plan-overnight-report__header">
+        <div>
+          <strong>Overnight run report</strong>
+          <span>Copyable summary of run activity, stops, evidence, and next action.</span>
+        </div>
+        <button
+          className="plan-action-button plan-action-button--compact"
+          data-testid="copy-overnight-report-button"
+          onClick={copyReport}
+          type="button"
+        >
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy report"}
+        </button>
+      </div>
+      <textarea
+        aria-label="Overnight run report"
+        data-testid="overnight-run-report-text"
+        readOnly
+        ref={textareaRef}
+        value={reportText}
+      />
+    </section>
+  );
+}
+
 function PlanEvidenceLedger({
   tasks,
   taskExecutionMap,
@@ -4921,6 +4975,8 @@ function PlanEvidenceReportCard({ reportText }: { readonly reportText: string })
 
 function PlanShipGate({
   acceptedPlanProposal,
+  plan,
+  projectionSummary,
   shipSummaries,
   submitting,
   taskExecutions,
@@ -4928,6 +4984,8 @@ function PlanShipGate({
   onRecordShipSummary,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
+  readonly plan: PlanSnapshot;
+  readonly projectionSummary?: PlanningProjectionSummary;
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
@@ -4960,6 +5018,15 @@ function PlanShipGate({
     () => buildShipSummaryDraft(acceptedPlanProposal, taskExecutions, taskVerifications),
     [acceptedPlanProposal, taskExecutions, taskVerifications],
   );
+  const overnightReportText = useMemo(
+    () =>
+      buildOvernightRunReport({
+        plan,
+        proposal: acceptedPlanProposal,
+        projectionSummary,
+      }),
+    [acceptedPlanProposal, plan, projectionSummary],
+  );
   const [summaryDraft, setSummaryDraft] = useState("");
 
   useEffect(() => {
@@ -4986,6 +5053,8 @@ function PlanShipGate({
           </div>
         </div>
       ) : null}
+
+      <PlanOvernightReportCard reportText={overnightReportText} />
 
       <div className="plan-ship-summary">
         <label className="plan-execution-task-editor__field">
@@ -5759,6 +5828,162 @@ function buildPlanHandoffBundle({
     "",
     ...formatHandoffRunActivity(plan.runActivity),
   ].join("\n");
+}
+
+function buildOvernightRunReport({
+  plan,
+  proposal,
+  projectionSummary,
+}: {
+  readonly plan: PlanSnapshot;
+  readonly proposal: PlanningPlanProposalDraft | undefined;
+  readonly projectionSummary?: PlanningProjectionSummary;
+}): string {
+  const taskEntries = proposal ? getPlanTaskEntries(proposal) : [];
+  const taskExecutionMap = new Map(plan.taskExecutions.map((execution) => [execution.taskId, execution]));
+  const taskVerificationMap = new Map(plan.taskVerifications.map((verification) => [verification.taskId, verification]));
+  const queue = computeNextWorkQueue({
+    tasks: taskEntries.map((entry) => ({
+      taskId: entry.task.id,
+      taskPath: entry.taskPath,
+      title: entry.task.title,
+      dependencies: entry.task.dependencies,
+    })),
+    taskExecutions: plan.taskExecutions,
+    taskVerifications: plan.taskVerifications,
+  });
+  const guardrails = computeGuardrailWarnings({
+    projection: projectionSummary
+      ? {
+          missing: projectionSummary.missing,
+          stale: projectionSummary.stale,
+          conflicts: projectionSummary.conflicts,
+        }
+      : undefined,
+    runRecoverySummary: plan.runRecoverySummary,
+  });
+  const statusCounts = countTaskExecutionStatuses(taskEntries, taskExecutionMap);
+  const evidenceCount = plan.taskExecutions.reduce(
+    (total, execution) => total + execution.evidence.length,
+    0,
+  );
+
+  return [
+    "# Overnight Run Report",
+    "",
+    `Plan: ${plan.readableId} - ${plan.name}`,
+    `Phase: ${formatPlanningPhase(plan.activePhase)}`,
+    `Revision: ${plan.revision}`,
+    "",
+    "## Summary",
+    "",
+    `Tasks: ${statusCounts.done} done / ${statusCounts.inProgress} in progress / ${statusCounts.blocked} blocked / ${statusCounts.notStarted} not started`,
+    `Evidence: ${evidenceCount} item${evidenceCount === 1 ? "" : "s"}`,
+    `Projection status: ${projectionSummary ? formatProjectionSummary(projectionSummary) : "not generated in this view"}`,
+    "",
+    "## Guardrails And Stops",
+    "",
+    ...formatOvernightGuardrails(guardrails),
+    ...formatOvernightRecovery(plan.runRecoverySummary),
+    "",
+    "## Task Attempts",
+    "",
+    ...formatOvernightTaskAttempts(taskEntries, taskExecutionMap, taskVerificationMap),
+    "",
+    "## Recent Run Activity",
+    "",
+    ...formatHandoffRunActivity(plan.runActivity),
+    "",
+    "## Next Recommended Action",
+    "",
+    formatOvernightNextAction(queue, guardrails, plan.runRecoverySummary),
+  ].join("\n");
+}
+
+function countTaskExecutionStatuses(
+  taskEntries: readonly PlanTaskEntry[],
+  taskExecutionMap: ReadonlyMap<string, TaskExecutionRecord>,
+): {
+  readonly done: number;
+  readonly inProgress: number;
+  readonly blocked: number;
+  readonly notStarted: number;
+} {
+  const counts = { done: 0, inProgress: 0, blocked: 0, notStarted: 0 };
+  for (const entry of taskEntries) {
+    const status = taskExecutionMap.get(entry.task.id)?.status ?? "not-started";
+    if (status === "done") {
+      counts.done += 1;
+    } else if (status === "in-progress") {
+      counts.inProgress += 1;
+    } else if (status === "blocked") {
+      counts.blocked += 1;
+    } else {
+      counts.notStarted += 1;
+    }
+  }
+  return counts;
+}
+
+function formatOvernightGuardrails(warnings: readonly GuardrailWarning[]): readonly string[] {
+  if (warnings.length === 0) {
+    return ["Guardrails: none"];
+  }
+  return warnings.map((warning) => (
+    `Guardrail: ${warning.title} (${formatAutonomousStopCondition(warning.condition)}) - ${warning.detail}`
+  ));
+}
+
+function formatOvernightRecovery(summary: RunRecoverySummaryRecord | undefined): readonly string[] {
+  if (!summary) {
+    return ["Stop: none"];
+  }
+  return [
+    `Stop: ${formatRunRecoveryStopReason(summary.stopReason)} - ${summary.stopDetail || "No detail recorded"}`,
+    `Last attempted: ${formatRunRecoveryTarget(summary.lastAttemptedTask)}`,
+    `Resume target: ${summary.resumeTarget ? formatRunRecoveryTarget(summary.resumeTarget) : "No safe resume target"}`,
+  ];
+}
+
+function formatOvernightTaskAttempts(
+  taskEntries: readonly PlanTaskEntry[],
+  taskExecutionMap: ReadonlyMap<string, TaskExecutionRecord>,
+  taskVerificationMap: ReadonlyMap<string, TaskVerificationRecord>,
+): readonly string[] {
+  if (taskEntries.length === 0) {
+    return ["- No accepted task plan."];
+  }
+  return taskEntries.map((entry) => {
+    const execution = taskExecutionMap.get(entry.task.id);
+    const verification = taskVerificationMap.get(entry.task.id);
+    const blocker = execution?.blocker ? `; blocker: ${execution.blocker}` : "";
+    const evidence = execution?.evidence.length ?? 0;
+    return `- ${entry.taskPath}: ${entry.task.title} - ${formatTaskExecutionStatus(
+      execution?.status ?? "not-started",
+    )}; evidence ${evidence}; verification ${formatTaskVerificationStatus(verification?.status)}${blocker}`;
+  });
+}
+
+function formatOvernightNextAction(
+  queue: NextWorkQueue,
+  warnings: readonly GuardrailWarning[],
+  recovery: RunRecoverySummaryRecord | undefined,
+): string {
+  const blockingWarning = warnings.find(isAutopilotBlockingWarning);
+  if (blockingWarning?.kind === "recovery-stop" && recovery?.resumeTarget) {
+    return `Resume ${formatRunRecoveryTarget(recovery.resumeTarget)}.`;
+  }
+  if (blockingWarning) {
+    return `Resolve guardrail: ${blockingWarning.title}.`;
+  }
+  const nextReady = queue.ready[0];
+  if (nextReady) {
+    return `Start ${nextReady.taskPath}: ${nextReady.title}.`;
+  }
+  if (queue.blocked.length > 0) {
+    return "Resolve blocked tasks before continuing.";
+  }
+  return "No EXECUTE work remains; continue to VERIFY or SHIP.";
 }
 
 function buildPhaseModelRoutingRows(

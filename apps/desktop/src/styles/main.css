@@ -2653,25 +2653,29 @@
   white-space: normal;
 }
 
-.plan-handoff-bundle {
+.plan-handoff-bundle,
+.plan-overnight-report {
   align-items: stretch;
   flex-direction: column;
 }
 
-.plan-handoff-bundle__header {
+.plan-handoff-bundle__header,
+.plan-overnight-report__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.plan-handoff-bundle__header > div {
+.plan-handoff-bundle__header > div,
+.plan-overnight-report__header > div {
   min-width: 0;
   display: grid;
   gap: 4px;
 }
 
-.plan-handoff-bundle textarea {
+.plan-handoff-bundle textarea,
+.plan-overnight-report textarea {
   min-height: 220px;
   width: 100%;
   border: 1px solid #30343d;
@@ -4634,6 +4638,7 @@
 .canvas--plans .plan-change-draft select,
 .canvas--plans .plan-change-draft textarea,
 .canvas--plans .plan-handoff-bundle textarea,
+.canvas--plans .plan-overnight-report textarea,
 .canvas--plans .plan-evidence-report textarea,
 .canvas--plans .plan-phase-model-row__select,
 .canvas--plans .plan-side__workspace select {

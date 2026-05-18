@@ -575,6 +575,17 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     );
     expect(handoffText).toContain("Task evidence: 0 items");
     expect(handoffText).toContain("Stop updated: M1/S1/T1: Build foundation");
+    await expect(window.getByTestId("copy-overnight-report-button")).toHaveText("Copy report");
+    const overnightReportText = await window.getByTestId("overnight-run-report-text").inputValue();
+    expect(overnightReportText).toContain("# Overnight Run Report");
+    expect(overnightReportText).toContain("Recovery handoff plan");
+    expect(overnightReportText).toContain("Tasks: 0 done / 0 in progress / 1 blocked / 2 not started");
+    expect(overnightReportText).toContain("Guardrail: Previous run stopped before clean completion");
+    expect(overnightReportText).toContain(
+      "- M1/S1/T1: Build foundation - Blocked; evidence 0; verification Pending; blocker: Waiting on credentials.",
+    );
+    expect(overnightReportText).toContain("Next Recommended Action");
+    expect(overnightReportText).toContain("Resume M1/S1/T3: Independent check.");
 
     const nextProjection = await readFile(join(workspacePath, ".gsd", "NEXT.md"), "utf8");
     expect(nextProjection).toContain("## Recovery Summary");
@@ -621,6 +632,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     const activity = window.getByTestId("run-activity-ledger");
     await expect(activity).toContainText("Stop updated");
     await expect(activity).toContainText("M1/S1/T1: Build foundation");
+    await expect(window.getByTestId("overnight-run-report-text")).toHaveValue(/Resume M1\/S1\/T3: Independent check\./);
     await expect(recovery.getByTestId("resume-recovery-target-button")).toHaveText("Resume M1/S1/T3");
     await guardrails.getByTestId("guardrail-resume-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
@@ -1692,6 +1704,12 @@ test("starts SHIP from the Plan Builder composer handoff", async () => {
     await window.getByLabel("Advance composer to SHIP").click();
 
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect(window.getByTestId("overnight-run-report")).toBeVisible();
+    await expect(window.getByTestId("overnight-run-report-text")).toHaveValue(/# Overnight Run Report/);
+    await expect(window.getByTestId("overnight-run-report-text")).toHaveValue(/Tasks: 1 done /);
+    await expect(window.getByTestId("overnight-run-report-text")).toHaveValue(
+      /No EXECUTE work remains; continue to VERIFY or SHIP\./,
+    );
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(

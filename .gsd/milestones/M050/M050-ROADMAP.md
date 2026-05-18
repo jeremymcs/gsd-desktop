@@ -12,5 +12,12 @@
 
 ## Slices
 
-- [ ] **S01: Derived Run Report** `risk:medium` `depends:[M034,M036,M042]`
+- [x] **S01: Derived Run Report** `risk:medium` `depends:[M034,M036,M042]`
   > After this: users can review a durable overnight run report after autonomous work.
+
+## Verification
+
+- `pnpm --filter @pi-gui/desktop typecheck`
+- `pnpm --filter @pi-gui/desktop build`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "persists run recovery summary"`
+- `pnpm --filter @pi-gui/desktop run test:e2e:runner -- apps/desktop/tests/core/plan-builder.spec.ts --grep "starts SHIP from the Plan Builder composer handoff"`
