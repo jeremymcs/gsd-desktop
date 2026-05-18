@@ -303,6 +303,13 @@ export interface HidePlanningTaskInput {
   readonly reason: string;
 }
 
+export interface RestorePlanningTaskInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly taskPath: string;
+}
+
 export interface ConfirmPlanningStageInput {
   readonly workspaceId: string;
   readonly planId: string;

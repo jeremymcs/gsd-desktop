@@ -48,6 +48,7 @@ import type {
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
+  RestorePlanningTaskInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
   StartPlanningExecutionInput,
@@ -131,6 +132,7 @@ interface PlanBuilderViewProps {
   readonly onApproveChangeProposal: (input: ApprovePlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onApproveTaskModification: (input: ApprovePlanningTaskModificationInput) => Promise<DesktopAppState>;
   readonly onHidePlanningTask: (input: HidePlanningTaskInput) => Promise<DesktopAppState>;
+  readonly onRestorePlanningTask: (input: RestorePlanningTaskInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
@@ -178,6 +180,7 @@ export function PlanBuilderView({
   onApproveChangeProposal,
   onApproveTaskModification,
   onHidePlanningTask,
+  onRestorePlanningTask,
   onConfirmStage,
   onStartResearch,
   onProposeResearch,
@@ -704,6 +707,21 @@ export function PlanBuilderView({
       expectedRevision: snapshot.revision,
       taskPath,
       reason,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const restorePlanningTask = (taskPath: string) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onRestorePlanningTask({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      taskPath,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -2038,6 +2056,7 @@ export function PlanBuilderView({
                     onApprove={approveChangeProposal}
                     onApproveModification={approveTaskModification}
                     onHideTask={hidePlanningTask}
+                    onRestoreTask={restorePlanningTask}
                   />
                 ))}
               </div>
@@ -3741,6 +3760,7 @@ function ChangeProposalCard({
   onApprove,
   onApproveModification,
   onHideTask,
+  onRestoreTask,
 }: {
   readonly acceptedPlanProposal: PlanningPlanProposalDraft | undefined;
   readonly focusToken: number;
@@ -3749,6 +3769,7 @@ function ChangeProposalCard({
   readonly onApprove: (proposal: ChangeProposalRecord, draft: PlanInjectionApprovalDraft) => void;
   readonly onApproveModification: (proposal: ChangeProposalRecord, draft: PlanTaskModificationDraft) => void;
   readonly onHideTask: (taskPath: string, reason: string) => void;
+  readonly onRestoreTask: (taskPath: string) => void;
 }) {
   const cardRef = useRef<HTMLElement | null>(null);
   const approvalFocusRef = useRef<HTMLSelectElement | null>(null);
@@ -3867,6 +3888,8 @@ function ChangeProposalCard({
     onHideTask(proposal.injectedTaskPath, reason);
   };
 
+  const restoreInjectedTaskPath = proposal.injectedTaskPath && !injectedTaskActive ? proposal.injectedTaskPath : "";
+
   const submitModification = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedModificationTask || !canApproveModification) {
@@ -3903,6 +3926,18 @@ function ChangeProposalCard({
         <p className="plan-memory__note" data-testid="plan-hidden-task-note">
           Hidden from active plan
         </p>
+      ) : null}
+      {proposal.status === "approved" && restoreInjectedTaskPath ? (
+        <div className="plan-memory__editor-actions">
+          <button
+            className="plan-secondary-button plan-secondary-button--compact"
+            disabled={submitting}
+            onClick={() => onRestoreTask(restoreInjectedTaskPath)}
+            type="button"
+          >
+            Restore injected task
+          </button>
+        </div>
       ) : null}
       {proposal.status === "draft" && !acceptedPlanProposal ? (
         <p className="plan-memory__note">Accept a plan before approving this change.</p>

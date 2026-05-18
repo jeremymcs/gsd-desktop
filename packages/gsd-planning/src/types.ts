@@ -351,6 +351,12 @@ export type PlanEvent =
       readonly item: Omit<HiddenPlanItemRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
+    }
+  | {
+      readonly type: "plan.item-restored";
+      readonly itemId: string;
+      readonly targetPath: string;
+      readonly acceptedOutputId: string;
     };
 
 export interface PersistedPlanEvent {

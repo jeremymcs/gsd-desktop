@@ -64,6 +64,7 @@ import {
   type ReviewPlanningPlanInput,
   type ReviewPlanningResearchInput,
   type RemoveWorktreeInput,
+  type RestorePlanningTaskInput,
   type RevisePlanningAnswerInput,
   type SelectedTranscriptRecord,
   type SelectPlanningPlanInput,
@@ -425,6 +426,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState> {
     return plans.hidePlanningTask(this, input);
+  }
+
+  async restorePlanningTask(input: RestorePlanningTaskInput): Promise<DesktopAppState> {
+    return plans.restorePlanningTask(this, input);
   }
 
   async confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState> {

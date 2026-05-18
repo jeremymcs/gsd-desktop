@@ -31,6 +31,7 @@ import type {
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
+  RestorePlanningTaskInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
@@ -88,6 +89,7 @@ export const desktopIpc = {
   approvePlanningChangeProposal: "pi-gui:approve-planning-change-proposal",
   approvePlanningTaskModification: "pi-gui:approve-planning-task-modification",
   hidePlanningTask: "pi-gui:hide-planning-task",
+  restorePlanningTask: "pi-gui:restore-planning-task",
   confirmPlanningStage: "pi-gui:confirm-planning-stage",
   startPlanningResearch: "pi-gui:start-planning-research",
   proposePlanningResearch: "pi-gui:propose-planning-research",
@@ -302,6 +304,7 @@ export interface PiDesktopApi {
   approvePlanningChangeProposal(input: ApprovePlanningChangeProposalInput): Promise<DesktopAppState>;
   approvePlanningTaskModification(input: ApprovePlanningTaskModificationInput): Promise<DesktopAppState>;
   hidePlanningTask(input: HidePlanningTaskInput): Promise<DesktopAppState>;
+  restorePlanningTask(input: RestorePlanningTaskInput): Promise<DesktopAppState>;
   confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;
   proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState>;

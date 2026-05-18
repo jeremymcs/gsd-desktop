@@ -4,6 +4,7 @@ import {
   ProjectionWriteConflictError,
   regenerateProjections,
   writeWorkflowPreferenceFiles,
+  type ApprovedPlanInjectionRecord,
   type PlanEvent,
   type PlanListEntry,
   type PlanSnapshot,
@@ -38,6 +39,7 @@ import type {
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
+  RestorePlanningTaskInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
   StartPlanningExecutionInput,
@@ -752,6 +754,100 @@ export async function hidePlanningTask(
           stage: "roadmap",
           title: `Hidden task - ${taskPath}`,
           content: serializePlanProposal(hidden.proposal),
+          status: "proposed",
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.reviewed",
+        outputId,
+        status: "accepted",
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "stage.updated",
+        stage: "roadmap",
+        status: "approved",
+        activeQuestionId: "",
+      });
+      if (previousPosition.phase !== "plan" || previousPosition.stage !== "roadmap") {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "phase.updated",
+          phase: previousPosition.phase,
+          stage: previousPosition.stage,
+        });
+      }
+
+      const projectionSummary = await writePlanningProjections(workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        projectionSummary,
+      });
+    });
+  });
+}
+
+export async function restorePlanningTask(
+  store: AppStoreInternals,
+  input: RestorePlanningTaskInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const taskPath = input.taskPath.trim();
+  if (!taskPath) {
+    return store.withError("Restored tasks need a task path");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, async (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      const previousPosition = {
+        phase: snapshot.activePhase,
+        stage: snapshot.activeStage,
+      };
+      const hiddenItem = snapshot.hiddenPlanItems.find((item) => item.targetPath === taskPath);
+      if (!hiddenItem) {
+        throw new Error(`Task ${taskPath} is not hidden`);
+      }
+      const injection = snapshot.approvedInjections.find((entry) => entry.taskPath === taskPath);
+      if (!injection) {
+        throw new Error(`Task ${taskPath} cannot be restored because it is not an approved injected task`);
+      }
+
+      const acceptedOutput = getLatestAcceptedPlanOutput(snapshot);
+      if (!acceptedOutput) {
+        throw new Error("Accepted PLAN is required before restoring a task");
+      }
+      const acceptedPlan = parsePlanProposal(acceptedOutput.content);
+      if (!acceptedPlan) {
+        throw new Error("Accepted PLAN content is invalid and cannot restore tasks");
+      }
+
+      const restored = restoreTaskToAcceptedPlan(acceptedPlan, injection);
+      const validationIssues = validatePlanProposal(restored);
+      if (validationIssues.length > 0) {
+        throw new Error(`Task restore blocked: ${validationIssues[0]?.message ?? "Validation failed."}`);
+      }
+
+      const outputId = randomUUID();
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "plan.item-restored",
+          itemId: hiddenItem.id,
+          targetPath: taskPath,
+          acceptedOutputId: outputId,
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "generated-output.proposed",
+        output: {
+          id: outputId,
+          stage: "roadmap",
+          title: `Restored task - ${taskPath}`,
+          content: serializePlanProposal(restored),
           status: "proposed",
         },
       });
@@ -1684,6 +1780,53 @@ function hideTaskFromAcceptedPlan(
       milestones: nextMilestones,
     },
     task: hiddenTask,
+  };
+}
+
+function restoreTaskToAcceptedPlan(
+  proposal: PlanningPlanProposalDraft,
+  injection: ApprovedPlanInjectionRecord,
+): PlanningPlanProposalDraft {
+  let restored = false;
+  const nextMilestones = proposal.milestones.map((milestone) => {
+    if (milestone.id !== injection.targetMilestoneId) {
+      return milestone;
+    }
+    return {
+      ...milestone,
+      slices: milestone.slices.map((slice) => {
+        if (slice.id !== injection.targetSliceId) {
+          return slice;
+        }
+        if (slice.tasks.some((task) => task.id === injection.taskId)) {
+          throw new Error(`Task restore blocked: ${injection.taskPath} is already active`);
+        }
+        restored = true;
+        return {
+          ...slice,
+          tasks: [
+            ...slice.tasks,
+            {
+              id: injection.taskId,
+              title: injection.title,
+              acceptance: injection.acceptance,
+              dependencies: injection.dependencies,
+            },
+          ],
+        };
+      }),
+    };
+  });
+
+  if (!restored) {
+    throw new Error(
+      `Task restore blocked: ${injection.targetMilestoneId}/${injection.targetSliceId} is not part of the accepted PLAN`,
+    );
+  }
+
+  return {
+    ...proposal,
+    milestones: nextMilestones,
   };
 }
 

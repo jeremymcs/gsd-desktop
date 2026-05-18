@@ -574,6 +574,10 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         });
         break;
       }
+      case "plan.item-restored": {
+        hiddenPlanItems.delete(payload.itemId);
+        break;
+      }
     }
   }
 
@@ -699,6 +703,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "change.proposal-approved":
     case "change.proposal-modification-approved":
     case "plan.item-hidden":
+    case "plan.item-restored":
       return undefined;
   }
 }

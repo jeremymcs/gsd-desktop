@@ -52,6 +52,7 @@ import type {
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
+  RestorePlanningTaskInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
@@ -584,6 +585,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.hidePlanningTask, (_event, input: HidePlanningTaskInput) =>
     store.hidePlanningTask(input),
+  );
+  ipcMain.handle(desktopIpc.restorePlanningTask, (_event, input: RestorePlanningTaskInput) =>
+    store.restorePlanningTask(input),
   );
   ipcMain.handle(desktopIpc.confirmPlanningStage, (_event, input: ConfirmPlanningStageInput) =>
     store.confirmPlanningStage(input),

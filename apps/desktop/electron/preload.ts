@@ -45,6 +45,7 @@ import type {
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
   ReviewPlanningResearchInput,
+  RestorePlanningTaskInput,
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
@@ -190,6 +191,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.approvePlanningTaskModification, input) as Promise<DesktopAppState>,
   hidePlanningTask: (input: HidePlanningTaskInput) =>
     ipcRenderer.invoke(desktopIpc.hidePlanningTask, input) as Promise<DesktopAppState>,
+  restorePlanningTask: (input: RestorePlanningTaskInput) =>
+    ipcRenderer.invoke(desktopIpc.restorePlanningTask, input) as Promise<DesktopAppState>,
   confirmPlanningStage: (input: ConfirmPlanningStageInput) =>
     ipcRenderer.invoke(desktopIpc.confirmPlanningStage, input) as Promise<DesktopAppState>,
   startPlanningResearch: (input: StartPlanningResearchInput) =>

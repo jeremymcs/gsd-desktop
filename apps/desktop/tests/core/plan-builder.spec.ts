@@ -1504,6 +1504,32 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
         return "missing";
       }
     }).toBe("missing");
+    await expect(changeProposal.getByRole("button", { name: "Restore injected task" })).toBeEnabled();
+    await changeProposal.getByRole("button", { name: "Restore injected task" }).click();
+    await expect(changeProposal.getByTestId("plan-hidden-task-note")).toHaveCount(0);
+    await expect(changeProposal.getByTestId("plan-hide-task-form")).toBeVisible();
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Restored task - M1/S1/T2");
+    await expect.poll(async () => {
+      try {
+        await access(injectedTaskPath);
+        return "exists";
+      } catch {
+        return "missing";
+      }
+    }).toBe("exists");
+    await changeProposal
+      .getByTestId("plan-hide-task-reason-textarea")
+      .fill("Integration review moved out of the active execution path.");
+    await changeProposal.getByRole("button", { name: "Hide injected task" }).click();
+    await expect(changeProposal.getByTestId("plan-hidden-task-note")).toContainText("Hidden from active plan");
+    await expect.poll(async () => {
+      try {
+        await access(injectedTaskPath);
+        return "exists";
+      } catch {
+        return "missing";
+      }
+    }).toBe("missing");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
@@ -1761,13 +1787,20 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
               output.title === "Modified task - M1/S1/T1" &&
               output.content.includes("change-control persistence are verified"),
           ) &&
-            entry.selectedPlan.generatedOutputs.some(
-              (output) =>
-                output.stage === "roadmap" &&
-                output.status === "accepted" &&
-                output.title === "Hidden task - M1/S1/T2" &&
-                !output.content.includes("Review integration impact"),
-            ),
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "roadmap" &&
+              output.status === "accepted" &&
+              output.title === "Restored task - M1/S1/T2" &&
+              output.content.includes("Review integration impact"),
+          ) &&
+          entry.selectedPlan.generatedOutputs.some(
+            (output) =>
+              output.stage === "roadmap" &&
+              output.status === "accepted" &&
+              output.title === "Hidden task - M1/S1/T2" &&
+              !output.content.includes("Review integration impact"),
+          ),
         )
       );
     }).toBe(true);

@@ -494,6 +494,57 @@ test("creates a repo-local planning database and replays event-backed plan state
   }
 });
 
+test("replays hidden plan item restoration", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Restore Hidden Task" });
+    const hidden = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "plan.item-hidden",
+        item: {
+          id: "hidden-task-1",
+          targetType: "task",
+          targetId: "T2",
+          targetPath: "M1/S1/T2",
+          reason: "No longer needed in the active plan.",
+          acceptedOutputId: "roadmap-output-1",
+        },
+      },
+    });
+
+    assert.equal(hidden.hiddenPlanItems.length, 1);
+    assert.equal(hidden.hiddenPlanItems[0]?.targetPath, "M1/S1/T2");
+
+    const restored = store.appendEvent({
+      planId: created.id,
+      expectedRevision: hidden.revision,
+      event: {
+        type: "plan.item-restored",
+        itemId: "hidden-task-1",
+        targetPath: "M1/S1/T2",
+        acceptedOutputId: "roadmap-output-2",
+      },
+    });
+
+    assert.equal(restored.hiddenPlanItems.length, 0);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+
+    assert.ok(reopened);
+    assert.equal(reopened.hiddenPlanItems.length, 0);
+    assert.equal(reopened.events.length, 2);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("rejects stale writes with a revision conflict", async () => {
   const workspaceRoot = await makeWorkspace();
 
