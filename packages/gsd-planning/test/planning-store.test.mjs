@@ -650,6 +650,159 @@ test("replays draft change proposal updates", async () => {
   }
 });
 
+test("derives change proposal activity from lifecycle events", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Proposal Activity" });
+    let snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          id: "proposal-add-task",
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-1",
+          title: "Add audit task",
+          summary: "Add an audit task after verification.",
+          impactNotes: "Execution needs a new task.",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-updated",
+        proposalId: "proposal-add-task",
+        title: "Add post-ship audit task",
+        summary: "Add a post-ship audit task after verification.",
+        impactNotes: "Execution needs one extra task.",
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-approved",
+        proposalId: "proposal-add-task",
+        injection: {
+          changeProposalId: "proposal-add-task",
+          sourceParkedItemId: "idea-1",
+          acceptedOutputId: "roadmap-output-1",
+          targetMilestoneId: "M1",
+          targetSliceId: "S1",
+          taskId: "T2",
+          taskPath: "M1/S1/T2",
+          title: "Run post-ship audit",
+          acceptance: "Audit task is represented in PLAN.",
+          dependencies: ["T1"],
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "plan.item-hidden",
+        item: {
+          id: "hidden-task-1",
+          targetType: "task",
+          targetId: "T2",
+          targetPath: "M1/S1/T2",
+          reason: "No longer needed in the active plan.",
+          acceptedOutputId: "roadmap-output-2",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "plan.item-restored",
+        itemId: "hidden-task-1",
+        targetPath: "M1/S1/T2",
+        acceptedOutputId: "roadmap-output-3",
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          id: "proposal-withdrawn",
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-2",
+          title: "Drop audit banner",
+          summary: "Drop a banner before approval.",
+          impactNotes: "No active plan impact.",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-withdrawn",
+        proposalId: "proposal-withdrawn",
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-drafted",
+        proposal: {
+          id: "proposal-modify-task",
+          sourceType: "parked-item",
+          sourceParkedItemId: "idea-3",
+          title: "Tighten task acceptance",
+          summary: "Tighten acceptance before execution.",
+          impactNotes: "Verification should use stricter evidence.",
+        },
+      },
+    });
+    snapshot = store.appendEvent({
+      planId: created.id,
+      expectedRevision: snapshot.revision,
+      event: {
+        type: "change.proposal-modification-approved",
+        proposalId: "proposal-modify-task",
+        modification: {
+          changeProposalId: "proposal-modify-task",
+          sourceParkedItemId: "idea-3",
+          acceptedOutputId: "roadmap-output-4",
+          targetMilestoneId: "M1",
+          targetSliceId: "S1",
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          previousTitle: "Build the thing",
+          title: "Build the thing with evidence",
+          previousAcceptance: "Thing exists.",
+          acceptance: "Thing exists with verification evidence.",
+          previousDependencies: [],
+          dependencies: [],
+        },
+      },
+    });
+
+    assertProposalActivity(snapshot);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assertProposalActivity(reopened);
+    assert.equal(reopened.events.length, 9);
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("rejects stale writes with a revision conflict", async () => {
   const workspaceRoot = await makeWorkspace();
 
@@ -859,4 +1012,34 @@ test("replays dismissed parked idea restoration", async () => {
 
 async function makeWorkspace() {
   return await mkdtemp(join(tmpdir(), "pi-gsd-planning-"));
+}
+
+function assertProposalActivity(snapshot) {
+  const added = snapshot.changeProposals.find((proposal) => proposal.id === "proposal-add-task");
+  assert.ok(added);
+  assert.equal(added.status, "approved");
+  assert.equal(added.injectedTaskPath, "M1/S1/T2");
+  assert.deepEqual(added.activity.map((activity) => activity.type), [
+    "drafted",
+    "updated",
+    "approved",
+    "task-hidden",
+    "task-restored",
+  ]);
+  assert.deepEqual(added.activity.map((activity) => activity.revision), [1, 2, 3, 4, 5]);
+  assert.equal(added.activity[2]?.targetPath, "M1/S1/T2");
+  assert.equal(added.activity[3]?.acceptedOutputId, "roadmap-output-2");
+  assert.equal(added.activity[4]?.summary, "Restored injected task M1/S1/T2");
+
+  const withdrawn = snapshot.changeProposals.find((proposal) => proposal.id === "proposal-withdrawn");
+  assert.ok(withdrawn);
+  assert.equal(withdrawn.status, "withdrawn");
+  assert.deepEqual(withdrawn.activity.map((activity) => activity.type), ["drafted", "withdrawn"]);
+
+  const modified = snapshot.changeProposals.find((proposal) => proposal.id === "proposal-modify-task");
+  assert.ok(modified);
+  assert.equal(modified.status, "approved");
+  assert.equal(modified.modifiedTaskPath, "M1/S1/T1");
+  assert.deepEqual(modified.activity.map((activity) => activity.type), ["drafted", "task-modified"]);
+  assert.equal(modified.activity[1]?.acceptedOutputId, "roadmap-output-4");
 }

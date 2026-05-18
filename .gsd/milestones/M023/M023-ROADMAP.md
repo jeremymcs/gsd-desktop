@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Proposal Activity Projection** `risk:medium` `depends:[M020,M022]`
+- [x] **S01: Proposal Activity Projection** `risk:medium` `depends:[M020,M022]`
   > After this: planning snapshots expose proposal activity derived from the event stream.
 
 - [ ] **S02: Proposal Card Timeline** `risk:medium` `depends:[S01]`

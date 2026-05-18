@@ -7,6 +7,7 @@ import type {
   AppendPlanEventInput,
   ApprovedPlanInjectionRecord,
   ApprovedPlanModificationRecord,
+  ChangeProposalActivityRecord,
   ChangeProposalRecord,
   CreatePlanInput,
   GeneratedOutputRecord,
@@ -495,14 +496,21 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
       }
       case "change.proposal-drafted": {
         const now = event.createdAt;
-        changeProposals.set(payload.proposal.id ?? event.id, {
-          id: payload.proposal.id ?? event.id,
+        const proposalId = payload.proposal.id ?? event.id;
+        changeProposals.set(proposalId, {
+          id: proposalId,
           sourceType: payload.proposal.sourceType,
           sourceParkedItemId: payload.proposal.sourceParkedItemId,
           title: payload.proposal.title,
           summary: payload.proposal.summary,
           impactNotes: payload.proposal.impactNotes,
           status: payload.proposal.status ?? "draft",
+          activity: [
+            buildProposalActivity(event, proposalId, {
+              type: "drafted",
+              summary: "Drafted proposal",
+            }),
+          ],
           createdAt: now,
           updatedAt: now,
         });
@@ -515,6 +523,13 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
             ...current,
             status: "withdrawn",
             withdrawnAt: event.createdAt,
+            activity: appendProposalActivity(
+              current,
+              buildProposalActivity(event, payload.proposalId, {
+                type: "withdrawn",
+                summary: "Deleted draft",
+              }),
+            ),
             updatedAt: event.createdAt,
           });
         }
@@ -528,6 +543,13 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
             title: payload.title,
             summary: payload.summary,
             impactNotes: payload.impactNotes,
+            activity: appendProposalActivity(
+              current,
+              buildProposalActivity(event, payload.proposalId, {
+                type: "updated",
+                summary: "Updated proposal details",
+              }),
+            ),
             updatedAt: event.createdAt,
           });
         }
@@ -558,6 +580,15 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
             approvedAt: event.createdAt,
             injectedTaskPath: injection.taskPath,
             acceptedOutputId: injection.acceptedOutputId,
+            activity: appendProposalActivity(
+              current,
+              buildProposalActivity(event, payload.proposalId, {
+                type: "approved",
+                summary: `Approved as new task ${injection.taskPath}`,
+                targetPath: injection.taskPath,
+                acceptedOutputId: injection.acceptedOutputId,
+              }),
+            ),
             updatedAt: event.createdAt,
           });
         }
@@ -591,6 +622,15 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
             approvedAt: event.createdAt,
             modifiedTaskPath: modification.taskPath,
             acceptedOutputId: modification.acceptedOutputId,
+            activity: appendProposalActivity(
+              current,
+              buildProposalActivity(event, payload.proposalId, {
+                type: "task-modified",
+                summary: `Approved task modification ${modification.taskPath}`,
+                targetPath: modification.taskPath,
+                acceptedOutputId: modification.acceptedOutputId,
+              }),
+            ),
             updatedAt: event.createdAt,
           });
         }
@@ -598,6 +638,21 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
       }
       case "plan.item-hidden": {
         const itemId = payload.item.id ?? event.id;
+        const proposal = findProposalByInjectedTaskPath(changeProposals, payload.item.targetPath);
+        if (proposal) {
+          changeProposals.set(proposal.id, {
+            ...proposal,
+            activity: appendProposalActivity(
+              proposal,
+              buildProposalActivity(event, proposal.id, {
+                type: "task-hidden",
+                summary: `Hidden injected task ${payload.item.targetPath}`,
+                targetPath: payload.item.targetPath,
+                acceptedOutputId: payload.item.acceptedOutputId,
+              }),
+            ),
+          });
+        }
         hiddenPlanItems.set(itemId, {
           id: itemId,
           targetType: payload.item.targetType,
@@ -610,6 +665,21 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         break;
       }
       case "plan.item-restored": {
+        const proposal = findProposalByInjectedTaskPath(changeProposals, payload.targetPath);
+        if (proposal) {
+          changeProposals.set(proposal.id, {
+            ...proposal,
+            activity: appendProposalActivity(
+              proposal,
+              buildProposalActivity(event, proposal.id, {
+                type: "task-restored",
+                summary: `Restored injected task ${payload.targetPath}`,
+                targetPath: payload.targetPath,
+                acceptedOutputId: payload.acceptedOutputId,
+              }),
+            ),
+          });
+        }
         hiddenPlanItems.delete(payload.itemId);
         break;
       }
@@ -785,6 +855,34 @@ function normalizeWorkflowPhaseModels(
     }
   }
   return normalized;
+}
+
+function buildProposalActivity(
+  event: PersistedPlanEvent,
+  proposalId: string,
+  activity: Omit<ChangeProposalActivityRecord, "id" | "proposalId" | "revision" | "createdAt">,
+): ChangeProposalActivityRecord {
+  return {
+    id: event.id,
+    proposalId,
+    ...activity,
+    revision: event.revision,
+    createdAt: event.createdAt,
+  };
+}
+
+function appendProposalActivity(
+  proposal: ChangeProposalRecord,
+  activity: ChangeProposalActivityRecord,
+): readonly ChangeProposalActivityRecord[] {
+  return [...proposal.activity, activity];
+}
+
+function findProposalByInjectedTaskPath(
+  proposals: Map<string, ChangeProposalRecord>,
+  taskPath: string,
+): ChangeProposalRecord | undefined {
+  return [...proposals.values()].find((proposal) => proposal.injectedTaskPath === taskPath);
 }
 
 interface PlanRow {

@@ -170,6 +170,26 @@ export interface ParkedItemRecord {
 
 export type ChangeProposalStatus = "draft" | "approved" | "withdrawn";
 
+export type ChangeProposalActivityType =
+  | "drafted"
+  | "updated"
+  | "withdrawn"
+  | "approved"
+  | "task-modified"
+  | "task-hidden"
+  | "task-restored";
+
+export interface ChangeProposalActivityRecord {
+  readonly id: string;
+  readonly proposalId: string;
+  readonly type: ChangeProposalActivityType;
+  readonly summary: string;
+  readonly targetPath?: string;
+  readonly acceptedOutputId?: string;
+  readonly revision: number;
+  readonly createdAt: string;
+}
+
 export interface ChangeProposalRecord {
   readonly id: string;
   readonly sourceType: "parked-item";
@@ -183,6 +203,7 @@ export interface ChangeProposalRecord {
   readonly injectedTaskPath?: string;
   readonly modifiedTaskPath?: string;
   readonly acceptedOutputId?: string;
+  readonly activity: readonly ChangeProposalActivityRecord[];
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -341,6 +362,7 @@ export type PlanEvent =
         | "injectedTaskPath"
         | "modifiedTaskPath"
         | "acceptedOutputId"
+        | "activity"
       > & {
         readonly id?: string;
         readonly status?: ChangeProposalStatus;
