@@ -1845,6 +1845,9 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(primaryExecutionTask.getByTestId("task-status-pill")).toContainText("Done");
     await expect(primaryExecutionTask.getByTestId("task-note")).toContainText("Slice implemented and checked.");
     await expect(primaryExecutionTask.getByTestId("task-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
+    await expect(primaryExecutionTask.getByTestId("task-evidence-list")).toContainText(
+      "Source: Task T1 - Implement and verify the slice",
+    );
     await expect(window.getByTestId("start-verify-button")).toBeEnabled();
     await window.getByTestId("start-verify-button").click();
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
@@ -2002,7 +2005,11 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
             (task) =>
               task.taskId === "T1" &&
               task.status === "done" &&
-              task.evidence.some((evidence) => evidence.text === "Linked session created and reopened from EXECUTE."),
+              task.evidence.some(
+                (evidence) =>
+                  evidence.text === "Linked session created and reopened from EXECUTE." &&
+                  evidence.sourceSessionTitle === "Task T1 - Implement and verify the slice",
+              ),
           ) &&
           entry.selectedPlan.taskVerifications.some(
             (task) =>

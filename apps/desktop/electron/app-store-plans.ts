@@ -1491,12 +1491,19 @@ export async function updatePlanningTaskExecution(
       });
 
       if (evidence) {
+        const linkedSession = snapshot.taskSessionLinks.find((link) => link.taskId === input.taskId);
         snapshot = appendEvent(planningStore, snapshot, {
           type: "task.evidence-recorded",
           evidence: {
             taskId: input.taskId,
             taskPath: input.taskPath,
             text: evidence,
+            ...(linkedSession
+              ? {
+                  sourceSessionId: linkedSession.sessionId,
+                  sourceSessionTitle: linkedSession.title,
+                }
+              : {}),
           },
         });
       }

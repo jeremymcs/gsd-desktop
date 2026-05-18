@@ -12,6 +12,7 @@ import type {
   RequirementRecord,
   ShipSummaryRecord,
   StageStatus,
+  TaskEvidenceRecord,
   TaskExecutionRecord,
   TaskExecutionStatus,
   TaskSessionLinkRecord,
@@ -3466,7 +3467,7 @@ function PlanExecutionQueue({
                           {taskExecution?.evidence.length ? (
                             <div className="plan-execution-evidence" data-testid="task-evidence-list">
                               {taskExecution.evidence.map((evidence) => (
-                                <span key={evidence.id}>{evidence.text}</span>
+                                <span key={evidence.id}>{formatTaskEvidenceSummary(evidence)}</span>
                               ))}
                             </div>
                           ) : null}
@@ -4699,6 +4700,10 @@ function formatTaskExecutionStatus(status: TaskExecutionStatus): string {
     case "done":
       return "Done";
   }
+}
+
+function formatTaskEvidenceSummary(evidence: TaskEvidenceRecord): string {
+  return evidence.sourceSessionTitle ? `${evidence.text} · Source: ${evidence.sourceSessionTitle}` : evidence.text;
 }
 
 function formatTaskSessionExecutionModel(link: TaskSessionLinkRecord): string {

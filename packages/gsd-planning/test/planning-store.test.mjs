@@ -346,6 +346,8 @@ test("creates a repo-local planning database and replays event-backed plan state
           taskId: "T1",
           taskPath: "M1/S1/T1",
           text: "Linked execution session was created and reopened.",
+          sourceSessionId: "session-1",
+          sourceSessionTitle: "Task T1 - Persist every answer",
         },
       },
     });
@@ -405,6 +407,7 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(withShipSummary.taskExecutions[0]?.status, "done");
     assert.equal(withShipSummary.taskExecutions[0]?.blocker, "");
     assert.equal(withShipSummary.taskExecutions[0]?.evidence[0]?.text, "Linked execution session was created and reopened.");
+    assert.equal(withShipSummary.taskExecutions[0]?.evidence[0]?.sourceSessionTitle, "Task T1 - Persist every answer");
     assert.equal(withShipSummary.taskVerifications.length, 1);
     assert.equal(withShipSummary.taskVerifications[0]?.status, "passed");
     assert.equal(withShipSummary.shipSummaries.length, 1);
@@ -452,6 +455,8 @@ test("creates a repo-local planning database and replays event-backed plan state
     assert.equal(reopened.taskExecutions[0]?.status, "done");
     assert.equal(reopened.taskExecutions[0]?.note, "Implementation completed.");
     assert.equal(reopened.taskExecutions[0]?.evidence.length, 1);
+    assert.equal(reopened.taskExecutions[0]?.evidence[0]?.sourceSessionId, "session-1");
+    assert.equal(reopened.taskExecutions[0]?.evidence[0]?.sourceSessionTitle, "Task T1 - Persist every answer");
     assert.equal(reopened.taskVerifications.length, 1);
     assert.equal(reopened.taskVerifications[0]?.acceptance, "Persist every answer");
     assert.equal(reopened.taskVerifications[0]?.note, "Acceptance matched the recorded evidence.");

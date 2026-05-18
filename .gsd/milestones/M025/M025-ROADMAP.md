@@ -18,7 +18,7 @@
 - [x] **S02: Phase Model Handoff** `risk:medium` `depends:[S01]`
   > After this: task execution handoff can resolve the effective EXECUTE phase model from project override or global default.
 
-- [ ] **S03: Evidence Back-Link** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Evidence Back-Link** `risk:medium` `depends:[S01,S02]`
   > After this: execution evidence and session links are visible on the task queue after restart.
 
 ## Boundary Map

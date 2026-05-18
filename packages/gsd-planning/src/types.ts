@@ -106,6 +106,8 @@ export interface TaskEvidenceRecord {
   readonly taskId: string;
   readonly taskPath: string;
   readonly text: string;
+  readonly sourceSessionId?: string;
+  readonly sourceSessionTitle?: string;
   readonly createdAt: string;
 }
 

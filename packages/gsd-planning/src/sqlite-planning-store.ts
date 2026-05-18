@@ -421,6 +421,8 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
             taskId: payload.evidence.taskId,
             taskPath: payload.evidence.taskPath,
             text: payload.evidence.text,
+            ...(payload.evidence.sourceSessionId ? { sourceSessionId: payload.evidence.sourceSessionId } : {}),
+            ...(payload.evidence.sourceSessionTitle ? { sourceSessionTitle: payload.evidence.sourceSessionTitle } : {}),
             createdAt: event.createdAt,
           },
         ];

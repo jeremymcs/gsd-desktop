@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Link task session outputs or manual evidence back to the task record.
-- [ ] Show latest evidence summary in the execution queue.
-- [ ] Preserve manual evidence editing.
-- [ ] Cover restart persistence.
+- [x] Link task session outputs or manual evidence back to the task record.
+- [x] Show latest evidence summary in the execution queue.
+- [x] Preserve manual evidence editing.
+- [x] Cover restart persistence.
 
 ## Acceptance
 
