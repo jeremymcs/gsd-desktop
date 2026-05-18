@@ -225,7 +225,7 @@ test("reopen heals a stale placeholder catalog title after auto-title finished",
   }
 
   const catalogsPath = join(userDataDir, "catalogs.json");
-  const catalogs = JSON.parse(await readFile(catalogsPath, "utf8")) as {
+  const catalogs = JSON.parse(await readFileEventually(catalogsPath)) as {
     sessions: Array<{
       sessionRef: { workspaceId: string; sessionId: string };
       title: string;
@@ -249,6 +249,21 @@ test("reopen heals a stale placeholder catalog title after auto-title finished",
     await secondRun.close();
   }
 });
+
+async function readFileEventually(filePath: string): Promise<string> {
+  let contents = "";
+  await expect
+    .poll(async () => {
+      try {
+        contents = await readFile(filePath, "utf8");
+        return contents.length;
+      } catch {
+        return 0;
+      }
+    }, { timeout: 15_000 })
+    .toBeGreaterThan(0);
+  return contents;
+}
 
 async function waitForComposerReadyForNextSubmit(window: Page): Promise<void> {
   const sendButton = window.getByRole("button", { name: "Send message" });
