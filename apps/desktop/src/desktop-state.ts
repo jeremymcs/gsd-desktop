@@ -211,6 +211,7 @@ export interface PlanningProjectionSummary {
 export interface CreatePlanningPlanInput {
   readonly workspaceId: string;
   readonly name: string;
+  readonly templateId?: string;
 }
 
 export interface SelectPlanningPlanInput {

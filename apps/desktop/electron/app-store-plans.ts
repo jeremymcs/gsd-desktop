@@ -82,7 +82,9 @@ import {
 import { buildPlanningProjectionInput } from "../src/plan-builder-projections";
 import { buildRequirementDrafts } from "../src/plan-builder-requirements";
 import {
+  buildProjectPatch,
   discussStageOrder,
+  getDiscussQuestion,
   getDiscussQuestionsForStage,
   getDiscussStageProgress,
   getNextDiscussStage,
@@ -90,6 +92,12 @@ import {
   isDiscussStage,
   type DiscussStage,
 } from "../src/plan-builder-discuss";
+import {
+  blankPlanningStarterTemplateId,
+  getPlanningStarterTemplate,
+  serializePlanningStarterTemplate,
+  type PlanningStarterTemplate,
+} from "../src/plan-builder-templates";
 import { resolveRepoWorkspaceId } from "../src/workspace-roots";
 import type { AppStoreInternals } from "./app-store-internals";
 
@@ -135,6 +143,13 @@ export async function createPlanningPlan(
   if (!workspace) {
     return store.withError(`Unknown workspace: ${input.workspaceId}`);
   }
+  const template =
+    input.templateId && input.templateId !== blankPlanningStarterTemplateId
+      ? getPlanningStarterTemplate(input.templateId)
+      : undefined;
+  if (input.templateId && input.templateId !== blankPlanningStarterTemplateId && !template) {
+    return store.withError(`Unknown starter template: ${input.templateId}`);
+  }
 
   return store.withErrorHandling(async () => {
     return withPlanningStore(workspace.path, async (planningStore) => {
@@ -151,6 +166,17 @@ export async function createPlanningPlan(
           status: "active",
           activeQuestionId: firstQuestion.id,
         });
+      }
+      if (template) {
+        snapshot = applyPlanningStarterTemplate(planningStore, snapshot, template);
+        if (firstQuestion) {
+          snapshot = appendEvent(planningStore, snapshot, {
+            type: "stage.updated",
+            stage: "project",
+            status: "active",
+            activeQuestionId: firstQuestion.id,
+          });
+        }
       }
       snapshot = (await refreshLegacyReferences(planningStore, workspace.path, snapshot)) ?? snapshot;
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
@@ -2517,6 +2543,53 @@ function formatExecutionBriefList(values: readonly string[]): string {
 
 function firstLine(value: string): string {
   return value.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? value.trim();
+}
+
+function applyPlanningStarterTemplate(
+  planningStore: PlanningStore,
+  snapshot: PlanSnapshot,
+  template: PlanningStarterTemplate,
+): PlanSnapshot {
+  let next = appendEvent(planningStore, snapshot, {
+    type: "generated-output.proposed",
+    output: {
+      id: randomUUID(),
+      stage: "project",
+      title: `Starter template - ${template.name}`,
+      content: serializePlanningStarterTemplate(template),
+      status: "draft",
+    },
+  });
+
+  for (const prefill of template.answerPrefills) {
+    const question = getDiscussQuestion(prefill.questionId);
+    if (!question || question.stage !== prefill.stage) {
+      throw new Error(`Starter template references an unknown question: ${prefill.questionId}`);
+    }
+
+    next = appendEvent(planningStore, next, {
+      type: "answer.recorded",
+      answer: {
+        id: randomUUID(),
+        stage: prefill.stage,
+        questionId: prefill.questionId,
+        prompt: question.prompt,
+        answer: prefill.answer,
+        loadBearing: question.loadBearing,
+        discretionRationale: `Seeded by the ${template.name} starter template.`,
+      },
+    });
+
+    const projectPatch = buildProjectPatch(prefill.questionId, prefill.answer);
+    if (projectPatch) {
+      next = appendEvent(planningStore, next, {
+        type: "project.updated",
+        project: projectPatch,
+      });
+    }
+  }
+
+  return next;
 }
 
 function advanceDiscussStageAfterAnswer(

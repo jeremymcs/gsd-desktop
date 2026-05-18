@@ -310,6 +310,109 @@ test("uses global EXECUTE model when the project has no override", async () => {
   }
 });
 
+test("creates a blank plan without starter template output", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-blank-template");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await expect(window.getByTestId("plan-template-select")).toHaveValue("blank");
+    await window.getByTestId("plan-name-input").fill("Blank starter plan");
+    await window.getByRole("button", { name: "Create plan" }).click();
+
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-template-seed")).toHaveCount(0);
+    await expect(window.getByTestId("plan-answer-history")).toHaveCount(0);
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Blank starter plan",
+      )?.selectedPlan;
+      return {
+        answerCount: plan?.answers.length ?? -1,
+        starterOutputCount:
+          plan?.generatedOutputs.filter((output) => output.title.startsWith("Starter template - ")).length ?? -1,
+      };
+    }).toEqual({
+      answerCount: 0,
+      starterOutputCount: 0,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("creates a plan from a starter template with editable seeded answers", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-starter-template");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Template starter plan");
+    await window.getByTestId("plan-template-select").selectOption("web-app");
+    await expect(window.getByTestId("plan-template-summary")).toContainText("Web app");
+    await window.getByRole("button", { name: "Create plan" }).click();
+
+    await expect(window.getByTestId("plan-template-seed")).toContainText("Web app");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-answer-history")).toContainText("UI, persistence, verification");
+    await expect(window.getByTestId("plan-answer-history")).toContainText(
+      "DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, SHIP.",
+    );
+
+    const shapeAnswer = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({
+      has: window.locator(".plan-memory__item-header span").filter({ hasText: /^Shape$/ }),
+    });
+    await shapeAnswer.getByRole("button", { name: "Edit" }).click();
+    await expect(shapeAnswer.getByTestId("plan-revision-textarea")).toHaveValue(
+      "complex - UI, persistence, verification, and shipping concerns need explicit planning.",
+    );
+    await shapeAnswer.getByTestId("plan-revision-textarea").fill("simple - starter narrowed for first release.");
+    await shapeAnswer.getByRole("button", { name: "Save revision" }).click();
+    await expect(shapeAnswer).toContainText("simple - starter narrowed for first release.");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Template starter plan",
+      )?.selectedPlan;
+      return {
+        hasTemplateOutput: Boolean(
+          plan?.generatedOutputs.some(
+            (output) =>
+              output.stage === "project" &&
+              output.status === "draft" &&
+              output.title === "Starter template - Web app" &&
+              output.content.includes("\"templateId\": \"web-app\""),
+          ),
+        ),
+        revisedShape:
+          [...(plan?.answers ?? [])].reverse().find((answer) => answer.questionId === "project_shape")?.answer ?? "",
+      };
+    }).toEqual({
+      hasTemplateOutput: true,
+      revisedShape: "simple - starter narrowed for first release.",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test("shows next work ordering and updates after dependency completion", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-next-work-panel");

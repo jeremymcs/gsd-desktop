@@ -2368,6 +2368,7 @@
 }
 
 .plan-create__field input,
+.plan-create__field select,
 .plan-research-form__field input,
 .plan-research-form__field textarea,
 .plan-question-card textarea,
@@ -2383,6 +2384,31 @@
 .plan-create__field input {
   min-height: 44px;
   padding: 0 12px;
+}
+
+.plan-create__field select {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.plan-create__template {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(215, 178, 105, 0.28);
+  border-radius: 8px;
+  background: rgba(215, 178, 105, 0.08);
+}
+
+.plan-create__template strong {
+  color: #f4f4f5;
+  font-size: 13px;
+}
+
+.plan-create__template span {
+  color: #d7b269;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .plan-research {
@@ -4551,6 +4577,19 @@
   background: var(--plan-pane-raised-bg);
 }
 
+.canvas--plans .plan-create__template {
+  border-color: var(--plan-accent-border);
+  background: var(--plan-accent-bg);
+}
+
+.canvas--plans .plan-create__template strong {
+  color: var(--plan-text);
+}
+
+.canvas--plans .plan-create__template span {
+  color: var(--plan-accent);
+}
+
 .canvas--plans .plan-create__field,
 .canvas--plans .plan-research-form__field,
 .canvas--plans .plan-roadmap-form__field,
@@ -4565,6 +4604,7 @@
 }
 
 .canvas--plans .plan-create__field input,
+.canvas--plans .plan-create__field select,
 .canvas--plans .plan-research-form__field input,
 .canvas--plans .plan-research-form__field textarea,
 .canvas--plans .plan-question-card textarea,

@@ -120,6 +120,11 @@ import {
   workflowPhaseModelSourceLabel,
   workflowPhaseModelValueLabel,
 } from "./planning-phase-models";
+import {
+  blankPlanningStarterTemplateId,
+  getPlanningStarterTemplate,
+  planningStarterTemplates,
+} from "./plan-builder-templates";
 
 const planPhases: readonly { readonly id: PlanPhase; readonly label: string }[] = [
   { id: "discuss", label: "DISCUSS" },
@@ -235,6 +240,7 @@ export function PlanBuilderView({
 }: PlanBuilderViewProps) {
   const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
   const [planName, setPlanName] = useState("");
+  const [planTemplateId, setPlanTemplateId] = useState(blankPlanningStarterTemplateId);
   const [answerDraft, setAnswerDraft] = useState("");
   const [editingAnswerId, setEditingAnswerId] = useState("");
   const [revisionDraft, setRevisionDraft] = useState("");
@@ -276,6 +282,10 @@ export function PlanBuilderView({
   );
   const latestAnswers = useMemo(() => getLatestDiscussAnswers(snapshot), [snapshot]);
   const latestAnswersByQuestion = useMemo(() => getLatestAnswersByQuestion(snapshot), [snapshot]);
+  const selectedStarterTemplate = getPlanningStarterTemplate(planTemplateId);
+  const starterTemplateOutput = snapshot?.generatedOutputs.find(
+    (output) => output.stage === "project" && output.title.startsWith("Starter template - "),
+  );
   const requirementDrafts = useMemo(() => buildRequirementDrafts(snapshot), [snapshot]);
   const savedRequirements = snapshot?.requirements ?? [];
   const requirementRows = savedRequirements.length > 0 ? savedRequirements : requirementDrafts;
@@ -470,9 +480,14 @@ export function PlanBuilderView({
       return;
     }
     setSubmitting(true);
-    void onCreatePlan({ workspaceId: workspace.id, name })
+    void onCreatePlan({
+      workspaceId: workspace.id,
+      name,
+      ...(selectedStarterTemplate ? { templateId: selectedStarterTemplate.id } : {}),
+    })
       .then(() => {
         setPlanName("");
+        setPlanTemplateId(blankPlanningStarterTemplateId);
       })
       .finally(() => {
         setSubmitting(false);
@@ -1613,6 +1628,27 @@ export function PlanBuilderView({
                     value={planName}
                   />
                 </label>
+                <label className="plan-create__field">
+                  <span>Starter template</span>
+                  <select
+                    data-testid="plan-template-select"
+                    onChange={(event) => setPlanTemplateId(event.target.value)}
+                    value={planTemplateId}
+                  >
+                    <option value={blankPlanningStarterTemplateId}>Blank plan</option>
+                    {planningStarterTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {selectedStarterTemplate ? (
+                  <div className="plan-create__template" data-testid="plan-template-summary">
+                    <strong>{selectedStarterTemplate.name}</strong>
+                    <span>{selectedStarterTemplate.description}</span>
+                  </div>
+                ) : null}
                 <button className="plan-action-button" disabled={!planName.trim() || submitting} type="submit">
                   Create plan
                 </button>
@@ -2110,6 +2146,13 @@ export function PlanBuilderView({
             </div>
 
             {guidanceRollup.length > 0 ? <GuidanceRollupCard items={guidanceRollup} /> : null}
+
+            {starterTemplateOutput ? (
+              <div className="plan-status-card" data-testid="plan-template-seed">
+                <strong>Starter template</strong>
+                <span>{starterTemplateOutput.title.replace(/^Starter template - /, "")}</span>
+              </div>
+            ) : null}
 
             {latestAnswers.length > 0 ? (
               <div className="plan-memory" data-testid="plan-answer-history">
