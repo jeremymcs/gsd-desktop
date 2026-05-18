@@ -324,6 +324,11 @@ export type PlanEvent =
       readonly note?: string;
     }
   | {
+      readonly type: "idea.updated";
+      readonly itemId: string;
+      readonly text: string;
+    }
+  | {
       readonly type: "change.proposal-drafted";
       readonly proposal: Omit<
         ChangeProposalRecord,

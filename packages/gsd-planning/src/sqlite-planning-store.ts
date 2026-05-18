@@ -483,6 +483,16 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "idea.updated": {
+        const current = parkedItems.get(payload.itemId);
+        if (current) {
+          parkedItems.set(payload.itemId, {
+            ...current,
+            text: payload.text,
+          });
+        }
+        break;
+      }
       case "change.proposal-drafted": {
         const now = event.createdAt;
         changeProposals.set(payload.proposal.id ?? event.id, {
@@ -724,6 +734,7 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
     case "workflow.preferences-updated":
     case "idea.parked":
     case "idea.reviewed":
+    case "idea.updated":
     case "change.proposal-drafted":
     case "change.proposal-withdrawn":
     case "change.proposal-updated":

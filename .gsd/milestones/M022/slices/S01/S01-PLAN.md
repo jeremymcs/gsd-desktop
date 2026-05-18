@@ -4,11 +4,11 @@
 
 ## Tasks
 
-- [ ] Add an append-only parked idea update event.
-- [ ] Replay updated text while preserving created source metadata.
-- [ ] Add desktop IPC/store/UI edit wiring.
-- [ ] Validate non-empty edited text.
-- [ ] Cover replay and Electron restart behavior.
+- [x] Add an append-only parked idea update event.
+- [x] Replay updated text while preserving created source metadata.
+- [x] Add desktop IPC/store/UI edit wiring.
+- [x] Validate non-empty edited text.
+- [x] Cover replay and Electron restart behavior.
 
 ## Acceptance
 

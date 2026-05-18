@@ -261,6 +261,14 @@ export interface ReviewPlanningIdeaInput {
   readonly note?: string;
 }
 
+export interface UpdatePlanningIdeaInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly itemId: string;
+  readonly text: string;
+}
+
 export interface DraftPlanningChangeProposalInput {
   readonly workspaceId: string;
   readonly planId: string;

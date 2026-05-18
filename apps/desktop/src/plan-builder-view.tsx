@@ -57,6 +57,7 @@ import type {
   StartPlanningShipInput,
   StartPlanningVerifyInput,
   UpdatePlanningChangeProposalInput,
+  UpdatePlanningIdeaInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
@@ -130,6 +131,7 @@ interface PlanBuilderViewProps {
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onUpsertRequirements: (input: UpsertPlanningRequirementsInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
+  readonly onUpdateIdea: (input: UpdatePlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onWithdrawChangeProposal: (input: WithdrawPlanningChangeProposalInput) => Promise<DesktopAppState>;
   readonly onUpdateChangeProposal: (input: UpdatePlanningChangeProposalInput) => Promise<DesktopAppState>;
@@ -180,6 +182,7 @@ export function PlanBuilderView({
   onReviseAnswer,
   onUpsertRequirements,
   onReviewIdea,
+  onUpdateIdea,
   onDraftChangeProposal,
   onWithdrawChangeProposal,
   onUpdateChangeProposal,
@@ -215,6 +218,8 @@ export function PlanBuilderView({
   const [planProposal, setPlanProposal] = useState<PlanningPlanProposalDraft>(() => emptyPlanProposal());
   const [seededPlanProposalPlanId, setSeededPlanProposalPlanId] = useState("");
   const [draftingIdeaId, setDraftingIdeaId] = useState("");
+  const [editingIdeaId, setEditingIdeaId] = useState("");
+  const [ideaTextDraft, setIdeaTextDraft] = useState("");
   const [composerReviewItemId, setComposerReviewItemId] = useState("");
   const [proposalFocusRequest, setProposalFocusRequest] = useState<
     { readonly proposalId: string; readonly token: number } | undefined
@@ -615,10 +620,50 @@ export function PlanBuilderView({
     });
   };
 
+  const startIdeaEdit = (item: ParkedItemRecord) => {
+    if (submitting) {
+      return;
+    }
+    setDraftingIdeaId("");
+    setEditingIdeaId(item.id);
+    setIdeaTextDraft(item.text);
+  };
+
+  const cancelIdeaEdit = () => {
+    setEditingIdeaId("");
+    setIdeaTextDraft("");
+  };
+
+  const saveIdeaEdit = (item: ParkedItemRecord) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    const text = ideaTextDraft.trim();
+    if (!text) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdateIdea({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      itemId: item.id,
+      text,
+    })
+      .then(() => {
+        cancelIdeaEdit();
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
+  };
+
   const startDraftChangeProposal = (item: ParkedItemRecord) => {
     if (submitting || changeProposalsBySource.has(item.id)) {
       return;
     }
+    setEditingIdeaId("");
+    setIdeaTextDraft("");
     setDraftingIdeaId(item.id);
     setChangeProposalTitleDraft(buildChangeProposalTitle(item));
     setChangeProposalSummaryDraft(item.text);
@@ -1974,6 +2019,7 @@ export function PlanBuilderView({
                     question?.label ?? (item.sourceType === "composer" ? item.sourcePrompt : item.sourceQuestionId);
                   const proposal = changeProposalsBySource.get(item.id);
                   const isDraftingProposal = draftingIdeaId === item.id;
+                  const isEditingIdea = editingIdeaId === item.id;
                   return (
                     <article
                       className="plan-memory__item plan-memory__item--parked"
@@ -1984,56 +2030,97 @@ export function PlanBuilderView({
                         <span>{sourceLabel}</span>
                         <small data-testid="plan-idea-status">{formatIdeaReviewStatus(item.reviewStatus)}</small>
                       </div>
-                      <p>{item.text}</p>
+                      {isEditingIdea ? (
+                        <div className="plan-change-draft" data-testid="plan-idea-edit-form">
+                          <label>
+                            <span>Idea</span>
+                            <textarea
+                              data-testid="plan-idea-text-textarea"
+                              onChange={(event) => setIdeaTextDraft(event.target.value)}
+                              value={ideaTextDraft}
+                            />
+                          </label>
+                          <div className="plan-memory__editor-actions">
+                            <button
+                              className="plan-action-button plan-action-button--compact"
+                              disabled={submitting || !ideaTextDraft.trim()}
+                              onClick={() => saveIdeaEdit(item)}
+                              type="button"
+                            >
+                              Save idea
+                            </button>
+                            <button
+                              className="plan-secondary-button plan-secondary-button--compact"
+                              disabled={submitting}
+                              onClick={cancelIdeaEdit}
+                              type="button"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p>{item.text}</p>
+                      )}
                       {item.reviewNote ? <p className="plan-memory__note">{item.reviewNote}</p> : null}
-                      <div className="plan-idea-actions">
-                        <button
-                          className="plan-inline-button"
-                          disabled={submitting || item.reviewStatus === "kept"}
-                          onClick={() => reviewIdea(item.id, "kept")}
-                          type="button"
-                        >
-                          Keep
-                        </button>
-                        <button
-                          className="plan-inline-button"
-                          disabled={submitting || item.reviewStatus === "promotion-ready"}
-                          onClick={() => reviewIdea(item.id, "promotion-ready")}
-                          type="button"
-                        >
-                          Prepare
-                        </button>
-                        <button
-                          className="plan-inline-button"
-                          disabled={submitting || item.reviewStatus === "dismissed"}
-                          onClick={() => reviewIdea(item.id, "dismissed")}
-                          type="button"
-                        >
-                          Dismiss
-                        </button>
-                        {item.reviewStatus === "promotion-ready" ? (
-                          proposal ? (
-                            <button
-                              className="plan-inline-button"
-                              disabled={submitting}
-                              onClick={() => focusChangeProposal(proposal)}
-                              type="button"
-                            >
-                              Review proposal
-                            </button>
-                          ) : (
-                            <button
-                              className="plan-inline-button"
-                              disabled={submitting}
-                              onClick={() => startDraftChangeProposal(item)}
-                              type="button"
-                            >
-                              Draft change
-                            </button>
-                          )
-                        ) : null}
-                      </div>
-                      {isDraftingProposal ? (
+                      {!isEditingIdea ? (
+                        <div className="plan-idea-actions">
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting}
+                            onClick={() => startIdeaEdit(item)}
+                            type="button"
+                          >
+                            Edit idea
+                          </button>
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting || item.reviewStatus === "kept"}
+                            onClick={() => reviewIdea(item.id, "kept")}
+                            type="button"
+                          >
+                            Keep
+                          </button>
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting || item.reviewStatus === "promotion-ready"}
+                            onClick={() => reviewIdea(item.id, "promotion-ready")}
+                            type="button"
+                          >
+                            Prepare
+                          </button>
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting || item.reviewStatus === "dismissed"}
+                            onClick={() => reviewIdea(item.id, "dismissed")}
+                            type="button"
+                          >
+                            Dismiss
+                          </button>
+                          {item.reviewStatus === "promotion-ready" ? (
+                            proposal ? (
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting}
+                                onClick={() => focusChangeProposal(proposal)}
+                                type="button"
+                              >
+                                Review proposal
+                              </button>
+                            ) : (
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting}
+                                onClick={() => startDraftChangeProposal(item)}
+                                type="button"
+                              >
+                                Draft change
+                              </button>
+                            )
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {isDraftingProposal && !isEditingIdea ? (
                         <div className="plan-change-draft" data-testid="plan-change-draft-form">
                           <label>
                             <span>Title</span>

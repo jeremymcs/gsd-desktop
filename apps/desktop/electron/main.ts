@@ -64,6 +64,7 @@ import type {
   StartThreadInput,
   SetGlobalPlanningPhaseModelsInput,
   UpdatePlanningChangeProposalInput,
+  UpdatePlanningIdeaInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -575,6 +576,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.reviewPlanningIdea, (_event, input: ReviewPlanningIdeaInput) =>
     store.reviewPlanningIdea(input),
+  );
+  ipcMain.handle(desktopIpc.updatePlanningIdea, (_event, input: UpdatePlanningIdeaInput) =>
+    store.updatePlanningIdea(input),
   );
   ipcMain.handle(desktopIpc.draftPlanningChangeProposal, (_event, input: DraftPlanningChangeProposalInput) =>
     store.draftPlanningChangeProposal(input),

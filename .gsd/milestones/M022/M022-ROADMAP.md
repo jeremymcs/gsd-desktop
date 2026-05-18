@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Update Parked Idea Text** `risk:medium` `depends:[M021]`
+- [x] **S01: Update Parked Idea Text** `risk:medium` `depends:[M021]`
   > After this: a parked idea can be edited in the idea pool and the revised text survives restart.
 
 - [ ] **S02: Restore Dismissed Ideas** `risk:medium` `depends:[S01]`

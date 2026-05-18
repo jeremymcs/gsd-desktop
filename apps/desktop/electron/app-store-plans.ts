@@ -48,6 +48,7 @@ import type {
   StartPlanningShipInput,
   StartPlanningVerifyInput,
   UpdatePlanningChangeProposalInput,
+  UpdatePlanningIdeaInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   UpsertPlanningRequirementsInput,
@@ -424,6 +425,44 @@ export async function reviewPlanningIdea(
           itemId: input.itemId,
           status: input.status,
           ...(input.note ? { note: input.note } : {}),
+        },
+      });
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningIdea(
+  store: AppStoreInternals,
+  input: UpdatePlanningIdeaInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const text = input.text.trim();
+  if (!text) {
+    return store.withError("Parked ideas need text");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const item = current.parkedItems.find((entry) => entry.id === input.itemId);
+      if (!item) {
+        throw new Error(`Unknown parked idea: ${input.itemId}`);
+      }
+
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "idea.updated",
+          itemId: item.id,
+          text,
         },
       });
 

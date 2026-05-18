@@ -2165,6 +2165,7 @@ export default function App() {
                 updateSnapshot(api, setSnapshot, () => api.upsertPlanningRequirements(input))
               }
               onReviewIdea={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningIdea(input))}
+              onUpdateIdea={(input) => updateSnapshot(api, setSnapshot, () => api.updatePlanningIdea(input))}
               onDraftChangeProposal={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.draftPlanningChangeProposal(input))
               }

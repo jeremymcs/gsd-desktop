@@ -689,6 +689,7 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     testMode: "background",
   });
   const ideaText = "Promote retry budget into execution work.";
+  const revisedIdeaText = "Promote retry budget with revised acceptance.";
 
   try {
     const window = await harness.firstWindow();
@@ -703,22 +704,33 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     const review = window.getByTestId("plan-composer-parked-review");
     await expect(review).toContainText(ideaText);
     await expect(review.getByTestId("plan-composer-parked-review-status")).toHaveText("Parked");
+    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
+    await idea.getByRole("button", { name: "Edit idea" }).click();
+    const editForm = window.getByTestId("plan-idea-edit-form");
+    await expect(editForm).toBeVisible();
+    await editForm.getByTestId("plan-idea-text-textarea").fill(revisedIdeaText);
+    await editForm.getByRole("button", { name: "Save idea" }).click();
+    const revisedIdea = window.getByTestId("plan-idea-item").filter({ hasText: revisedIdeaText });
+    await expect(revisedIdea.getByTestId("plan-idea-status")).toHaveText("Parked");
+    await expect(review).toContainText(revisedIdeaText);
     await review.getByRole("button", { name: "Prepare" }).click();
     await expect(review.getByTestId("plan-composer-parked-review-status")).toHaveText("Ready to promote");
-    const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
-    await expect(idea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
+    await expect(revisedIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
         (entry) => entry.selectedPlan?.name === "Composer later idea review plan",
       )?.selectedPlan;
+      const parkedItem = plan?.parkedItems.find((item) => item.text === revisedIdeaText);
       return {
         activePhase: plan?.activePhase ?? "",
-        reviewStatus: plan?.parkedItems.find((item) => item.text === ideaText)?.reviewStatus ?? "",
+        reviewStatus: parkedItem?.reviewStatus ?? "",
+        sourcePrompt: parkedItem?.sourcePrompt ?? "",
       };
     }).toEqual({
       activePhase: "execute",
       reviewStatus: "promotion-ready",
+      sourcePrompt: "Composer note captured during EXECUTE",
     });
   } finally {
     await harness.close();
@@ -737,7 +749,7 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Composer later idea review plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("EXECUTE");
     await expect(
-      window.getByTestId("plan-idea-item").filter({ hasText: ideaText }).getByTestId("plan-idea-status"),
+      window.getByTestId("plan-idea-item").filter({ hasText: revisedIdeaText }).getByTestId("plan-idea-status"),
     ).toHaveText("Ready to promote");
   } finally {
     await harness.close();
