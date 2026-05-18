@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { RuntimeExtensionRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { ExtensionCommandCompatibilityRecord, WorkspaceRecord } from "./desktop-state";
 import { ExtensionIcon, RefreshIcon } from "./icons";
@@ -10,6 +10,7 @@ interface ExtensionsViewProps {
   readonly onRefresh: () => void;
   readonly onOpenExtensionFolder: (filePath: string) => void;
   readonly onToggleExtension: (filePath: string, enabled: boolean) => void;
+  readonly workspaceSwitcher?: ReactNode;
 }
 
 export function ExtensionsView({
@@ -19,6 +20,7 @@ export function ExtensionsView({
   onRefresh,
   onOpenExtensionFolder,
   onToggleExtension,
+  workspaceSwitcher,
 }: ExtensionsViewProps) {
   const [query, setQuery] = useState("");
   const [selectedExtensionPath, setSelectedExtensionPath] = useState<string | undefined>();
@@ -61,7 +63,7 @@ export function ExtensionsView({
 
   if (!workspace) {
     return (
-      <section className="canvas canvas--empty">
+      <section className="canvas canvas--empty" data-testid="extensions-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Extensions</div>
           <h1>Select a workspace</h1>
@@ -72,7 +74,8 @@ export function ExtensionsView({
   }
 
   return (
-    <section className="canvas">
+    <section className="canvas canvas--catalog" data-testid="extensions-surface">
+      {workspaceSwitcher}
       <div className="conversation skills-view">
         <header className="view-header catalog-header">
           <div className="catalog-header__main">

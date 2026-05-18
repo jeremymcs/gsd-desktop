@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { RuntimeSkillRecord, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type { WorkspaceRecord } from "./desktop-state";
 import { RefreshIcon, SkillIcon } from "./icons";
@@ -11,6 +11,7 @@ interface SkillsViewProps {
   readonly onOpenSkillFolder: (filePath: string) => void;
   readonly onToggleSkill: (filePath: string, enabled: boolean) => void;
   readonly onTrySkill: (skill: RuntimeSkillRecord) => void;
+  readonly workspaceSwitcher?: ReactNode;
 }
 
 export function SkillsView({
@@ -20,6 +21,7 @@ export function SkillsView({
   onOpenSkillFolder,
   onToggleSkill,
   onTrySkill,
+  workspaceSwitcher,
 }: SkillsViewProps) {
   const [query, setQuery] = useState("");
   const [selectedSkillPath, setSelectedSkillPath] = useState<string | undefined>();
@@ -43,7 +45,7 @@ export function SkillsView({
 
   if (!workspace) {
     return (
-      <section className="canvas canvas--empty">
+      <section className="canvas canvas--empty" data-testid="skills-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Skills</div>
           <h1>Select a workspace</h1>
@@ -54,7 +56,8 @@ export function SkillsView({
   }
 
   return (
-    <section className="canvas">
+    <section className="canvas canvas--catalog" data-testid="skills-surface">
+      {workspaceSwitcher}
       <div className="conversation skills-view">
         <header className="view-header catalog-header">
           <div className="catalog-header__main">

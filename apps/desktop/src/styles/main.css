@@ -1738,6 +1738,11 @@
   margin-bottom: 16px;
 }
 
+.canvas--catalog .surface-toolbar {
+  width: min(1240px, 100%);
+  margin: 0 auto 16px;
+}
+
 .surface-toolbar__field {
   display: grid;
   gap: 6px;

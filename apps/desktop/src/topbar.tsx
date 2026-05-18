@@ -135,6 +135,16 @@ export function Topbar(props: TopbarProps) {
             <span className="topbar__separator">/</span>
             <span className="topbar__session">Plans</span>
           </>
+        ) : activeView === "skills" && rootWorkspace ? (
+          <>
+            <span className="topbar__separator">/</span>
+            <span className="topbar__session">Skills</span>
+          </>
+        ) : activeView === "extensions" && rootWorkspace ? (
+          <>
+            <span className="topbar__separator">/</span>
+            <span className="topbar__session">Extensions</span>
+          </>
         ) : null}
       </div>
 

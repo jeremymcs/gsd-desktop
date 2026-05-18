@@ -162,7 +162,7 @@ export function Sidebar(props: SidebarProps) {
             <span>Plans</span>
           </button>
           <button
-            className="sidebar__nav-item"
+            className={`sidebar__nav-item ${activeView === "skills" ? "sidebar__nav-item--active" : ""}`}
             type="button"
             onClick={() => onOpenSkills(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
           >
@@ -170,7 +170,7 @@ export function Sidebar(props: SidebarProps) {
             <span>Skills</span>
           </button>
           <button
-            className="sidebar__nav-item"
+            className={`sidebar__nav-item ${activeView === "extensions" ? "sidebar__nav-item--active" : ""}`}
             type="button"
             onClick={() => onOpenExtensions(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
           >

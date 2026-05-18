@@ -110,7 +110,7 @@ function isEventInsideTerminal(event: globalThis.KeyboardEvent): boolean {
 }
 
 function canTogglePrimarySidebar(view: AppView | undefined): boolean {
-  return view === "threads" || view === "new-thread" || view === "plans";
+  return view === "threads" || view === "new-thread" || view === "plans" || view === "skills" || view === "extensions";
 }
 
 function useRunningLabel(startedAt: string | undefined) {
@@ -2010,82 +2010,6 @@ export default function App() {
     );
   }
 
-  if (snapshot.activeView === "skills") {
-    return (
-      <SecondarySurface onBack={() => setActiveView("threads")} testId="skills-surface" title="Skills">
-        <div className="surface-toolbar">
-          <label className="surface-toolbar__field">
-            <span>Workspace</span>
-            <select
-              value={skillsWorkspace?.id ?? ""}
-              onChange={(event) => setSkillsWorkspaceId(event.target.value)}
-            >
-              {rootWorkspaceOptions.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <SkillsView
-          workspace={skillsWorkspace}
-          runtime={skillsRuntime}
-          onOpenSkillFolder={handleOpenSkillFolder}
-          onRefresh={() => {
-            if (!skillsWorkspace) {
-              return;
-            }
-            void updateSnapshot(api, setSnapshot, () => api.refreshRuntime(skillsWorkspace.id));
-          }}
-          onToggleSkill={handleToggleSkill}
-          onTrySkill={(skill) =>
-            handleTrySkill(
-              skill.filePath
-                ? `${skill.slashCommand} `
-                : "Create a new skill for this workspace and explain which files you will add.",
-            )
-          }
-        />
-      </SecondarySurface>
-    );
-  }
-
-  if (snapshot.activeView === "extensions") {
-    return (
-      <SecondarySurface onBack={() => setActiveView("threads")} testId="extensions-surface" title="Extensions">
-        <div className="surface-toolbar">
-          <label className="surface-toolbar__field">
-            <span>Workspace</span>
-            <select
-              value={extensionsWorkspace?.id ?? ""}
-              onChange={(event) => setExtensionsWorkspaceId(event.target.value)}
-            >
-              {rootWorkspaceOptions.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <ExtensionsView
-          workspace={extensionsWorkspace}
-          runtime={extensionsRuntime}
-          commandCompatibility={extensionsCommandCompatibility}
-          onOpenExtensionFolder={handleOpenExtensionFolder}
-          onRefresh={() => {
-            if (!extensionsWorkspace) {
-              return;
-            }
-            void updateSnapshot(api, setSnapshot, () => api.refreshRuntime(extensionsWorkspace.id));
-          }}
-          onToggleExtension={handleToggleExtension}
-        />
-      </SecondarySurface>
-    );
-  }
-
   const shellClassName = `shell${snapshot.sidebarCollapsed ? " shell--sidebar-collapsed" : ""}`;
 
   return (
@@ -2232,9 +2156,9 @@ export default function App() {
               </div>
             </section>
           )
-        ) : snapshot.activeView === "new-thread" ? (
-          rootWorkspaceOptions.length > 0 ? (
-            <NewThreadView
+	        ) : snapshot.activeView === "new-thread" ? (
+	          rootWorkspaceOptions.length > 0 ? (
+	            <NewThreadView
               workspaces={rootWorkspaceOptions}
               selectedWorkspaceId={newThreadRootWorkspaceId || rootWorkspaceOptions[0]?.id || ""}
               runtime={newThreadRuntime}
@@ -2288,10 +2212,82 @@ export default function App() {
                 <h1>Open a folder to start</h1>
                 <p>Add a project folder before creating a new thread.</p>
               </div>
-            </section>
-          )
-        ) : selectedWorkspace && selectedSession ? (
-          <>
+	            </section>
+	          )
+	        ) : snapshot.activeView === "skills" ? (
+	          <SkillsView
+	            workspace={skillsWorkspace}
+	            runtime={skillsRuntime}
+	            workspaceSwitcher={
+	              rootWorkspaceOptions.length > 0 ? (
+	                <div className="surface-toolbar">
+	                  <label className="surface-toolbar__field">
+	                    <span>Workspace</span>
+	                    <select
+	                      value={skillsWorkspace?.id ?? ""}
+	                      onChange={(event) => setSkillsWorkspaceId(event.target.value)}
+	                    >
+	                      {rootWorkspaceOptions.map((workspace) => (
+	                        <option key={workspace.id} value={workspace.id}>
+	                          {workspace.name}
+	                        </option>
+	                      ))}
+	                    </select>
+	                  </label>
+	                </div>
+	              ) : null
+	            }
+	            onOpenSkillFolder={handleOpenSkillFolder}
+	            onRefresh={() => {
+	              if (!skillsWorkspace) {
+	                return;
+	              }
+	              void updateSnapshot(api, setSnapshot, () => api.refreshRuntime(skillsWorkspace.id));
+	            }}
+	            onToggleSkill={handleToggleSkill}
+	            onTrySkill={(skill) =>
+	              handleTrySkill(
+	                skill.filePath
+	                  ? `${skill.slashCommand} `
+	                  : "Create a new skill for this workspace and explain which files you will add.",
+	              )
+	            }
+	          />
+	        ) : snapshot.activeView === "extensions" ? (
+	          <ExtensionsView
+	            workspace={extensionsWorkspace}
+	            runtime={extensionsRuntime}
+	            commandCompatibility={extensionsCommandCompatibility}
+	            workspaceSwitcher={
+	              rootWorkspaceOptions.length > 0 ? (
+	                <div className="surface-toolbar">
+	                  <label className="surface-toolbar__field">
+	                    <span>Workspace</span>
+	                    <select
+	                      value={extensionsWorkspace?.id ?? ""}
+	                      onChange={(event) => setExtensionsWorkspaceId(event.target.value)}
+	                    >
+	                      {rootWorkspaceOptions.map((workspace) => (
+	                        <option key={workspace.id} value={workspace.id}>
+	                          {workspace.name}
+	                        </option>
+	                      ))}
+	                    </select>
+	                  </label>
+	                </div>
+	              ) : null
+	            }
+	            onOpenExtensionFolder={handleOpenExtensionFolder}
+	            onRefresh={() => {
+	              if (!extensionsWorkspace) {
+	                return;
+	              }
+	              void updateSnapshot(api, setSnapshot, () => api.refreshRuntime(extensionsWorkspace.id));
+	            }}
+	            onToggleExtension={handleToggleExtension}
+	          />
+	        ) : selectedWorkspace && selectedSession ? (
+	          <>
             <section className="canvas canvas--thread">
               <div className="conversation conversation--thread">
                 <div className="chat-header">
