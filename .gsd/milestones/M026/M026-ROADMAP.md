@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] **S01: Compute Next Work Items** `risk:high` `depends:[M025]`
+- [x] **S01: Compute Next Work Items** `risk:high` `depends:[M025]`
   > After this: planning state can identify unblocked task items from accepted plan structure and execution status.
 
 - [ ] **S02: Next Work Panel** `risk:medium` `depends:[S01]`

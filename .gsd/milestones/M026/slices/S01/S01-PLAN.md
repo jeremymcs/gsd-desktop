@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] Build a pure queue computation helper.
-- [ ] Respect task dependencies, status, verification state, and hidden/restored items.
-- [ ] Add package-level tests for blocked, unblocked, done, and verified tasks.
-- [ ] Keep computation deterministic.
+- [x] Build a pure queue computation helper.
+- [x] Respect task dependencies, status, verification state, and hidden/restored items.
+- [x] Add package-level tests for blocked, unblocked, done, and verified tasks.
+- [x] Keep computation deterministic.
 
 ## Acceptance
 
