@@ -3017,6 +3017,10 @@
   gap: 12px;
 }
 
+.plan-projection-card--workflow-compact {
+  background: color-mix(in srgb, var(--plan-card-bg) 84%, transparent 16%);
+}
+
 .plan-workflow-preferences__header {
   display: flex;
   align-items: start;
@@ -3033,6 +3037,21 @@
 .plan-workflow-preferences__help {
   max-width: 720px;
   margin: 0;
+  color: #a3a8b3;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-workflow-preferences__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-workflow-preferences__compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   color: #a3a8b3;
   font-size: 13px;
   line-height: 1.45;
@@ -5280,6 +5299,12 @@
   min-height: 38px;
   font-size: var(--plan-font-md);
   font-weight: 680;
+}
+
+.canvas--plans .plan-action-button--ghost {
+  border-color: var(--plan-input-border);
+  background: transparent;
+  color: var(--plan-text);
 }
 
 .canvas--plans .plan-inline-button {

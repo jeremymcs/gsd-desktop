@@ -230,6 +230,34 @@
   padding-left: 24px;
 }
 
+.project-preferences-row {
+  width: calc(100% - 24px);
+  min-height: 30px;
+  margin-left: 24px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 560;
+  text-align: left;
+}
+
+.project-preferences-row svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-icon);
+}
+
+.project-preferences-row:hover {
+  background: color-mix(in srgb, var(--surface) 72%, transparent 28%);
+  border-color: color-mix(in srgb, var(--line) 86%, transparent 14%);
+  color: var(--text-strong);
+}
+
 .worktree-group {
   display: grid;
   gap: 2px;

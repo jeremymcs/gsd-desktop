@@ -40,6 +40,7 @@ interface SidebarProps {
   readonly onNewThread: () => void;
   readonly onSetActiveView: (view: AppView) => void;
   readonly onOpenPlans: (workspaceId?: string) => void;
+  readonly onOpenProjectPreferences: (workspaceId?: string) => void;
   readonly onOpenSkills: (workspaceId?: string) => void;
   readonly onOpenExtensions: (workspaceId?: string) => void;
   readonly onOpenSettings: (workspaceId?: string) => void;
@@ -63,6 +64,7 @@ export function Sidebar(props: SidebarProps) {
     onNewThread,
     onSetActiveView,
     onOpenPlans,
+    onOpenProjectPreferences,
     onOpenSkills,
     onOpenExtensions,
     onOpenSettings,
@@ -232,6 +234,7 @@ export function Sidebar(props: SidebarProps) {
                     wsMenu={wsMenu}
                     api={api}
                     onArchiveSession={onArchiveSession}
+                    onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
                     onUnarchiveSession={onUnarchiveSession}
                   />
@@ -247,6 +250,7 @@ export function Sidebar(props: SidebarProps) {
                     wsMenu={wsMenu}
                     api={api}
                     onArchiveSession={onArchiveSession}
+                    onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
                     onUnarchiveSession={onUnarchiveSession}
                   />
@@ -265,6 +269,7 @@ export function Sidebar(props: SidebarProps) {
                     wsMenu={wsMenu}
                     api={api}
                     onArchiveSession={onArchiveSession}
+                    onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
                     onUnarchiveSession={onUnarchiveSession}
                   />
@@ -289,6 +294,7 @@ interface WorkspaceGroupProps {
   readonly wsMenu: WorkspaceMenuState;
   readonly api: PiDesktopApi;
   readonly onArchiveSession: (target: { workspaceId: string; sessionId: string }) => void;
+  readonly onOpenProjectPreferences: (workspaceId?: string) => void;
   readonly onSelectSession: (target: { workspaceId: string; sessionId: string }) => void;
   readonly onUnarchiveSession: (target: { workspaceId: string; sessionId: string }) => void;
 }
@@ -339,6 +345,7 @@ function WorkspaceGroupContent(
     wsMenu,
     api,
     onArchiveSession,
+    onOpenProjectPreferences,
     onSelectSession,
     onUnarchiveSession,
     dragHandleProps,
@@ -474,6 +481,15 @@ function WorkspaceGroupContent(
       ) : null}
       {!isCollapsed ? (
         <>
+          <button
+            className="project-preferences-row"
+            data-testid={`project-preferences-link-${rootWorkspace.id}`}
+            type="button"
+            onClick={() => onOpenProjectPreferences(rootWorkspace.id)}
+          >
+            <SettingsIcon />
+            <span>Project preferences</span>
+          </button>
           <div className="session-list">
             {threads.map((thread) => {
               const active = thread.workspaceId === selectedWorkspace?.id && thread.session.id === selectedSession?.id;

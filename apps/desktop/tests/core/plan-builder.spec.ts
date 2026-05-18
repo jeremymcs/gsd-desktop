@@ -977,6 +977,9 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await window.getByRole("button", { name: "Create plan" }).click();
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
+    await expect(window.getByTestId("workflow-preferences-compact")).toContainText("All phases use team defaults");
+    await expect(window.getByTestId("phase-model-select-execute")).toHaveCount(0);
+    await window.getByRole("button", { name: "Project preferences", exact: true }).click();
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
@@ -2221,6 +2224,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    await expect(window.getByTestId("phase-model-select-discuss")).toHaveCount(0);
+    await window.getByTestId("workflow-preferences-edit-button").click();
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("phase-model-global-discuss")).toContainText("GPT-5");
@@ -2680,6 +2685,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    await expect(window.getByTestId("phase-model-select-execute")).toHaveCount(0);
+    await window.getByRole("button", { name: "Project preferences", exact: true }).click();
     await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("complete-slice.md / complete-milestone.md");

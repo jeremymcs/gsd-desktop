@@ -158,6 +158,7 @@ export default function App() {
   const [skillsWorkspaceId, setSkillsWorkspaceId] = useState("");
   const [extensionsWorkspaceId, setExtensionsWorkspaceId] = useState("");
   const [plansWorkspaceId, setPlansWorkspaceId] = useState("");
+  const [workflowPreferencesFocusToken, setWorkflowPreferencesFocusToken] = useState(0);
   const [pendingNewThreadWorkspaceId, setPendingNewThreadWorkspaceId] = useState("");
   const [newThreadRootWorkspaceId, setNewThreadRootWorkspaceId] = useState("");
   const [newThreadEnvironment, setNewThreadEnvironment] = useState<NewThreadEnvironment>("local");
@@ -1401,6 +1402,11 @@ export default function App() {
     setActiveView("plans");
   };
 
+  const openProjectPreferences = (workspaceId?: string) => {
+    setWorkflowPreferencesFocusToken((token) => token + 1);
+    openPlans(workspaceId);
+  };
+
   const handleSelectPlansWorkspace = (workspaceId: string) => {
     setPlansWorkspaceId(workspaceId);
     void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(workspaceId));
@@ -2106,6 +2112,7 @@ export default function App() {
           onNewThread={() => openNewThreadSurface(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
           onSetActiveView={setActiveView}
           onOpenPlans={openPlans}
+          onOpenProjectPreferences={openProjectPreferences}
           onOpenSkills={openSkills}
           onOpenExtensions={openExtensions}
           onOpenSettings={openSettings}
@@ -2149,6 +2156,7 @@ export default function App() {
               globalPlanningPreferences={snapshot.globalPlanningPreferences}
               planningState={plansWorkspace ? snapshot.planningByWorkspace[plansWorkspace.id] : undefined}
               lastError={snapshot.lastError}
+              workflowPreferencesFocusToken={workflowPreferencesFocusToken}
               onSelectWorkspace={handleSelectPlansWorkspace}
               onCreatePlan={(input) => updateSnapshot(api, setSnapshot, () => api.createPlanningPlan(input))}
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}

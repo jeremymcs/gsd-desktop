@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import { computeGuardrailWarnings, type GuardrailWarning } from "@pi-gui/gsd-planning/guardrails";
 import { defaultWorkflowAutonomousRunPolicy } from "@pi-gui/gsd-planning/types";
@@ -142,6 +142,7 @@ interface PlanBuilderViewProps {
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly planningState: WorkspacePlanningState | undefined;
   readonly lastError?: string;
+  readonly workflowPreferencesFocusToken?: number;
   readonly onSelectWorkspace: (workspaceId: string) => void;
   readonly onCreatePlan: (input: CreatePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onSelectPlan: (input: SelectPlanningPlanInput) => Promise<DesktopAppState>;
@@ -202,6 +203,7 @@ export function PlanBuilderView({
   globalPlanningPreferences,
   planningState,
   lastError,
+  workflowPreferencesFocusToken,
   onSelectWorkspace,
   onCreatePlan,
   onSelectPlan,
@@ -260,10 +262,13 @@ export function PlanBuilderView({
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
   const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
+  const [workflowPreferencesExpanded, setWorkflowPreferencesExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const changeDraftTitleInputRef = useRef<HTMLInputElement | null>(null);
+  const workflowPreferencesRef = useRef<HTMLDivElement | null>(null);
   const snapshot = planningState?.selectedPlan;
+  const workflowPreferencesSaved = Boolean(snapshot?.workflowPreferences?.capturedAt);
   const visiblePlans = useMemo(
     () => planningState?.plans.filter((plan) => plan.status !== "archived") ?? [],
     [planningState?.plans],
@@ -424,6 +429,20 @@ export function PlanBuilderView({
   }, [readinessSignature, snapshot?.id]);
 
   useEffect(() => {
+    setWorkflowPreferencesExpanded(!workflowPreferencesSaved);
+  }, [snapshot?.id, workflowPreferencesSaved]);
+
+  useEffect(() => {
+    if (!workflowPreferencesFocusToken || !snapshot) {
+      return;
+    }
+    setWorkflowPreferencesExpanded(true);
+    window.requestAnimationFrame(() => {
+      workflowPreferencesRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [snapshot?.id, workflowPreferencesFocusToken]);
+
+  useEffect(() => {
     if (!draftingIdeaId) {
       return;
     }
@@ -521,9 +540,13 @@ export function PlanBuilderView({
       workspaceId: workspace.id,
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
-    }).finally(() => {
-      setSubmitting(false);
-    });
+    })
+      .then(() => {
+        setWorkflowPreferencesExpanded(false);
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
   };
 
   const updateWorkflowPhaseOverrides = (phaseOverrides: WorkflowPhaseModelPreferences) => {
@@ -1616,12 +1639,15 @@ export function PlanBuilderView({
 
             {snapshot ? (
               <WorkflowPreferencesCard
+                cardRef={workflowPreferencesRef}
+                expanded={workflowPreferencesExpanded}
                 preferences={snapshot.workflowPreferences}
                 globalPlanningPreferences={globalPlanningPreferences}
                 modelOptions={modelOptions}
                 runtime={runtime}
                 submitting={submitting}
                 onApply={applyWorkflowPreferences}
+                onToggleExpanded={setWorkflowPreferencesExpanded}
                 onUpdatePhaseOverrides={updateWorkflowPhaseOverrides}
               />
             ) : null}
@@ -3764,42 +3790,69 @@ function countLabel(count: number, noun: string): string | undefined {
 }
 
 function WorkflowPreferencesCard({
+  cardRef,
+  expanded,
   preferences,
   globalPlanningPreferences,
   modelOptions,
   runtime,
   submitting,
   onApply,
+  onToggleExpanded,
   onUpdatePhaseOverrides,
 }: {
+  readonly cardRef: RefObject<HTMLDivElement | null>;
+  readonly expanded: boolean;
   readonly preferences: WorkflowPreferencesRecord | undefined;
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly modelOptions: readonly ComposerModelOption[];
   readonly runtime: RuntimeSnapshot | undefined;
   readonly submitting: boolean;
   readonly onApply: () => void;
+  readonly onToggleExpanded: (expanded: boolean) => void;
   readonly onUpdatePhaseOverrides: (phaseOverrides: WorkflowPhaseModelPreferences) => void;
 }) {
   const saved = Boolean(preferences?.capturedAt);
   const phaseOverrides = preferences?.models.phaseOverrides ?? {};
+  const projectOverrideCount = planningPhaseModelOptions.filter((phase) => phaseOverrides[phase.id]).length;
+  const projectModelSummary =
+    projectOverrideCount > 0
+      ? `${projectOverrideCount} phase${projectOverrideCount === 1 ? "" : "s"} use project-specific models.`
+      : "All phases use team defaults unless you choose a project model.";
   const sessionDefault =
     runtime?.settings.defaultProvider && runtime.settings.defaultModelId
       ? { providerId: runtime.settings.defaultProvider, modelId: runtime.settings.defaultModelId }
       : undefined;
   return (
-    <div className="plan-projection-card plan-projection-card--workflow" data-testid="workflow-preferences-card">
+    <div
+      className={`plan-projection-card plan-projection-card--workflow ${saved && !expanded ? "plan-projection-card--workflow-compact" : ""}`}
+      data-testid="workflow-preferences-card"
+      ref={cardRef}
+    >
       <div className="plan-workflow-preferences">
         <div className="plan-workflow-preferences__header">
           <div>
-            <strong>Workflow preferences</strong>
+            <strong>{saved ? "Project preferences" : "Workflow preferences"}</strong>
             <span data-testid="workflow-preferences-summary">
               Defaults: one branch, one commit per task, UAT on, research skipped unless needed, supervised runs.
             </span>
           </div>
           {saved ? (
-            <span className="plan-workflow-preferences__status" data-testid="workflow-preferences-status">
-              Saved
-            </span>
+            <div className="plan-workflow-preferences__actions">
+              <span className="plan-workflow-preferences__status" data-testid="workflow-preferences-status">
+                Saved
+              </span>
+              <button
+                aria-expanded={expanded}
+                className="plan-action-button plan-action-button--compact plan-action-button--ghost"
+                data-testid="workflow-preferences-edit-button"
+                disabled={submitting}
+                onClick={() => onToggleExpanded(!expanded)}
+                type="button"
+              >
+                {expanded ? "Done" : "Edit"}
+              </button>
+            </div>
           ) : (
             <button
               className="plan-action-button plan-action-button--compact"
@@ -3812,12 +3865,18 @@ function WorkflowPreferencesCard({
             </button>
           )}
         </div>
-        {saved ? (
+        {saved && !expanded ? (
+          <div className="plan-workflow-preferences__compact" data-testid="workflow-preferences-compact">
+            <span>{projectModelSummary}</span>
+            <span>Open Project preferences from the sidebar any time.</span>
+          </div>
+        ) : null}
+        {saved && expanded ? (
           <p className="plan-workflow-preferences__help">
             Choose a model for each phase. Leave a phase on team default to inherit Settings.
           </p>
         ) : null}
-        {saved ? (
+        {saved && expanded ? (
           <div className="plan-phase-model-grid">
             {planningPhaseModelOptions.map((phase) => {
               const globalPreference = globalPlanningPreferences.phaseModels[phase.id];
