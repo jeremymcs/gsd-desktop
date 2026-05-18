@@ -38,6 +38,12 @@ async function expectActivePromptOnlyInComposer(window: Page, prompt: string): P
   await expect(window.getByTestId("plan-question-card")).toHaveCount(0);
 }
 
+function planDashboardRowByTitle(window: Page, title: string): Locator {
+  return window.getByTestId("plan-dashboard-row").filter({
+    has: window.locator(".plan-dashboard__row-title").filter({ hasText: title }),
+  });
+}
+
 async function completeDiscussFromComposer(window: Page): Promise<void> {
   for (const [prompt, answer] of discussAnswers) {
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
@@ -578,18 +584,26 @@ test("shows a cross-plan dashboard and switches selected plans", async () => {
     });
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
-    const readyRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Ready dashboard plan" });
-    const riskRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Risk dashboard plan" });
-    const draftRow = window.getByTestId("plan-dashboard-row").filter({ hasText: "Draft dashboard plan" });
+    const readyRow = window.getByTestId("plan-dashboard-row").nth(0);
+    const riskRow = window.getByTestId("plan-dashboard-row").nth(1);
+    const draftRow = window.getByTestId("plan-dashboard-row").nth(2);
+    await expect(readyRow).toContainText("Ready dashboard plan");
+    await expect(riskRow).toContainText("Risk dashboard plan");
+    await expect(draftRow).toContainText("Draft dashboard plan");
     await expect(readyRow).toContainText("EXECUTE");
     await expect(readyRow).toContainText("2 ready / 1 blocked");
     await expect(readyRow).toContainText("M1/S1/T1: Build foundation");
+    await expect(readyRow.getByTestId("plan-dashboard-conflicts")).toHaveText("Conflicts with Risk dashboard plan");
+    await expect(readyRow.getByTestId("plan-dashboard-health")).toContainText("1 plan conflict");
+    await expect(riskRow.getByTestId("plan-dashboard-conflicts")).toHaveText("Conflicts with Ready dashboard plan");
     await expect(riskRow).toContainText("1 blocker");
     await expect(riskRow).toContainText("1 recovery stop");
     await expect(riskRow).toContainText("1 evidence gap");
     await expect(riskRow).toContainText("1 projection issue");
+    await expect(riskRow).toContainText("1 plan conflict");
     await expect(draftRow).toContainText("DISCUSS");
     await expect(draftRow).toContainText("No accepted plan");
+    await expect(draftRow.getByTestId("plan-dashboard-conflicts")).toHaveText("No cross-plan conflicts");
     await expect(draftRow.getByTestId("plan-dashboard-health")).toHaveText("Health: healthy");
 
     await readyRow.click();
@@ -622,7 +636,7 @@ test("archives and restores plans across restart", async () => {
     await window.getByTestId("archive-plan-button").click();
 
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Keep active plan");
-    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
+    await expect(planDashboardRowByTitle(window, "Archive candidate plan")).toHaveCount(0);
     await expect(window.getByTestId("archived-plan-list")).toContainText("Archive candidate plan");
   } finally {
     await harness.close();
@@ -633,7 +647,7 @@ test("archives and restores plans across restart", async () => {
     const window = await harness.firstWindow();
     await waitForWorkspaceByPath(window, workspacePath);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
-    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
+    await expect(planDashboardRowByTitle(window, "Archive candidate plan")).toHaveCount(0);
 
     const archivedRow = window.getByTestId("archived-plan-row").filter({ hasText: "Archive candidate plan" });
     await expect(archivedRow).toBeVisible();
@@ -641,7 +655,7 @@ test("archives and restores plans across restart", async () => {
 
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Archive candidate plan");
     await expect(window.getByTestId("plan-status-label")).toHaveText("Active");
-    await expect(window.getByTestId("plan-dashboard-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(1);
+    await expect(planDashboardRowByTitle(window, "Archive candidate plan")).toHaveCount(1);
     await expect(window.getByTestId("archived-plan-row").filter({ hasText: "Archive candidate plan" })).toHaveCount(0);
   } finally {
     await harness.close();

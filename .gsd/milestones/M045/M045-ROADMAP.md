@@ -12,5 +12,9 @@
 
 ## Slices
 
-- [ ] **S01: Dashboard Conflict Signals** `risk:medium` `depends:[M032,M037]`
+- [x] **S01: Dashboard Conflict Signals** `risk:medium` `depends:[M032,M037]`
   > After this: dashboard rows identify local cross-plan conflicts before execution starts.
+
+## Status
+
+- S01 complete: dashboard rows now surface deterministic cross-plan conflicts for active accepted plans sharing the workspace projection surface.

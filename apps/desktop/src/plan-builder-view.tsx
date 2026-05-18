@@ -2773,6 +2773,7 @@ function PlanDashboard({
           <span>{row.readyCount} ready / {row.blockedCount} blocked</span>
           <span>{row.nextWork}</span>
           <span>Projection: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
+          <span data-testid="plan-dashboard-conflicts">{row.crossPlanConflictSummary}</span>
           <span data-testid="plan-dashboard-health">{formatPlanDashboardHealth(row)}</span>
         </button>
       ))}
@@ -3520,6 +3521,7 @@ function formatPlanDashboardHealth(row: PlanningPlanDashboardRow): string {
     countLabel(row.recoveryStopCount, "recovery stop"),
     countLabel(row.evidenceGapCount, "evidence gap"),
     countLabel(row.projectionIssueCount, "projection issue"),
+    countLabel(row.crossPlanConflictCount, "plan conflict"),
   ].filter(Boolean);
   return signals.length > 0 ? `Health: ${signals.join(" / ")}` : "Health: healthy";
 }

@@ -2658,10 +2658,49 @@ async function buildPlanDashboardRows(
           projectionIssueCount: projectionDrift
             ? projectionDrift.missing.length + projectionDrift.stale.length + projectionDrift.conflicts.length
             : 0,
+          crossPlanConflictCount: countCrossPlanConflicts(snapshot, acceptedPlan, snapshots),
+          crossPlanConflictSummary: summarizeCrossPlanConflicts(snapshot, acceptedPlan, snapshots),
         };
       }),
   );
   return rows.sort((left, right) => left.readableId.localeCompare(right.readableId));
+}
+
+function countCrossPlanConflicts(
+  snapshot: PlanSnapshot,
+  acceptedPlan: PlanningPlanProposalDraft | undefined,
+  snapshots: readonly PlanSnapshot[],
+): number {
+  return getCrossPlanConflicts(snapshot, acceptedPlan, snapshots).length;
+}
+
+function summarizeCrossPlanConflicts(
+  snapshot: PlanSnapshot,
+  acceptedPlan: PlanningPlanProposalDraft | undefined,
+  snapshots: readonly PlanSnapshot[],
+): string {
+  const conflicts = getCrossPlanConflicts(snapshot, acceptedPlan, snapshots);
+  if (conflicts.length === 0) {
+    return "No cross-plan conflicts";
+  }
+  return `Conflicts with ${conflicts.map((plan) => plan.name).join(", ")}`;
+}
+
+function getCrossPlanConflicts(
+  snapshot: PlanSnapshot,
+  acceptedPlan: PlanningPlanProposalDraft | undefined,
+  snapshots: readonly PlanSnapshot[],
+): readonly PlanSnapshot[] {
+  if (!acceptedPlan || snapshot.status === "archived") {
+    return [];
+  }
+  return snapshots.filter((candidate) => {
+    if (candidate.id === snapshot.id || candidate.status === "archived") {
+      return false;
+    }
+    const acceptedOutput = getLatestAcceptedPlanOutput(candidate);
+    return !!acceptedOutput && !!tryParsePlanProposal(acceptedOutput.content);
+  });
 }
 
 function isActionableRecoveryStop(summary: PlanSnapshot["runRecoverySummary"]): boolean {

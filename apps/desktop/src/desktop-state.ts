@@ -194,6 +194,8 @@ export interface PlanningPlanDashboardRow {
   readonly recoveryStopCount: number;
   readonly evidenceGapCount: number;
   readonly projectionIssueCount: number;
+  readonly crossPlanConflictCount: number;
+  readonly crossPlanConflictSummary: string;
 }
 
 export interface PlanningProjectionSummary {
