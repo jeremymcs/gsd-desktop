@@ -297,17 +297,20 @@ async function pickWorkspaceViaDialog(): Promise<DesktopAppState> {
   const window = mainWindow && canPublishToWindow(mainWindow) ? mainWindow : undefined;
   const result = window
     ? await dialog.showOpenDialog(window, {
-        properties: ["openDirectory"],
-        title: "Open workspace folder",
+        properties: ["openDirectory", "multiSelections"],
+        title: "Open workspace folders",
       })
     : await dialog.showOpenDialog({
-        properties: ["openDirectory"],
-        title: "Open workspace folder",
+        properties: ["openDirectory", "multiSelections"],
+        title: "Open workspace folders",
       });
   if (result.canceled || result.filePaths.length === 0) {
     return store.getState();
   }
-  const nextState = await store.addWorkspace(result.filePaths[0] as string);
+  let nextState: DesktopAppState = await store.getState();
+  for (const workspacePath of result.filePaths) {
+    nextState = await store.addWorkspace(workspacePath);
+  }
   if (!nextState.selectedWorkspaceId) {
     return nextState;
   }

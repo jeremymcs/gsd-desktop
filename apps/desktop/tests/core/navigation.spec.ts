@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import { expect, test } from "@playwright/test";
 import {
+  addWorkspaceViaIpc,
   createNamedThread,
   getDesktopState,
   launchDesktop,
@@ -94,15 +95,21 @@ test("navigates across folders and sessions through the sidebar", async () => {
     await createNamedThread(window, "Beta session one", { workspaceName: basename(betaPath) });
 
     await expect(window.locator(".topbar__session")).toHaveText("Beta session one");
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(alphaPath));
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(betaPath));
+    await expect(window.locator(".project-header")).toContainText(basename(betaPath));
+    await expect(window.locator(".session-row", { hasText: "Alpha session two" })).toHaveCount(0);
+
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(alphaPath) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
     await expect(window.locator(".session-row", { hasText: "Alpha session two" })).toHaveAttribute(
       "data-sidebar-indicator",
       "none",
     );
-
-    await expect(window.getByTestId("workspace-list")).toContainText(basename(alphaPath));
-    await expect(window.getByTestId("workspace-list")).toContainText(basename(betaPath));
-
     await selectSession(window, "Alpha session one");
+
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(betaPath) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(betaPath));
     await selectSession(window, "Beta session one");
 
     await expect
@@ -122,6 +129,63 @@ test("navigates across folders and sessions through the sidebar", async () => {
     const selectedWorkspace = state.workspaces.find((workspace) => workspace.id === state.selectedWorkspaceId);
     expect(selectedWorkspace?.path).toBeTruthy();
     expect(state.selectedSessionId).not.toBe("");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("workspace tabs keep multiple projects open and workspace page links route correctly", async () => {
+  const userDataDir = await makeUserDataDir();
+  const alphaPath = await makeWorkspace("workspace-tabs-alpha");
+  const betaPath = await makeWorkspace("workspace-tabs-beta");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [alphaPath],
+    testMode: "background",
+  });
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, alphaPath);
+
+    await addWorkspaceViaIpc(window, betaPath);
+    await waitForWorkspaceByPath(window, betaPath);
+
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(alphaPath));
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(betaPath));
+
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(alphaPath) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
+
+    await window.getByRole("button", { name: "Home", exact: true }).click();
+    await expect(window.getByTestId("new-thread-composer")).toBeVisible();
+
+    await window.getByRole("button", { name: "Plan", exact: true }).click();
+    await expect(window.getByTestId("plan-builder-view")).toBeVisible();
+
+    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
+
+    await window.getByRole("button", { name: "Skills", exact: true }).click();
+    await expect(window.getByTestId("skills-surface")).toBeVisible();
+
+    await window.getByRole("button", { name: "Extensions", exact: true }).click();
+    await expect(window.getByTestId("extensions-surface")).toBeVisible();
+
+    await window.getByRole("button", { name: "Project settings", exact: true }).click();
+    await expect(window.getByTestId("plan-builder-view")).toBeVisible();
+
+    await window.locator(".sidebar__footer").getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(window.locator(".settings-view")).toBeVisible();
+
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(betaPath) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(betaPath));
+
+    await expect
+      .poll(async () => {
+        const state = await getDesktopState(window);
+        return state.workspaces.map((workspace) => workspace.path).sort();
+      })
+      .toEqual([alphaPath, betaPath].sort());
   } finally {
     await harness.close();
   }

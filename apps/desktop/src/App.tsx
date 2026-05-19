@@ -1377,6 +1377,20 @@ export default function App() {
       }}
     />
   ) : null;
+  const activeSurfaceTitle =
+    snapshot.activeView === "new-thread"
+      ? "New session"
+      : snapshot.activeView === "plans"
+        ? "Plans"
+        : snapshot.activeView === "skills"
+          ? "Skills"
+          : snapshot.activeView === "extensions"
+            ? "Extensions"
+            : snapshot.activeView === "settings"
+              ? "Settings"
+              : selectedSession
+                ? displayedSessionTitle || selectedSession.title
+                : activeWorkspaceForView?.name ?? "Open a folder";
 
   const setActiveView = (view: AppView) => {
     void updateSnapshot(api, setSnapshot, () => api.setActiveView(view));
@@ -1388,6 +1402,10 @@ export default function App() {
         ? workspaceId
         : activeWorkspaceForView?.id || rootWorkspaceOptions[0]?.id || "";
     if (nextWorkspaceId) {
+      if (snapshot.selectedWorkspaceId === nextWorkspaceId) {
+        setActiveView("threads");
+        return;
+      }
       void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId));
       return;
     }
@@ -2008,6 +2026,7 @@ export default function App() {
         />
       ) : null}
       <Topbar
+        activeTitle={activeSurfaceTitle}
         activeWorkspaceId={activeWorkspaceForView?.id ?? ""}
         workspaces={rootWorkspaceOptions}
         api={api}
@@ -2233,11 +2252,22 @@ export default function App() {
               onSubmit={handleStartThread}
             />
           ) : (
-            <section className="canvas canvas--empty">
+            <section className="canvas canvas--empty" data-testid="empty-state">
               <div className="empty-panel">
                 <div className="session-header__eyebrow">Workspace</div>
                 <h1>Open a folder to start</h1>
                 <p>Add a project folder before creating a new thread.</p>
+                <div className="empty-panel__actions">
+                  <button
+                    className="button button--primary"
+                    type="button"
+                    onClick={() => {
+                      void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
+                    }}
+                  >
+                    Open first folder
+                  </button>
+                </div>
               </div>
 	            </section>
 	          )
@@ -2417,7 +2447,7 @@ export default function App() {
             ) : null}
           </>
         ) : selectedWorkspace ? (
-          <section className="canvas canvas--empty">
+          <section className="canvas canvas--empty" data-testid="empty-state">
             <div className="empty-panel">
               <div className="session-header__eyebrow">Workspace</div>
               <h1>{selectedWorkspace.name}</h1>
@@ -2439,6 +2469,17 @@ export default function App() {
               <div className="session-header__eyebrow">Workspace</div>
               <h1>Open a folder to start</h1>
               <p>Add project folders, group sessions under them, and jump between threads from the sidebar.</p>
+              <div className="empty-panel__actions">
+                <button
+                  className="button button--primary"
+                  type="button"
+                  onClick={() => {
+                    void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
+                  }}
+                >
+                  Open first folder
+                </button>
+              </div>
             </div>
           </section>
         )}

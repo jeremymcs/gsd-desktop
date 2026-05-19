@@ -4,6 +4,7 @@ import { DiffIcon, FolderIcon, PlusIcon, TerminalIcon } from "./icons";
 import { getDesktopShortcutLabel, type PiDesktopApi } from "./ipc";
 
 interface TopbarProps {
+  readonly activeTitle: string;
   readonly activeWorkspaceId: string;
   readonly workspaces: readonly WorkspaceRecord[];
   readonly api: PiDesktopApi;
@@ -19,6 +20,7 @@ interface TopbarProps {
 export function Topbar(props: TopbarProps) {
   const {
     activeWorkspaceId,
+    activeTitle,
     workspaces,
     api,
     terminalAvailable,
@@ -47,7 +49,8 @@ export function Topbar(props: TopbarProps) {
 
   return (
     <header className="topbar" data-testid="topbar" onDoubleClick={handleDoubleClick}>
-      <nav className="workspace-tabs" aria-label="Project workspaces">
+      <span className="topbar__session sr-only">{activeTitle}</span>
+      <nav className="workspace-tabs" aria-label="Project workspaces" data-testid="workspace-list">
         {workspaces.length > 0 ? (
           workspaces.map((workspace) => {
             const active = workspace.id === activeWorkspaceId;
@@ -70,7 +73,7 @@ export function Topbar(props: TopbarProps) {
             <span>Open workspace</span>
           </button>
         )}
-        <button aria-label="Open workspace" className="workspace-tabs__add" type="button" onClick={onAddWorkspace}>
+        <button aria-label="Add folder" className="workspace-tabs__add" type="button" onClick={onAddWorkspace}>
           <PlusIcon />
         </button>
       </nav>

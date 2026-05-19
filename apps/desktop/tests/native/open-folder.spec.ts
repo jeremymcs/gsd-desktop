@@ -27,7 +27,7 @@ test("opens the native folder picker from the empty state button and adds the se
 
   try {
     const window = await harness.firstWindow();
-    await expect(window.getByTestId("empty-state")).toBeVisible();
+    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
     await harness.focusWindow();
 
     await stubNextOpenDialog(harness, [workspacePath]);
@@ -99,7 +99,7 @@ test("exposes File > Open Folder… with Command+O and reuses the same open-fold
 
   try {
     const window = await harness.firstWindow();
-    await expect(window.getByTestId("empty-state")).toBeVisible();
+    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
     await harness.focusWindow();
 
     const menuItem = await getApplicationMenuItemInfo(harness, OPEN_FOLDER_MENU_ITEM_ID);
@@ -157,6 +157,43 @@ test("opens a folder from the topbar add-folder icon and goes straight to new th
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(openedWorkspacePath));
     await expectNewThreadWorkspace(window, openedWorkspacePath);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("opens multiple workspace folders from one picker selection", async () => {
+  test.setTimeout(60_000);
+  const userDataDir = await makeUserDataDir();
+  const firstWorkspacePath = await makeWorkspace("native-open-folder-multi-first");
+  const secondWorkspacePath = await makeWorkspace("native-open-folder-multi-second");
+  const harness = await launchDesktop(userDataDir, { testMode: "foreground" });
+
+  try {
+    const window = await harness.firstWindow();
+    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
+    await harness.focusWindow();
+
+    await stubNextOpenDialog(harness, [firstWorkspacePath, secondWorkspacePath]);
+    await window.getByRole("button", { name: "Open first folder" }).click();
+
+    await expect
+      .poll(async () => {
+        const state = await getDesktopState(window);
+        const selectedWorkspace = state.workspaces.find((workspace) => workspace.id === state.selectedWorkspaceId);
+        return {
+          selectedPath: selectedWorkspace?.path ?? null,
+          workspacePaths: state.workspaces.map((workspace) => workspace.path).sort(),
+        };
+      }, { timeout: 20_000 })
+      .toEqual({
+        selectedPath: secondWorkspacePath,
+        workspacePaths: [firstWorkspacePath, secondWorkspacePath].sort(),
+      });
+
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(firstWorkspacePath));
+    await expect(window.getByTestId("workspace-list")).toContainText(basename(secondWorkspacePath));
+    await expectNewThreadWorkspace(window, secondWorkspacePath);
   } finally {
     await harness.close();
   }
