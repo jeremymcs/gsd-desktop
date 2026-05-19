@@ -20,7 +20,6 @@ import {
   ChatIcon,
   ChevronDownIcon,
   ExtensionIcon,
-  FeedbackIcon,
   FilterIcon,
   FolderIcon,
   HomeIcon,
@@ -30,7 +29,6 @@ import {
   RestoreIcon,
   SearchIcon,
   SettingsIcon,
-  SidebarToggleIcon,
   SkillIcon,
   WorktreeIcon,
 } from "./icons";
@@ -143,21 +141,6 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__top">
-        <div className="sidebar__window-bar" aria-hidden="true">
-          <div className="sidebar__traffic-lights">
-            <span className="sidebar__traffic-light sidebar__traffic-light--close" />
-            <span className="sidebar__traffic-light sidebar__traffic-light--minimize" />
-            <span className="sidebar__traffic-light sidebar__traffic-light--zoom" />
-          </div>
-          <span className="sidebar__window-toggle">
-            <SidebarToggleIcon />
-          </span>
-          <div className="sidebar__history">
-            <span>‹</span>
-            <span>›</span>
-          </div>
-        </div>
-
         <div className="sidebar__nav">
           <button
             className={`sidebar__nav-item ${activeView === "new-thread" ? "sidebar__nav-item--active" : ""}`}
@@ -325,15 +308,6 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="sidebar__footer">
-        <div className="sidebar__user">
-          <span className="sidebar__avatar" aria-hidden="true">J</span>
-          <span className="sidebar__user-name">Jeremy McSpadden</span>
-          <span className="sidebar__footer-actions">
-            <button aria-label="Feedback" className="icon-button" type="button">
-              <FeedbackIcon />
-            </button>
-          </span>
-        </div>
         <button
           className={`sidebar__settings ${activeView === "settings" ? "sidebar__settings--active" : ""}`}
           type="button"

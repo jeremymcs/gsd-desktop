@@ -56,64 +56,7 @@
 }
 
 .sidebar__top {
-  padding-top: 18px;
-}
-
-.sidebar__window-bar {
-  -webkit-app-region: drag;
-  min-height: 28px;
-  margin-bottom: 28px;
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
-  column-gap: 22px;
-  color: var(--muted-soft);
-}
-
-.sidebar__traffic-lights {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sidebar__traffic-light {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  display: block;
-}
-
-.sidebar__traffic-light--close {
-  background: #ff605c;
-}
-
-.sidebar__traffic-light--minimize {
-  background: #ffbd44;
-}
-
-.sidebar__traffic-light--zoom {
-  background: #00ca4e;
-}
-
-.sidebar__window-toggle {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-}
-
-.sidebar__window-toggle svg {
-  width: 20px;
-  height: 20px;
-}
-
-.sidebar__history {
-  display: inline-flex;
-  justify-self: end;
-  gap: 22px;
-  color: var(--muted-soft);
-  font-size: 26px;
-  line-height: 1;
+  padding-top: 74px;
 }
 
 .sidebar__brand {
@@ -816,53 +759,12 @@
 .sidebar__footer {
   border-top: 1px solid var(--line);
   background: transparent;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.sidebar__user {
-  min-height: 38px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted-strong);
-}
-
-.sidebar__avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #586069 0%, #30363d 100%);
-  color: #f0f6fc;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.sidebar__user-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 16px;
-  font-weight: 560;
-}
-
-.sidebar__footer-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .sidebar__settings {
-  width: fit-content;
-  justify-self: end;
-  grid-column: 2;
-  grid-row: 1;
+  width: 100%;
   min-height: 36px;
   display: inline-flex;
   align-items: center;
@@ -872,10 +774,6 @@
   font-weight: 560;
   padding: 7px 9px;
   border-radius: 10px;
-}
-
-.sidebar__settings > span:last-child {
-  display: none;
 }
 
 .quick-chat-row {
