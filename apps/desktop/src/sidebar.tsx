@@ -141,7 +141,7 @@ export function Sidebar(props: SidebarProps) {
           onClick={onNewThread}
         >
           <PlusIcon />
-          <span>New thread</span>
+          <span>New session</span>
         </button>
 
         <div className="sidebar__nav">
@@ -151,7 +151,7 @@ export function Sidebar(props: SidebarProps) {
             onClick={() => onSetActiveView("threads")}
           >
             <FolderIcon />
-            <span>Threads</span>
+            <span>Sessions</span>
           </button>
           <button
             className={`sidebar__nav-item ${activeView === "plans" ? "sidebar__nav-item--active" : ""}`}
@@ -177,20 +177,12 @@ export function Sidebar(props: SidebarProps) {
             <ExtensionIcon />
             <span>Extensions</span>
           </button>
-          <button
-            className={`sidebar__nav-item ${activeView === "settings" ? "sidebar__nav-item--active" : ""}`}
-            type="button"
-            onClick={() => onOpenSettings(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
-          >
-            <SettingsIcon />
-            <span>Settings</span>
-          </button>
         </div>
       </div>
 
       <div className="sidebar__section">
         <div className="section__head">
-          <span>Threads</span>
+          <span>Sessions</span>
           <div className="section__tools">
             <button
               aria-label="Open folder"
@@ -278,6 +270,19 @@ export function Sidebar(props: SidebarProps) {
             </DragOverlay>
           </DndContext>
         )}
+      </div>
+
+      <div className="sidebar__footer">
+        <button
+          className={`sidebar__settings ${activeView === "settings" ? "sidebar__settings--active" : ""}`}
+          type="button"
+          onClick={() => onOpenSettings(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
+        >
+          <span className="sidebar__settings-mark">
+            <SettingsIcon />
+          </span>
+          <span>Settings</span>
+        </button>
       </div>
     </aside>
   );

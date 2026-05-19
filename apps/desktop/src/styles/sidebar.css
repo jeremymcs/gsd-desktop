@@ -761,20 +761,33 @@
 }
 
 .sidebar__settings {
+  width: 100%;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   color: var(--muted-strong);
   font-size: 14px;
-  font-weight: 500;
-  padding: 6px 8px;
+  font-weight: 560;
+  padding: 7px 9px;
   border-radius: 10px;
+}
+
+.sidebar__settings--active {
+  background: color-mix(in srgb, var(--surface) 78%, var(--proof-soft) 22%);
+  border-color: color-mix(in srgb, var(--line) 80%, var(--proof) 20%);
+  color: var(--text-strong);
 }
 
 .sidebar__settings-mark {
   display: grid;
   place-items: center;
   color: var(--muted-settings);
+}
+
+.sidebar__settings-mark svg {
+  width: 16px;
+  height: 16px;
 }
 
 @media (max-width: 1180px) {
@@ -817,6 +830,11 @@
 }
 
 :root.dark .sidebar__nav-item--active {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--line) 74%);
+}
+
+:root.dark .sidebar__settings--active {
   background: rgba(255, 255, 255, 0.055);
   border-color: color-mix(in srgb, var(--accent) 26%, var(--line) 74%);
 }

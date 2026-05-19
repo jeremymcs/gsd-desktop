@@ -973,7 +973,7 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
     await expect(window.getByRole("button", { name: "Plans", exact: true })).toHaveClass(/sidebar__nav-item--active/);
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("plans");
 
-    await window.getByRole("button", { name: "New thread", exact: true }).click();
+    await window.getByRole("button", { name: "New session", exact: true }).click();
     await expect(window.getByTestId("new-thread-composer")).toBeVisible();
     await window.getByRole("button", { name: "Create the guided plan", exact: true }).click();
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();

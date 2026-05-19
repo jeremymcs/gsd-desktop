@@ -137,7 +137,7 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     await onboardingNotice.getByRole("button", { name: "Open Settings > Models" }).click();
     await expect(window.getByTestId("settings-surface")).toBeVisible();
     await expect(window.locator(".view-header__title")).toHaveText("Models");
-    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await window.getByRole("button", { name: "Sessions", exact: true }).click();
     await expect(window.getByTestId("send")).toBeDisabled();
 
     const appRegions = await window.evaluate(() => {
@@ -191,7 +191,7 @@ test("dark mode keeps the send button visible before and after typing", async ()
       .poll(() => window.evaluate(() => document.documentElement.classList.contains("dark")))
       .toBe(true);
 
-    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await window.getByRole("button", { name: "Sessions", exact: true }).click();
     await selectSession(window, "Dark send button session");
 
     const sendButton = window.getByTestId("send");

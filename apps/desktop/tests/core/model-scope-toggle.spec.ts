@@ -76,7 +76,7 @@ test("switches between app-global and per-repo model scope while worktrees inher
     await window.locator(".surface-toolbar__field select").selectOption({ label: rootWorkspaceB.name });
     await expect(window.locator(".settings-select")).toHaveValue("openai:gpt-5");
 
-    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await window.getByRole("button", { name: "Sessions", exact: true }).click();
     await selectSession(window, "Repo B global session");
     await expectComposerModelState(window, {
       activeModel: "openai/gpt-5",
@@ -117,7 +117,7 @@ test("switches between app-global and per-repo model scope while worktrees inher
     await window.locator(".settings-select").selectOption("openai:gpt-5");
     await expect(window.locator(".settings-select")).toHaveValue("openai:gpt-5");
 
-    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await window.getByRole("button", { name: "Sessions", exact: true }).click();
     await expect(window.getByRole("button", { name: "openai/gpt-4-turbo" }).first()).toBeVisible();
     await expectComposerModelOptions(window, {
       visibleModelLabels: ["GPT-5", "GPT-4 Turbo"],
