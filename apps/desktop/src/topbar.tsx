@@ -1,28 +1,16 @@
-import type { MouseEvent as ReactMouseEvent, Dispatch, SetStateAction } from "react";
-import type { AppView, DesktopAppState, SessionRecord, WorkspaceRecord, WorktreeRecord } from "./desktop-state";
-import { DiffIcon, FolderIcon, TerminalIcon } from "./icons";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import type { WorkspaceRecord } from "./desktop-state";
+import { DiffIcon, FolderIcon, PlusIcon, TerminalIcon } from "./icons";
 import { getDesktopShortcutLabel, type PiDesktopApi } from "./ipc";
-import type { WorkspaceMenuState } from "./hooks/use-workspace-menu";
 
 interface TopbarProps {
-  readonly activeView: AppView;
-  readonly rootWorkspace: WorkspaceRecord | undefined;
-  readonly selectedWorkspace: WorkspaceRecord | undefined;
-  readonly selectedSession: SessionRecord | undefined;
-  readonly selectedSessionTitle: string | undefined;
-  readonly selectedWorktree: WorktreeRecord | undefined;
-  readonly activeWorktrees: readonly WorktreeRecord[];
+  readonly activeWorkspaceId: string;
   readonly workspaces: readonly WorkspaceRecord[];
-  readonly wsMenu: WorkspaceMenuState;
   readonly api: PiDesktopApi;
-  readonly setSnapshot: Dispatch<SetStateAction<DesktopAppState | null>>;
-  readonly updateSnapshot: (
-    api: PiDesktopApi,
-    setSnapshot: Dispatch<SetStateAction<DesktopAppState | null>>,
-    action: () => Promise<DesktopAppState>,
-  ) => Promise<DesktopAppState>;
   readonly terminalAvailable: boolean;
   readonly terminalVisible: boolean;
+  readonly onSelectWorkspace: (workspaceId: string) => void;
+  readonly onAddWorkspace: () => void;
   readonly onToggleTerminal: () => void;
   readonly showDiffPanel: boolean;
   readonly onToggleDiffPanel: () => void;
@@ -30,42 +18,19 @@ interface TopbarProps {
 
 export function Topbar(props: TopbarProps) {
   const {
-    activeView,
-    rootWorkspace,
-    selectedWorkspace,
-    selectedSession,
-    selectedSessionTitle,
-    selectedWorktree,
-    activeWorktrees,
+    activeWorkspaceId,
     workspaces,
-    wsMenu,
     api,
-    setSnapshot,
-    updateSnapshot,
     terminalAvailable,
     terminalVisible,
+    onSelectWorkspace,
+    onAddWorkspace,
     onToggleTerminal,
     showDiffPanel,
     onToggleDiffPanel,
   } = props;
   const terminalShortcut = getDesktopShortcutLabel(api.platform, "J");
   const diffShortcut = getDesktopShortcutLabel(api.platform, "D");
-  const activeTitle =
-    activeView === "new-thread"
-      ? "New session"
-      : activeView === "plans"
-        ? "Workflows"
-        : activeView === "skills"
-          ? "Skills"
-          : activeView === "extensions"
-            ? "Extensions"
-            : activeView === "settings"
-              ? "Settings"
-              : selectedSession
-                ? selectedSessionTitle ?? selectedSession.title
-                : rootWorkspace
-                  ? rootWorkspace.name
-                  : "Open a folder";
 
   const handleDoubleClick = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target;
@@ -73,7 +38,7 @@ export function Topbar(props: TopbarProps) {
       return;
     }
 
-    if (target.closest(".topbar__actions")) {
+    if (target.closest(".topbar__actions") || target.closest(".workspace-tabs")) {
       return;
     }
 
@@ -82,55 +47,33 @@ export function Topbar(props: TopbarProps) {
 
   return (
     <header className="topbar" data-testid="topbar" onDoubleClick={handleDoubleClick}>
-      <div className="topbar__title">
-        <span className="topbar__session">{activeTitle}</span>
-        {selectedWorkspace && activeView === "threads" ? (
-          <div className="environment-picker" ref={wsMenu.environmentMenuRef}>
-            <button
-              aria-expanded={wsMenu.environmentMenuOpen}
-              aria-haspopup="menu"
-              className="environment-picker__button"
-              type="button"
-              onClick={() => wsMenu.setEnvironmentMenuOpen((current) => !current)}
-            >
-              {selectedWorkspace.kind === "worktree" ? selectedWorktree?.name ?? selectedWorkspace.name : "Local"}
-            </button>
-            {wsMenu.environmentMenuOpen && rootWorkspace ? (
-              <div className="workspace-menu environment-picker__menu">
-                <button
-                  className="workspace-menu__item"
-                  type="button"
-                  onClick={() => wsMenu.selectWorkspace(rootWorkspace.id)}
-                >
-                  Local
-                </button>
-                {activeWorktrees.map((worktree) => {
-                  const linkedWorkspace = workspaces.find(
-                    (workspace) => workspace.id === worktree.linkedWorkspaceId,
-                  );
-                  const worktreeSelectable = Boolean(linkedWorkspace) && worktree.status === "ready";
-                  return (
-                    <button
-                      className="workspace-menu__item"
-                      key={worktree.id}
-                      type="button"
-                      disabled={!worktreeSelectable}
-                      onClick={() => {
-                        if (worktreeSelectable && linkedWorkspace) {
-                          wsMenu.selectWorkspace(linkedWorkspace.id);
-                        }
-                      }}
-                    >
-                      {worktree.name}
-                      {!worktreeSelectable ? ` (${worktree.status !== "ready" ? worktree.status : "unavailable"})` : ""}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <nav className="workspace-tabs" aria-label="Project workspaces">
+        {workspaces.length > 0 ? (
+          workspaces.map((workspace) => {
+            const active = workspace.id === activeWorkspaceId;
+            return (
+              <button
+                aria-current={active ? "page" : undefined}
+                className={`workspace-tabs__tab ${active ? "workspace-tabs__tab--active" : ""}`}
+                key={workspace.id}
+                type="button"
+                onClick={() => onSelectWorkspace(workspace.id)}
+              >
+                <FolderIcon />
+                <span>{workspace.name}</span>
+              </button>
+            );
+          })
+        ) : (
+          <button className="workspace-tabs__tab workspace-tabs__tab--empty" type="button" onClick={onAddWorkspace}>
+            <FolderIcon />
+            <span>Open workspace</span>
+          </button>
+        )}
+        <button aria-label="Open workspace" className="workspace-tabs__add" type="button" onClick={onAddWorkspace}>
+          <PlusIcon />
+        </button>
+      </nav>
 
       <div className="topbar__actions">
         <div className="shortcut-tooltip-wrap topbar__tooltip-wrap">
@@ -162,16 +105,6 @@ export function Topbar(props: TopbarProps) {
             <kbd>{diffShortcut}</kbd>
           </span>
         </div>
-        <button
-          aria-label="Add folder"
-          className="icon-button topbar__icon"
-          type="button"
-          onClick={() => {
-            void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
-          }}
-        >
-          <FolderIcon />
-        </button>
       </div>
     </header>
   );

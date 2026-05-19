@@ -6,6 +6,7 @@
   width: 100%;
   height: 100%;
   display: grid;
+  grid-template-rows: 50px minmax(0, 1fr);
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   gap: 0;
   padding: var(--shell-padding);
@@ -14,6 +15,7 @@
 }
 
 .shell--loading {
+  grid-template-rows: 1fr;
   grid-template-columns: 1fr;
   place-items: center;
 }
@@ -29,6 +31,7 @@
 }
 
 .sidebar {
+  grid-row: 2;
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -38,6 +41,7 @@
 }
 
 .main {
+  grid-row: 2;
   border: 0;
   border-left: 0;
   border-radius: 0;
@@ -56,7 +60,7 @@
 }
 
 .sidebar__top {
-  padding-top: 74px;
+  padding-top: 18px;
 }
 
 .sidebar__brand {
@@ -112,14 +116,14 @@
 
 .sidebar__nav {
   display: grid;
-  gap: 14px;
-  margin-top: 0;
+  gap: 8px;
+  margin-top: 18px;
 }
 
 .sidebar__nav-item {
   width: 100%;
-  min-height: 28px;
-  padding: 0;
+  min-height: 38px;
+  padding: 0 10px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -137,9 +141,58 @@
 }
 
 .sidebar__nav-item--active {
-  background: transparent;
+  background: var(--surface-muted);
   border-color: transparent;
   color: var(--text-strong);
+}
+
+.project-header {
+  min-height: 54px;
+  padding: 8px 8px 8px 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  color: var(--text-strong);
+}
+
+.project-header--empty {
+  color: var(--muted-strong);
+}
+
+.project-header__icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--muted-icon);
+}
+
+.project-header__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.project-header__copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.project-header__copy span,
+.sidebar-empty-copy {
+  color: var(--muted-soft);
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.sidebar-empty-copy {
+  margin: 12px 2px 0;
+  line-height: 1.45;
 }
 
 .sidebar__new {

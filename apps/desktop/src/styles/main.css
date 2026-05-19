@@ -13,7 +13,7 @@
 .main {
   background: var(--main);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   overflow: hidden;
   position: relative;
@@ -23,16 +23,12 @@
   grid-template-columns: 1fr 400px;
 }
 
-.main--with-diff > .topbar {
-  grid-column: 1 / -1;
-}
-
 .main--with-diff > .composer {
   grid-column: 1;
 }
 
 .main--with-terminal {
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
 }
 
 .main--with-diff > .terminal-panel {
@@ -40,13 +36,15 @@
 }
 
 .main--with-diff.main--terminal-takeover {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .topbar {
   -webkit-app-region: drag;
+  grid-row: 1;
+  grid-column: 1 / -1;
   min-height: 50px;
-  padding: 0 18px;
+  padding: 0 18px 0 88px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -54,6 +52,74 @@
   border-bottom: 1px solid var(--line);
   background: var(--main);
   backdrop-filter: none;
+}
+
+.workspace-tabs,
+.workspace-tabs * {
+  -webkit-app-region: no-drag;
+}
+
+.workspace-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.workspace-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.workspace-tabs__tab,
+.workspace-tabs__add {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted-strong);
+  background: transparent;
+}
+
+.workspace-tabs__tab {
+  max-width: 220px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 590;
+}
+
+.workspace-tabs__tab svg,
+.workspace-tabs__add svg {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  color: var(--muted-icon);
+}
+
+.workspace-tabs__tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-tabs__tab--active {
+  background: var(--surface-muted);
+  color: var(--text-strong);
+}
+
+.workspace-tabs__tab:hover,
+.workspace-tabs__add:hover {
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent 28%);
+  color: var(--text-strong);
+}
+
+.workspace-tabs__add {
+  width: 34px;
+  justify-content: center;
 }
 
 .topbar__title {

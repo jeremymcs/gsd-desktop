@@ -283,7 +283,6 @@ export default function App() {
   const selectedWorkspace = snapshot ? (getSelectedWorkspace(snapshot) ?? snapshot.workspaces[0]) : undefined;
   const selectedSession = snapshot ? (getSelectedSession(snapshot) ?? selectedWorkspace?.sessions[0]) : undefined;
   const {
-    activeWorktrees,
     linkedWorktreeByWorkspaceId,
     rootWorkspace,
     rootWorkspaceOptions,
@@ -291,7 +290,6 @@ export default function App() {
   } = useMemo(() => {
     if (!snapshot) {
       return {
-        activeWorktrees: [] as readonly WorktreeRecord[],
         linkedWorktreeByWorkspaceId: new Map<string, WorktreeRecord>(),
         rootWorkspace: undefined as WorkspaceRecord | undefined,
         rootWorkspaceOptions: [] as readonly WorkspaceRecord[],
@@ -321,7 +319,6 @@ export default function App() {
       .filter((workspace): workspace is WorkspaceRecord => Boolean(workspace));
 
     return {
-      activeWorktrees: nextRootWorkspace ? snapshot.worktreesByWorkspace[nextRootWorkspace.id] ?? [] : [],
       linkedWorktreeByWorkspaceId: nextLinkedWorktreeByWorkspaceId,
       rootWorkspace: nextRootWorkspace,
       rootWorkspaceOptions: nextRootWorkspaceOptions,
@@ -353,6 +350,18 @@ export default function App() {
     : [];
   const newThreadWorkspace =
     rootWorkspaceOptions.find((entry) => entry.id === newThreadRootWorkspaceId) ?? rootWorkspaceOptions[0];
+  const activeWorkspaceForView =
+    snapshot?.activeView === "plans"
+      ? plansWorkspace ?? rootWorkspaceOptions[0]
+      : snapshot?.activeView === "skills"
+        ? skillsWorkspace ?? rootWorkspaceOptions[0]
+        : snapshot?.activeView === "extensions"
+          ? extensionsWorkspace ?? rootWorkspaceOptions[0]
+          : snapshot?.activeView === "settings"
+            ? settingsWorkspace ?? rootWorkspace ?? rootWorkspaceOptions[0]
+            : snapshot?.activeView === "new-thread"
+              ? newThreadWorkspace
+              : rootWorkspace ?? rootWorkspaceOptions[0];
   const newThreadRuntime = snapshot ? getEffectiveModelRuntime(snapshot, newThreadWorkspace) : undefined;
   const newThreadDefaultEnabled = buildModelOptions(newThreadRuntime).some(
     (m) => m.providerId === newThreadRuntime?.settings.defaultProvider && m.modelId === newThreadRuntime?.settings.defaultModelId,
@@ -1373,6 +1382,18 @@ export default function App() {
     void updateSnapshot(api, setSnapshot, () => api.setActiveView(view));
   };
 
+  const openWorkspaceSessions = (workspaceId?: string) => {
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : activeWorkspaceForView?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId) {
+      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId));
+      return;
+    }
+    setActiveView("threads");
+  };
+
   const openSkills = (workspaceId?: string) => {
     const nextWorkspaceId =
       workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
@@ -1432,6 +1453,23 @@ export default function App() {
     setNewThreadModelId(undefined);
     setNewThreadThinkingLevel(undefined);
     setNewThreadComposerError(undefined);
+  };
+
+  const handleSelectWorkspaceTab = (workspaceId: string) => {
+    if (snapshot.activeView === "plans") {
+      openPlans(workspaceId);
+    } else if (snapshot.activeView === "skills") {
+      openSkills(workspaceId);
+    } else if (snapshot.activeView === "extensions") {
+      openExtensions(workspaceId);
+    } else if (snapshot.activeView === "settings") {
+      setSettingsWorkspaceId(workspaceId);
+      setActiveView("settings");
+    } else if (snapshot.activeView === "new-thread") {
+      openNewThreadSurface(workspaceId);
+    } else {
+      openWorkspaceSessions(workspaceId);
+    }
   };
 
   const submitComposerDraft = (options: { readonly deliverAs?: "steer" | "followUp" } = {}) => {
@@ -1969,20 +2007,31 @@ export default function App() {
           onToggle={handleTogglePrimarySidebar}
         />
       ) : null}
+      <Topbar
+        activeWorkspaceId={activeWorkspaceForView?.id ?? ""}
+        workspaces={rootWorkspaceOptions}
+        api={api}
+        terminalAvailable={Boolean(selectedSessionKey)}
+        terminalVisible={isTerminalVisibleForSelectedThread}
+        onSelectWorkspace={handleSelectWorkspaceTab}
+        onAddWorkspace={() => {
+          void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
+        }}
+        onToggleTerminal={toggleTerminal}
+        showDiffPanel={showDiffPanel}
+        onToggleDiffPanel={toggleDiffPanel}
+      />
       {!snapshot.sidebarCollapsed ? (
         <Sidebar
           activeView={snapshot.activeView}
+          activeWorkspace={activeWorkspaceForView}
           selectedWorkspace={selectedWorkspace}
           selectedSession={selectedSession}
-          visibleWorkspaces={visibleWorkspaces}
           threadGroups={threadGroups}
-          linkedWorktreeByWorkspaceId={linkedWorktreeByWorkspaceId}
           wsMenu={wsMenu}
           api={api}
-          setSnapshot={setSnapshot}
-          updateSnapshot={updateSnapshot}
-          onNewThread={() => openNewThreadSurface(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
-          onSetActiveView={setActiveView}
+          onNewThread={openNewThreadSurface}
+          onOpenSessions={openWorkspaceSessions}
           onOpenPlans={openPlans}
           onOpenProjectPreferences={openProjectPreferences}
           onOpenSkills={openSkills}
@@ -1995,26 +2044,6 @@ export default function App() {
       ) : null}
 
       <main className={mainClassName}>
-        <Topbar
-          activeView={snapshot.activeView}
-          rootWorkspace={rootWorkspace}
-          selectedWorkspace={selectedWorkspace}
-          selectedSession={selectedSession}
-          selectedSessionTitle={displayedSessionTitle || selectedSession?.title}
-          selectedWorktree={selectedWorktree}
-          activeWorktrees={activeWorktrees}
-          workspaces={snapshot.workspaces}
-          wsMenu={wsMenu}
-          api={api}
-          setSnapshot={setSnapshot}
-          updateSnapshot={updateSnapshot}
-          terminalAvailable={Boolean(selectedSessionKey)}
-          terminalVisible={isTerminalVisibleForSelectedThread}
-          onToggleTerminal={toggleTerminal}
-          showDiffPanel={showDiffPanel}
-          onToggleDiffPanel={toggleDiffPanel}
-        />
-
         {showTerminalTakeover ? (
           terminalPanel
         ) : (
