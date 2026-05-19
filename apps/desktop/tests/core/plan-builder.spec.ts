@@ -2248,7 +2248,6 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       ].join(":");
     }).toBe("gpt-5:gpt-4o:gpt-5");
 
-    await window.getByRole("button", { name: "Back to app", exact: true }).click();
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await window.getByTestId("plan-name-input").fill("Launch plan");

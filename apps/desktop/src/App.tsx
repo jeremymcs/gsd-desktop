@@ -30,7 +30,6 @@ import { deriveModelOnboardingState } from "./model-onboarding";
 import { SkillsView } from "./skills-view";
 import { ExtensionsView } from "./extensions-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
-import { SecondarySurface } from "./secondary-surface";
 import { NewThreadView } from "./new-thread-view";
 import { PlanBuilderView } from "./plan-builder-view";
 import { buildThreadGroups } from "./thread-groups";
@@ -110,7 +109,14 @@ function isEventInsideTerminal(event: globalThis.KeyboardEvent): boolean {
 }
 
 function canTogglePrimarySidebar(view: AppView | undefined): boolean {
-  return view === "threads" || view === "new-thread" || view === "plans" || view === "skills" || view === "extensions";
+  return (
+    view === "threads" ||
+    view === "new-thread" ||
+    view === "plans" ||
+    view === "skills" ||
+    view === "extensions" ||
+    view === "settings"
+  );
 }
 
 function useRunningLabel(startedAt: string | undefined) {
@@ -1952,64 +1958,6 @@ export default function App() {
     { id: "notifications", label: "Notifications" },
   ] as const;
 
-  if (snapshot.activeView === "settings") {
-    return (
-      <SecondarySurface
-        activeNavId={settingsSection}
-        navItems={settingsNav}
-        onBack={() => setActiveView("threads")}
-        onSelectNav={(section) => setSettingsSection(section as SettingsSection)}
-        testId="settings-surface"
-        title="Settings"
-      >
-        {settingsSection === "providers" || (settingsSection === "models" && snapshot.modelSettingsScopeMode === "per-repo") ? (
-          <div className="surface-toolbar">
-            <label className="surface-toolbar__field">
-              <span>Workspace</span>
-              <select
-                value={settingsWorkspace?.id ?? ""}
-                onChange={(event) => setSettingsWorkspaceId(event.target.value)}
-              >
-                {rootWorkspaceOptions.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : null}
-        <SettingsView
-          workspace={settingsWorkspace}
-          runtime={settingsSection === "models" ? settingsModelRuntime : settingsRuntime}
-          section={settingsSection}
-          notificationPreferences={snapshot.notificationPreferences}
-          globalPlanningPreferences={snapshot.globalPlanningPreferences}
-          notificationPermissionStatus={notificationPermissionStatus}
-          notificationPermissionPending={notificationPermissionPending}
-          modelSettingsScopeMode={snapshot.modelSettingsScopeMode}
-          integratedTerminalShell={snapshot.integratedTerminalShell}
-          themeMode={themeMode}
-          onLoginProvider={handleLoginProvider}
-          onLogoutProvider={handleLogoutProvider}
-          onSetProviderApiKey={handleSetProviderApiKey}
-          onRemoveProviderApiKey={handleRemoveProviderApiKey}
-          onSetModelSettingsScopeMode={handleSetModelSettingsScopeMode}
-          onSetGlobalPlanningPhaseModels={handleSetGlobalPlanningPhaseModels}
-          onSetDefaultModel={handleSetDefaultModel}
-          onSetNotificationPreferences={handleSetNotificationPreferences}
-          onSetIntegratedTerminalShell={handleSetIntegratedTerminalShell}
-          onRequestNotificationPermission={handleRequestNotificationPermission}
-          onOpenSystemNotificationSettings={handleOpenSystemNotificationSettings}
-          onSetScopedModelPatterns={handleSetScopedModelPatterns}
-          onSetThemeMode={handleSetThemeMode}
-          onSetThinkingLevel={handleSetThinkingLevel}
-          onToggleSkillCommands={handleToggleSkillCommands}
-        />
-      </SecondarySurface>
-    );
-  }
-
   const shellClassName = `shell${snapshot.sidebarCollapsed ? " shell--sidebar-collapsed" : ""}`;
 
   return (
@@ -2071,7 +2019,57 @@ export default function App() {
           terminalPanel
         ) : (
           <>
-        {snapshot.activeView === "plans" ? (
+            {snapshot.activeView === "settings" ? (
+              <SettingsView
+                workspace={settingsWorkspace}
+                runtime={settingsSection === "models" ? settingsModelRuntime : settingsRuntime}
+                section={settingsSection}
+                sections={settingsNav}
+                workspaceSwitcher={
+                  settingsSection === "providers" ||
+                  (settingsSection === "models" && snapshot.modelSettingsScopeMode === "per-repo") ? (
+                    <div className="surface-toolbar">
+                      <label className="surface-toolbar__field">
+                        <span>Workspace</span>
+                        <select
+                          value={settingsWorkspace?.id ?? ""}
+                          onChange={(event) => setSettingsWorkspaceId(event.target.value)}
+                        >
+                          {rootWorkspaceOptions.map((workspace) => (
+                            <option key={workspace.id} value={workspace.id}>
+                              {workspace.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  ) : null
+                }
+                notificationPreferences={snapshot.notificationPreferences}
+                globalPlanningPreferences={snapshot.globalPlanningPreferences}
+                notificationPermissionStatus={notificationPermissionStatus}
+                notificationPermissionPending={notificationPermissionPending}
+                modelSettingsScopeMode={snapshot.modelSettingsScopeMode}
+                integratedTerminalShell={snapshot.integratedTerminalShell}
+                themeMode={themeMode}
+                onSelectSection={setSettingsSection}
+                onLoginProvider={handleLoginProvider}
+                onLogoutProvider={handleLogoutProvider}
+                onSetProviderApiKey={handleSetProviderApiKey}
+                onRemoveProviderApiKey={handleRemoveProviderApiKey}
+                onSetModelSettingsScopeMode={handleSetModelSettingsScopeMode}
+                onSetGlobalPlanningPhaseModels={handleSetGlobalPlanningPhaseModels}
+                onSetDefaultModel={handleSetDefaultModel}
+                onSetNotificationPreferences={handleSetNotificationPreferences}
+                onSetIntegratedTerminalShell={handleSetIntegratedTerminalShell}
+                onRequestNotificationPermission={handleRequestNotificationPermission}
+                onOpenSystemNotificationSettings={handleOpenSystemNotificationSettings}
+                onSetScopedModelPatterns={handleSetScopedModelPatterns}
+                onSetThemeMode={handleSetThemeMode}
+                onSetThinkingLevel={handleSetThinkingLevel}
+                onToggleSkillCommands={handleToggleSkillCommands}
+              />
+            ) : snapshot.activeView === "plans" ? (
           rootWorkspaceOptions.length > 0 ? (
             <PlanBuilderView
               workspaces={rootWorkspaceOptions}

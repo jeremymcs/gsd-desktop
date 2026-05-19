@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { RuntimeSettingsSnapshot, RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import type {
   GlobalPlanningPreferences,
@@ -20,6 +21,8 @@ interface SettingsViewProps {
   readonly workspace?: WorkspaceRecord;
   readonly runtime?: RuntimeSnapshot;
   readonly section: SettingsSection;
+  readonly sections: readonly { readonly id: SettingsSection; readonly label: string }[];
+  readonly workspaceSwitcher?: ReactNode;
   readonly notificationPreferences: NotificationPreferences;
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly notificationPermissionStatus: DesktopNotificationPermissionStatus;
@@ -28,6 +31,7 @@ interface SettingsViewProps {
   readonly integratedTerminalShell: string;
   readonly themeMode: "system" | "light" | "dark";
   readonly onSetModelSettingsScopeMode: (mode: ModelSettingsScopeMode) => void;
+  readonly onSelectSection: (section: SettingsSection) => void;
   readonly onSetGlobalPlanningPhaseModels: (phaseModels: WorkflowPhaseModelPreferences) => void;
   readonly onSetDefaultModel: (provider: string, modelId: string) => void;
   readonly onSetThinkingLevel: (thinkingLevel: RuntimeSettingsSnapshot["defaultThinkingLevel"]) => void;
@@ -48,6 +52,8 @@ export function SettingsView({
   workspace,
   runtime,
   section,
+  sections,
+  workspaceSwitcher,
   notificationPreferences,
   globalPlanningPreferences,
   notificationPermissionStatus,
@@ -56,6 +62,7 @@ export function SettingsView({
   integratedTerminalShell,
   themeMode,
   onSetModelSettingsScopeMode,
+  onSelectSection,
   onSetGlobalPlanningPhaseModels,
   onSetDefaultModel,
   onSetThinkingLevel,
@@ -71,9 +78,52 @@ export function SettingsView({
   onOpenSystemNotificationSettings,
   onSetThemeMode,
 }: SettingsViewProps) {
+  const sectionBody =
+    section === "appearance" ? (
+      <SettingsAppearanceSection
+        themeMode={themeMode}
+        onSetThemeMode={onSetThemeMode}
+      />
+    ) : section === "general" ? (
+      <SettingsGeneralSection
+        runtime={runtime}
+        modelSettingsScopeMode={modelSettingsScopeMode}
+        integratedTerminalShell={integratedTerminalShell}
+        onSetModelSettingsScopeMode={onSetModelSettingsScopeMode}
+        onSetIntegratedTerminalShell={onSetIntegratedTerminalShell}
+        onToggleSkillCommands={onToggleSkillCommands}
+      />
+    ) : section === "providers" ? (
+      <SettingsProvidersSection
+        runtime={runtime}
+        onLoginProvider={onLoginProvider}
+        onLogoutProvider={onLogoutProvider}
+        onSetProviderApiKey={onSetProviderApiKey}
+        onRemoveProviderApiKey={onRemoveProviderApiKey}
+      />
+    ) : section === "models" ? (
+      <SettingsModelsSection
+        runtime={runtime}
+        globalPlanningPreferences={globalPlanningPreferences}
+        onSetGlobalPlanningPhaseModels={onSetGlobalPlanningPhaseModels}
+        onSetDefaultModel={onSetDefaultModel}
+        onSetScopedModelPatterns={onSetScopedModelPatterns}
+        onSetThinkingLevel={onSetThinkingLevel}
+      />
+    ) : (
+      <SettingsNotificationsSection
+        notificationPreferences={notificationPreferences}
+        notificationPermissionStatus={notificationPermissionStatus}
+        notificationPermissionPending={notificationPermissionPending}
+        onSetNotificationPreferences={onSetNotificationPreferences}
+        onRequestNotificationPermission={onRequestNotificationPermission}
+        onOpenSystemNotificationSettings={onOpenSystemNotificationSettings}
+      />
+    );
+
   if (!workspace && section !== "general" && section !== "notifications" && section !== "appearance") {
     return (
-      <section className="canvas canvas--empty">
+      <section className="canvas canvas--settings canvas--empty" data-testid="settings-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Settings</div>
           <h1>Select a workspace</h1>
@@ -84,68 +134,35 @@ export function SettingsView({
   }
 
   return (
-    <section className="canvas">
+    <section className="canvas canvas--settings" data-testid="settings-surface">
       <div className="conversation settings-view">
-        <header className="view-header">
+        <header className="view-header settings-header">
           <div>
-            <div className="chat-header__eyebrow">Settings</div>
+            <div className="chat-header__eyebrow">GSD Settings</div>
             <h1 className="view-header__title">{sectionTitle(section)}</h1>
             <p className="view-header__body">
               {sectionDescription(section, workspace?.name ?? "this workspace")}
             </p>
           </div>
+          {workspaceSwitcher ? <div className="settings-header__actions">{workspaceSwitcher}</div> : null}
         </header>
 
-        <div className="settings-grid">
-          {section === "appearance" ? (
-            <SettingsAppearanceSection
-              themeMode={themeMode}
-              onSetThemeMode={onSetThemeMode}
-            />
-          ) : null}
-
-          {section === "general" ? (
-            <SettingsGeneralSection
-              runtime={runtime}
-              modelSettingsScopeMode={modelSettingsScopeMode}
-              integratedTerminalShell={integratedTerminalShell}
-              onSetModelSettingsScopeMode={onSetModelSettingsScopeMode}
-              onSetIntegratedTerminalShell={onSetIntegratedTerminalShell}
-              onToggleSkillCommands={onToggleSkillCommands}
-            />
-          ) : null}
-
-          {section === "providers" ? (
-            <SettingsProvidersSection
-              runtime={runtime}
-              onLoginProvider={onLoginProvider}
-              onLogoutProvider={onLogoutProvider}
-              onSetProviderApiKey={onSetProviderApiKey}
-              onRemoveProviderApiKey={onRemoveProviderApiKey}
-            />
-          ) : null}
-
-          {section === "models" ? (
-            <SettingsModelsSection
-              runtime={runtime}
-              globalPlanningPreferences={globalPlanningPreferences}
-              onSetGlobalPlanningPhaseModels={onSetGlobalPlanningPhaseModels}
-              onSetDefaultModel={onSetDefaultModel}
-              onSetScopedModelPatterns={onSetScopedModelPatterns}
-              onSetThinkingLevel={onSetThinkingLevel}
-            />
-          ) : null}
-
-          {section === "notifications" ? (
-            <SettingsNotificationsSection
-              notificationPreferences={notificationPreferences}
-              notificationPermissionStatus={notificationPermissionStatus}
-              notificationPermissionPending={notificationPermissionPending}
-              onSetNotificationPreferences={onSetNotificationPreferences}
-              onRequestNotificationPermission={onRequestNotificationPermission}
-              onOpenSystemNotificationSettings={onOpenSystemNotificationSettings}
-            />
-          ) : null}
+        <div className="settings-layout">
+          <nav className="settings-page-nav" aria-label="Settings sections">
+            {sections.map((item) => (
+              <button
+                key={item.id}
+                aria-label={item.label}
+                className={`settings-page-nav__item ${section === item.id ? "settings-page-nav__item--active" : ""}`}
+                type="button"
+                onClick={() => onSelectSection(item.id)}
+              >
+                <span>{item.label}</span>
+                <small>{sectionDescription(item.id, workspace?.name ?? "this workspace")}</small>
+              </button>
+            ))}
+          </nav>
+          <div className="settings-grid">{sectionBody}</div>
         </div>
       </div>
     </section>

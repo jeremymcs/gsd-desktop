@@ -208,7 +208,7 @@ test("manages extensions and prefers runtime commands over colliding host action
     const composer = window.getByTestId("composer");
     await window.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(window.getByTestId("settings-surface")).toBeVisible();
-    await window.getByRole("button", { name: "Back to app", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
 
     await window.getByRole("button", { name: "Extensions", exact: true }).click();
     await extensionCard.click();

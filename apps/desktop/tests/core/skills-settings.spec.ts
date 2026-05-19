@@ -49,7 +49,7 @@ Use this skill when the user wants a short demo workflow.
     await expect(skillCommandsToggle).toBeChecked();
     await skillCommandsToggle.click();
 
-    await window.getByRole("button", { name: "Back to app", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
     const composer = window.getByTestId("composer");
     await composer.fill("/skill");
     await expect(window.getByTestId("slash-menu")).toHaveCount(0);
@@ -57,7 +57,7 @@ Use this skill when the user wants a short demo workflow.
     await window.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(skillCommandsToggle).not.toBeChecked();
     await skillCommandsToggle.click();
-    await window.getByRole("button", { name: "Back to app", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
     await composer.fill("/skill");
     const slashMenu = window.getByTestId("slash-menu");
     await expect(slashMenu).toContainText("Runtime Commands");
