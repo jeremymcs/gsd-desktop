@@ -11,9 +11,7 @@
 }
 
 .main {
-  background:
-    radial-gradient(circle at 68% -18%, color-mix(in srgb, var(--proof-soft) 72%, transparent 28%) 0%, transparent 30%),
-    linear-gradient(180deg, color-mix(in srgb, var(--main) 94%, white 6%) 0%, var(--main) 100%);
+  background: var(--main);
   display: grid;
   grid-template-rows: auto 1fr auto;
   min-width: 0;
@@ -47,20 +45,21 @@
 
 .topbar {
   -webkit-app-region: drag;
-  padding: 12px 18px 10px;
+  min-height: 50px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--main) 88%, var(--surface) 12%);
-  backdrop-filter: blur(18px);
+  background: var(--main);
+  backdrop-filter: none;
 }
 
 .topbar__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -92,8 +91,8 @@
 
 .topbar__workspace,
 .topbar__session {
-  font-size: 13px;
-  font-weight: 560;
+  font-size: 20px;
+  font-weight: 650;
   letter-spacing: -0.02em;
 }
 
@@ -102,7 +101,7 @@
 }
 
 .topbar__session {
-  color: var(--muted-strong);
+  color: var(--text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -146,9 +145,9 @@
 }
 
 .topbar__icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   color: var(--muted-soft);
 }
 
@@ -199,11 +198,16 @@
 
 .sidebar-toggle {
   -webkit-app-region: no-drag;
+  display: none;
   position: absolute;
-  top: 50%;
-  left: var(--sidebar-toggle-boundary-x);
-  transform: translate(-50%, -50%);
+  top: 16px;
+  left: 16px;
+  transform: none;
   z-index: 80;
+}
+
+.shell--sidebar-collapsed .sidebar-toggle {
+  display: block;
 }
 
 .sidebar-toggle__button {
@@ -1145,19 +1149,19 @@
 
 .composer {
   padding: 18px 28px 24px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--main) 0%, transparent 100%) 0%, color-mix(in srgb, var(--main) 88%, transparent 12%) 24%, var(--main) 54%);
+  display: grid;
+  justify-items: center;
+  background: transparent;
 }
 
 .composer__surface {
   position: relative;
-  border-radius: 16px;
-  padding: 12px 14px 11px;
-  border: 1px solid color-mix(in srgb, var(--line) 86%, var(--accent) 14%);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--surface-muted) 6%) 0%, var(--surface) 100%);
+  border-radius: 14px;
+  padding: 14px 18px 11px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--main) 86%, var(--surface) 14%);
   width: 100%;
-  box-shadow: var(--workbench-shadow);
+  box-shadow: none;
   overflow: visible;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
@@ -1185,7 +1189,7 @@
 .composer__editor {
   position: relative;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .composer__slash-intent {
@@ -1243,7 +1247,7 @@
   background: transparent;
   color: var(--text-strong);
   line-height: 1.5;
-  font-size: 15px;
+  font-size: 16px;
   min-height: 24px;
   max-height: 220px;
 }
@@ -1263,7 +1267,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .composer__hint {
@@ -2033,15 +2037,17 @@
 }
 
 .canvas--new-thread {
-  align-content: stretch;
   display: grid;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .new-thread {
-  min-height: calc(100vh - 164px);
   display: grid;
-  align-content: center;
-  gap: 22px;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
 }
 
 .new-thread__hero {
@@ -2056,6 +2062,19 @@
   height: auto;
   display: block;
   filter: drop-shadow(0 18px 44px color-mix(in srgb, var(--proof) 20%, transparent 80%));
+}
+
+.new-thread__blank {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.new-thread__watermark {
+  width: 78px;
+  height: auto;
+  opacity: 0.07;
+  filter: grayscale(1);
 }
 
 .new-thread__eyebrow {
@@ -2094,11 +2113,11 @@
 }
 
 .new-thread__workspace {
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text-strong);
+  max-width: 150px;
+  padding: 0 4px 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
 }
 
@@ -2202,8 +2221,8 @@
 }
 
 .new-thread__composer {
-  width: min(820px, 100%);
-  margin: 0 auto;
+  width: min(1040px, calc(100% - 96px));
+  margin: 0 auto 32px;
 }
 
 .new-thread__composer.composer {
@@ -2215,6 +2234,10 @@
   width: 100%;
 }
 
+.composer > .conversation--composer {
+  width: min(1040px, 100%);
+}
+
 .new-thread__environment-group {
   display: inline-flex;
   align-items: center;
@@ -2223,30 +2246,30 @@
 }
 
 .new-thread__environment {
-  min-height: 26px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface-muted);
+  min-height: 30px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--muted-strong);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 560;
 }
 
 .new-thread__environment--active {
-  border-color: color-mix(in srgb, var(--proof) 34%, var(--line) 66%);
-  background: var(--proof-soft);
+  border-color: var(--line);
+  background: var(--surface-muted);
   color: var(--text-strong);
 }
 
 .new-thread__textarea {
-  min-height: 120px;
+  min-height: 46px;
   resize: vertical;
   border: none;
   background: transparent;
   color: var(--text-strong);
   font: inherit;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.5;
 }
 
@@ -2261,6 +2284,23 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.new-thread__workspace-pill,
+.new-thread__branch {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted-soft);
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.new-thread__workspace-pill svg,
+.new-thread__branch svg {
+  width: 18px;
+  height: 18px;
 }
 
 .canvas--plans {
@@ -6883,14 +6923,12 @@ mark.thread-find-active {
 /* ---------- Dark mode overrides ---------- */
 
 :root.dark .main {
-  background:
-    radial-gradient(circle at 70% -18%, rgba(146, 163, 255, 0.12) 0%, transparent 31%),
-    linear-gradient(180deg, #10131b 0%, var(--main) 100%);
+  background: var(--main);
 }
 
 :root.dark .topbar {
   border-bottom-color: var(--line);
-  background: rgba(12, 14, 20, 0.9);
+  background: var(--main);
 }
 
 :root.dark .topbar__flow {
@@ -6958,15 +6996,13 @@ mark.thread-find-active {
 }
 
 :root.dark .composer {
-  background:
-    linear-gradient(180deg, rgba(14, 16, 23, 0) 0%, rgba(14, 16, 23, 0.9) 24%, var(--main) 54%);
+  background: transparent;
 }
 
 :root.dark .composer__surface {
-  border-color: color-mix(in srgb, var(--accent) 20%, var(--line) 80%);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.048) 0%, rgba(255, 255, 255, 0.025) 100%);
-  box-shadow: var(--workbench-shadow);
+  border-color: var(--line-strong);
+  background: #0d1117;
+  box-shadow: none;
 }
 
 :root.dark .composer__surface--drag-active {
@@ -7133,8 +7169,7 @@ mark.thread-find-active {
 }
 
 :root.dark .new-thread__workspace {
-  border-color: var(--line);
-  background: var(--surface);
+  background: transparent;
 }
 
 :root.dark .new-thread__quick-action {
@@ -7152,13 +7187,13 @@ mark.thread-find-active {
 }
 
 :root.dark .new-thread__environment {
-  border-color: var(--line);
-  background: var(--surface-muted);
+  border-color: transparent;
+  background: transparent;
 }
 
 :root.dark .new-thread__environment--active {
-  border-color: rgba(124, 107, 245, 0.3);
-  background: rgba(124, 107, 245, 0.12);
+  border-color: var(--line);
+  background: var(--surface-muted);
 }
 
 :root.dark .skill-card,

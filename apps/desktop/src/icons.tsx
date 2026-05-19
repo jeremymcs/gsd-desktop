@@ -25,6 +25,68 @@ export function TerminalIcon() {
   );
 }
 
+export function HomeIcon() {
+  return (
+    <Icon>
+      <path d="M3.4 9.2 10 3.7l6.6 5.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+      <path d="M5.4 8.6v7h3.1v-4.1h3v4.1h3.1v-7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+    </Icon>
+  );
+}
+
+export function InboxIcon() {
+  return (
+    <Icon>
+      <path d="M4.2 5.4h11.6l1.4 5.3v3.3a1.7 1.7 0 0 1-1.7 1.7h-11A1.7 1.7 0 0 1 2.8 14v-3.3l1.4-5.3Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.35" />
+      <path d="M3.2 10.7h4.2l.8 1.8h3.6l.8-1.8h4.2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+    </Icon>
+  );
+}
+
+export function SearchIcon() {
+  return (
+    <Icon>
+      <circle cx="8.7" cy="8.7" r="4.9" stroke="currentColor" strokeWidth="1.45" />
+      <path d="m12.4 12.4 3.5 3.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.45" />
+    </Icon>
+  );
+}
+
+export function ChatIcon() {
+  return (
+    <Icon>
+      <path d="M4.1 5.4a5.8 5.8 0 0 1 9.9 4.1c0 3.2-2.6 5.8-5.8 5.8a6.2 6.2 0 0 1-2.6-.6l-2.8.7.7-2.7a5.8 5.8 0 0 1 .6-7.3Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+    </Icon>
+  );
+}
+
+export function FilterIcon() {
+  return (
+    <Icon>
+      <path d="M4 5.8h12M6.8 10h6.4M8.9 14.2h2.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+    </Icon>
+  );
+}
+
+export function BranchIcon() {
+  return (
+    <Icon>
+      <circle cx="6.2" cy="5" r="1.8" stroke="currentColor" strokeWidth="1.35" />
+      <circle cx="13.8" cy="15" r="1.8" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M6.2 6.8v2.6a3 3 0 0 0 3 3h1.6a3 3 0 0 1 3 3M6.2 6.8V15" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
+    </Icon>
+  );
+}
+
+export function FeedbackIcon() {
+  return (
+    <Icon>
+      <path d="M4 5.4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5.8a2 2 0 0 1-2 2H8.1L4.5 16v-2.8H6a2 2 0 0 1-2-2V5.4Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.35" />
+      <path d="M7.2 7.5h5.6M7.2 10h3.8" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
+    </Icon>
+  );
+}
+
 export function SidebarToggleIcon() {
   return (
     <Icon>

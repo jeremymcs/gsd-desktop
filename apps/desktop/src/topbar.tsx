@@ -50,6 +50,22 @@ export function Topbar(props: TopbarProps) {
   } = props;
   const terminalShortcut = getDesktopShortcutLabel(api.platform, "J");
   const diffShortcut = getDesktopShortcutLabel(api.platform, "D");
+  const activeTitle =
+    activeView === "new-thread"
+      ? "New session"
+      : activeView === "plans"
+        ? "Workflows"
+        : activeView === "skills"
+          ? "Skills"
+          : activeView === "extensions"
+            ? "Extensions"
+            : activeView === "settings"
+              ? "Settings"
+              : selectedSession
+                ? selectedSessionTitle ?? selectedSession.title
+                : rootWorkspace
+                  ? rootWorkspace.name
+                  : "Open a folder";
 
   const handleDoubleClick = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target;
@@ -67,89 +83,52 @@ export function Topbar(props: TopbarProps) {
   return (
     <header className="topbar" data-testid="topbar" onDoubleClick={handleDoubleClick}>
       <div className="topbar__title">
-        <span className="topbar__workspace">
-          {rootWorkspace ? rootWorkspace.name : "Open a folder to begin"}
-        </span>
-        {rootWorkspace ? <span className="topbar__flow">DISCUSS &gt; VERIFY &gt; SHIP</span> : null}
+        <span className="topbar__session">{activeTitle}</span>
         {selectedWorkspace && activeView === "threads" ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <div className="environment-picker" ref={wsMenu.environmentMenuRef}>
-              <button
-                aria-expanded={wsMenu.environmentMenuOpen}
-                aria-haspopup="menu"
-                className="environment-picker__button"
-                type="button"
-                onClick={() => wsMenu.setEnvironmentMenuOpen((current) => !current)}
-              >
-                {selectedWorkspace.kind === "worktree" ? selectedWorktree?.name ?? selectedWorkspace.name : "Local"}
-              </button>
-              {wsMenu.environmentMenuOpen && rootWorkspace ? (
-                <div className="workspace-menu environment-picker__menu">
-                  <button
-                    className="workspace-menu__item"
-                    type="button"
-                    onClick={() => wsMenu.selectWorkspace(rootWorkspace.id)}
-                  >
-                    Local
-                  </button>
-                  {activeWorktrees.map((worktree) => {
-                    const linkedWorkspace = workspaces.find(
-                      (workspace) => workspace.id === worktree.linkedWorkspaceId,
-                    );
-                    const worktreeSelectable = Boolean(linkedWorkspace) && worktree.status === "ready";
-                    return (
-                      <button
-                        className="workspace-menu__item"
-                        key={worktree.id}
-                        type="button"
-                        disabled={!worktreeSelectable}
-                        onClick={() => {
-                          if (worktreeSelectable && linkedWorkspace) {
-                            wsMenu.selectWorkspace(linkedWorkspace.id);
-                          }
-                        }}
-                      >
-                        {worktree.name}
-                        {!worktreeSelectable ? ` (${worktree.status !== "ready" ? worktree.status : "unavailable"})` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-          </>
-        ) : null}
-        {selectedWorkspace && activeView === "threads" && selectedSession ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">{selectedSessionTitle ?? selectedSession.title}</span>
-          </>
-        ) : activeView === "new-thread" && rootWorkspace ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">New thread</span>
-          </>
-        ) : activeView === "plans" && rootWorkspace ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">Plans</span>
-          </>
-        ) : activeView === "skills" && rootWorkspace ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">Skills</span>
-          </>
-        ) : activeView === "extensions" && rootWorkspace ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">Extensions</span>
-          </>
-        ) : activeView === "settings" && rootWorkspace ? (
-          <>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__session">Settings</span>
-          </>
+          <div className="environment-picker" ref={wsMenu.environmentMenuRef}>
+            <button
+              aria-expanded={wsMenu.environmentMenuOpen}
+              aria-haspopup="menu"
+              className="environment-picker__button"
+              type="button"
+              onClick={() => wsMenu.setEnvironmentMenuOpen((current) => !current)}
+            >
+              {selectedWorkspace.kind === "worktree" ? selectedWorktree?.name ?? selectedWorkspace.name : "Local"}
+            </button>
+            {wsMenu.environmentMenuOpen && rootWorkspace ? (
+              <div className="workspace-menu environment-picker__menu">
+                <button
+                  className="workspace-menu__item"
+                  type="button"
+                  onClick={() => wsMenu.selectWorkspace(rootWorkspace.id)}
+                >
+                  Local
+                </button>
+                {activeWorktrees.map((worktree) => {
+                  const linkedWorkspace = workspaces.find(
+                    (workspace) => workspace.id === worktree.linkedWorkspaceId,
+                  );
+                  const worktreeSelectable = Boolean(linkedWorkspace) && worktree.status === "ready";
+                  return (
+                    <button
+                      className="workspace-menu__item"
+                      key={worktree.id}
+                      type="button"
+                      disabled={!worktreeSelectable}
+                      onClick={() => {
+                        if (worktreeSelectable && linkedWorkspace) {
+                          wsMenu.selectWorkspace(linkedWorkspace.id);
+                        }
+                      }}
+                    >
+                      {worktree.name}
+                      {!worktreeSelectable ? ` (${worktree.status !== "ready" ? worktree.status : "unavailable"})` : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

@@ -14,7 +14,26 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { AppView, SessionRecord, WorkspaceRecord, WorktreeRecord } from "./desktop-state";
-import { ArchiveIcon, ChevronDownIcon, ExtensionIcon, FolderIcon, PlanIcon, PlusIcon, RestoreIcon, SettingsIcon, SkillIcon, WorktreeIcon } from "./icons";
+import {
+  ArchiveIcon,
+  BranchIcon,
+  ChatIcon,
+  ChevronDownIcon,
+  ExtensionIcon,
+  FeedbackIcon,
+  FilterIcon,
+  FolderIcon,
+  HomeIcon,
+  InboxIcon,
+  PlanIcon,
+  PlusIcon,
+  RestoreIcon,
+  SearchIcon,
+  SettingsIcon,
+  SidebarToggleIcon,
+  SkillIcon,
+  WorktreeIcon,
+} from "./icons";
 import type { PiDesktopApi } from "./ipc";
 import { formatRelativeTime } from "./string-utils";
 import type { WorkspaceMenuState } from "./hooks/use-workspace-menu";
@@ -124,34 +143,38 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__top">
-        <div className="sidebar__brand" aria-label="GSD Workbench">
-          <div className="sidebar__brand-mark">
-            <PlanIcon />
+        <div className="sidebar__window-bar" aria-hidden="true">
+          <div className="sidebar__traffic-lights">
+            <span className="sidebar__traffic-light sidebar__traffic-light--close" />
+            <span className="sidebar__traffic-light sidebar__traffic-light--minimize" />
+            <span className="sidebar__traffic-light sidebar__traffic-light--zoom" />
           </div>
-          <div className="sidebar__brand-copy">
-            <strong>GSD Workbench</strong>
-            <span>DISCUSS &gt; SHIP</span>
+          <span className="sidebar__window-toggle">
+            <SidebarToggleIcon />
+          </span>
+          <div className="sidebar__history">
+            <span>‹</span>
+            <span>›</span>
           </div>
         </div>
 
-        <button
-          className="sidebar__new"
-          type="button"
-          disabled={!selectedWorkspace}
-          onClick={onNewThread}
-        >
-          <PlusIcon />
-          <span>New session</span>
-        </button>
-
         <div className="sidebar__nav">
+          <button
+            className={`sidebar__nav-item ${activeView === "new-thread" ? "sidebar__nav-item--active" : ""}`}
+            type="button"
+            disabled={!selectedWorkspace}
+            onClick={onNewThread}
+          >
+            <HomeIcon />
+            <span>Home</span>
+          </button>
           <button
             className={`sidebar__nav-item ${activeView === "threads" ? "sidebar__nav-item--active" : ""}`}
             type="button"
             onClick={() => onSetActiveView("threads")}
           >
-            <FolderIcon />
-            <span>Sessions</span>
+            <InboxIcon />
+            <span>Inbox</span>
           </button>
           <button
             className={`sidebar__nav-item ${activeView === "plans" ? "sidebar__nav-item--active" : ""}`}
@@ -159,7 +182,15 @@ export function Sidebar(props: SidebarProps) {
             onClick={() => onOpenPlans(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
           >
             <PlanIcon />
-            <span>Plans</span>
+            <span>Workflows</span>
+          </button>
+          <button
+            className="sidebar__nav-item"
+            type="button"
+            onClick={() => onSetActiveView("threads")}
+          >
+            <SearchIcon />
+            <span>Search</span>
           </button>
           <button
             className={`sidebar__nav-item ${activeView === "skills" ? "sidebar__nav-item--active" : ""}`}
@@ -185,17 +216,32 @@ export function Sidebar(props: SidebarProps) {
           <span>Sessions</span>
           <div className="section__tools">
             <button
-              aria-label="Open folder"
+              aria-label="Filter sessions"
               className="icon-button"
               type="button"
-              onClick={() => {
-                void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
-              }}
             >
-              <FolderIcon />
+              <FilterIcon />
+            </button>
+            <button
+              aria-label="New session"
+              className="icon-button"
+              type="button"
+              disabled={!selectedWorkspace}
+              onClick={onNewThread}
+            >
+              <PlusIcon />
             </button>
           </div>
         </div>
+        <button
+          className={`quick-chat-row ${activeView === "new-thread" && !selectedWorkspace ? "quick-chat-row--active" : ""}`}
+          type="button"
+          onClick={onNewThread}
+          disabled={!selectedWorkspace}
+        >
+          <ChatIcon />
+          <span>Quick chats</span>
+        </button>
 
         {visibleWorkspaces.length === 0 ? (
           <div className="empty-state" data-testid="empty-state">
@@ -222,9 +268,11 @@ export function Sidebar(props: SidebarProps) {
                     canDrag={canDrag}
                     selectedWorkspace={selectedWorkspace}
                     selectedSession={selectedSession}
+                    activeView={activeView}
                     linkedWorktreeByWorkspaceId={linkedWorktreeByWorkspaceId}
                     wsMenu={wsMenu}
                     api={api}
+                    onNewThread={onNewThread}
                     onArchiveSession={onArchiveSession}
                     onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
@@ -238,9 +286,11 @@ export function Sidebar(props: SidebarProps) {
                     canDrag={false}
                     selectedWorkspace={selectedWorkspace}
                     selectedSession={selectedSession}
+                    activeView={activeView}
                     linkedWorktreeByWorkspaceId={linkedWorktreeByWorkspaceId}
                     wsMenu={wsMenu}
                     api={api}
+                    onNewThread={onNewThread}
                     onArchiveSession={onArchiveSession}
                     onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
@@ -257,9 +307,11 @@ export function Sidebar(props: SidebarProps) {
                     canDrag={false}
                     selectedWorkspace={selectedWorkspace}
                     selectedSession={selectedSession}
+                    activeView={activeView}
                     linkedWorktreeByWorkspaceId={linkedWorktreeByWorkspaceId}
                     wsMenu={wsMenu}
                     api={api}
+                    onNewThread={onNewThread}
                     onArchiveSession={onArchiveSession}
                     onOpenProjectPreferences={onOpenProjectPreferences}
                     onSelectSession={onSelectSession}
@@ -273,6 +325,15 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="sidebar__footer">
+        <div className="sidebar__user">
+          <span className="sidebar__avatar" aria-hidden="true">J</span>
+          <span className="sidebar__user-name">Jeremy McSpadden</span>
+          <span className="sidebar__footer-actions">
+            <button aria-label="Feedback" className="icon-button" type="button">
+              <FeedbackIcon />
+            </button>
+          </span>
+        </div>
         <button
           className={`sidebar__settings ${activeView === "settings" ? "sidebar__settings--active" : ""}`}
           type="button"
@@ -295,9 +356,11 @@ interface WorkspaceGroupProps {
   readonly canDrag: boolean;
   readonly selectedWorkspace: WorkspaceRecord | undefined;
   readonly selectedSession: SessionRecord | undefined;
+  readonly activeView: AppView;
   readonly linkedWorktreeByWorkspaceId: Map<string, WorktreeRecord>;
   readonly wsMenu: WorkspaceMenuState;
   readonly api: PiDesktopApi;
+  readonly onNewThread: () => void;
   readonly onArchiveSession: (target: { workspaceId: string; sessionId: string }) => void;
   readonly onOpenProjectPreferences: (workspaceId?: string) => void;
   readonly onSelectSession: (target: { workspaceId: string; sessionId: string }) => void;
@@ -346,9 +409,11 @@ function WorkspaceGroupContent(
     group: { rootWorkspace, threads, archivedThreads },
     selectedWorkspace,
     selectedSession,
+    activeView,
     linkedWorktreeByWorkspaceId,
     wsMenu,
     api,
+    onNewThread,
     onArchiveSession,
     onOpenProjectPreferences,
     onSelectSession,
@@ -486,16 +551,28 @@ function WorkspaceGroupContent(
       ) : null}
       {!isCollapsed ? (
         <>
-          <button
-            className="project-preferences-row"
-            data-testid={`project-preferences-link-${rootWorkspace.id}`}
-            type="button"
-            onClick={() => onOpenProjectPreferences(rootWorkspace.id)}
-          >
-            <SettingsIcon />
-            <span>Project preferences</span>
-          </button>
           <div className="session-list">
+            <div className={`session-row session-row--new ${activeView === "new-thread" && workspaceActive ? "session-row--active" : ""}`}>
+              <button className="session-row__select" onClick={onNewThread} type="button">
+                <span className="session-row__leading" aria-hidden="true">
+                  <BranchIcon />
+                </span>
+                <span className="session-row__body">
+                  <span className="session-row__title-line">
+                    <span className="session-row__title">New session</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+            <button
+              className="project-preferences-row"
+              data-testid={`project-preferences-link-${rootWorkspace.id}`}
+              type="button"
+              onClick={() => onOpenProjectPreferences(rootWorkspace.id)}
+            >
+              <SettingsIcon />
+              <span>Project preferences</span>
+            </button>
             {threads.map((thread) => {
               const active = thread.workspaceId === selectedWorkspace?.id && thread.session.id === selectedSession?.id;
               return (
