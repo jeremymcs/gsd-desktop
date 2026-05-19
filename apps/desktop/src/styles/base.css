@@ -31,6 +31,7 @@
   --error: #c45666;
   --error-ink: #8f3040;
   --font-ui:
+    "Inter",
     ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
@@ -46,6 +47,12 @@
   --border: var(--line);
   --ink: var(--text);
   --ink-strong: var(--text-strong);
+  --type-body: 14px;
+  --type-control: 13px;
+  --type-small: 12px;
+  --type-caption: 11px;
+  --line-body: 1.45;
+  --line-tight: 1.25;
   --button-primary-bg: var(--text-strong);
   --button-primary-border: var(--text-strong);
   --button-primary-ink: #ffffff;
@@ -117,7 +124,9 @@ body {
   font-family: var(--font-ui);
   color: var(--text-strong);
   background: var(--window);
-  font-size: 15px;
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -150,7 +159,7 @@ svg {
 .loading-card__eyebrow,
 .session-header__eyebrow {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -164,9 +173,9 @@ svg {
 .session-header h1,
 .empty-panel h1 {
   margin: 0;
-  font-size: clamp(34px, 3vw, 50px);
-  letter-spacing: -0.04em;
-  line-height: 0.98;
+  font-size: clamp(28px, 2.5vw, 40px);
+  letter-spacing: 0;
+  line-height: 1.06;
 }
 
 .loading-card p,
@@ -176,8 +185,8 @@ svg {
 .message p {
   margin: 0;
   color: var(--muted);
-  line-height: 1.5;
-  font-size: 15px;
+  line-height: var(--line-body);
+  font-size: var(--type-body);
 }
 
 .loading-card p {
@@ -193,8 +202,8 @@ svg {
 
 .empty-state h2 {
   margin: 0 0 8px;
-  font-size: 17px;
-  letter-spacing: -0.03em;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 .button {
@@ -208,7 +217,7 @@ svg {
   background: var(--surface);
   border: 1px solid transparent;
   color: var(--text-strong);
-  font-size: 14px;
+  font-size: var(--type-control);
   font-weight: 600;
   transition:
     background 140ms ease,

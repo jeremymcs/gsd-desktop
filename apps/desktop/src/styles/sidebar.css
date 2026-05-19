@@ -1,6 +1,6 @@
 .shell {
   --shell-padding: 0px;
-  --sidebar-width: 360px;
+  --sidebar-width: 328px;
   --sidebar-toggle-boundary-x: calc(var(--shell-padding) + var(--sidebar-width));
   --sidebar-toggle-size: 34px;
   width: 100%;
@@ -97,9 +97,9 @@
 
 .sidebar__brand-copy strong {
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 690;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .sidebar__brand-copy span {
@@ -116,27 +116,27 @@
 
 .sidebar__nav {
   display: grid;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 6px;
+  margin-top: 14px;
 }
 
 .sidebar__nav-item {
   width: 100%;
-  min-height: 38px;
+  min-height: 34px;
   padding: 0 10px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 12px;
   color: var(--muted-strong);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 540;
   border: 1px solid transparent;
 }
 
 .sidebar__nav-item svg {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
   color: var(--muted-icon);
 }
 
@@ -147,7 +147,7 @@
 }
 
 .project-header {
-  min-height: 54px;
+  min-height: 48px;
   padding: 8px 8px 8px 10px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -179,14 +179,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 650;
 }
 
 .project-header__copy span,
 .sidebar-empty-copy {
   color: var(--muted-soft);
-  font-size: 13px;
+  font-size: var(--type-small);
   font-weight: 520;
 }
 
@@ -221,7 +221,7 @@
 
 .sidebar__section {
   overflow: auto;
-  padding-top: 22px;
+  padding-top: 18px;
 }
 
 .section__head {
@@ -229,11 +229,11 @@
   align-items: center;
   justify-content: space-between;
   color: var(--muted-subtle);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 650;
   letter-spacing: 0;
   text-transform: none;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .section__tools {
@@ -447,7 +447,7 @@
 }
 
 .workspace-row__name {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 560;
   color: var(--muted-strong);
 }
@@ -588,7 +588,7 @@
 .session-row {
   padding: 0 9px;
   border-radius: 8px;
-  min-height: 42px;
+  min-height: 36px;
   grid-template-columns: minmax(0, 1fr) auto;
   position: relative;
   overflow: visible;
@@ -661,7 +661,7 @@
 }
 
 .session-row__title {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 520;
   color: var(--text-strong);
   min-width: 0;
@@ -838,7 +838,7 @@
   align-items: center;
   gap: 12px;
   color: var(--muted-strong);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 560;
   text-align: left;
 }
