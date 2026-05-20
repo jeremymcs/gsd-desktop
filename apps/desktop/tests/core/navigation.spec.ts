@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   addWorkspaceViaIpc,
   createNamedThread,
@@ -152,9 +152,11 @@ test("workspace tabs keep multiple projects open and workspace page links route 
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(alphaPath));
     await expect(window.getByTestId("workspace-list")).toContainText(basename(betaPath));
+    await expect.poll(() => workspaceTabLabels(window)).toEqual([basename(alphaPath), basename(betaPath)]);
 
     await window.getByTestId("workspace-list").getByRole("button", { name: basename(alphaPath) }).click();
     await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
+    await expect.poll(() => workspaceTabLabels(window)).toEqual([basename(alphaPath), basename(betaPath)]);
 
     await window.getByRole("button", { name: "Home", exact: true }).click();
     await expect(window.getByTestId("project-home-view")).toBeVisible();
@@ -181,6 +183,11 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await window.getByTestId("workspace-list").getByRole("button", { name: basename(betaPath) }).click();
     await expect(window.locator(".project-header")).toContainText(basename(betaPath));
     await expect(window.getByTestId("project-home-view")).toBeVisible();
+    await expect.poll(() => workspaceTabLabels(window)).toEqual([basename(alphaPath), basename(betaPath)]);
+
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(alphaPath) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
+    await expect.poll(() => workspaceTabLabels(window)).toEqual([basename(alphaPath), basename(betaPath)]);
 
     await expect
       .poll(async () => {
@@ -227,3 +234,7 @@ test("switching sessions republishes the selected transcript", async () => {
     await harness.close();
   }
 });
+
+async function workspaceTabLabels(window: Page) {
+  return window.locator(".workspace-tabs__tab:not(.workspace-tabs__tab--empty) span").allTextContents();
+}

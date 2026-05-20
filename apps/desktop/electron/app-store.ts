@@ -1122,6 +1122,7 @@ export class DesktopAppStore implements AppStoreInternals {
           : undefined;
       const runtimeByWorkspace = this.serializeEffectiveRuntimeState(workspaces, scopedModelSettingsByWorkspace);
 
+      const workspaceOrder = reconcileWorkspaceOrder(this.state.workspaceOrder, workspaces);
       const activeView = options.activeView ?? this.state.activeView;
       const composerDraftSync = this.resolveComposerDraftSync(selectedWorkspaceId, selectedSessionId, options);
       this.state = {
@@ -1136,7 +1137,7 @@ export class DesktopAppStore implements AppStoreInternals {
         sessionExtensionUiBySession: this.serializeSessionExtensionUiState(),
         extensionCommandCompatibilityByWorkspace: serializeCompatibilityByWorkspace(this.extensionCommandCompatibilityByWorkspace),
         lastViewedAtBySession: mapToRecord(this.sessionState.lastViewedAtBySession),
-        workspaceOrder: this.state.workspaceOrder,
+        workspaceOrder,
         modelSettingsScopeMode: this.state.modelSettingsScopeMode,
         globalModelSettings,
         composerDraft: this.resolveComposerDraft(selectedWorkspaceId, selectedSessionId, options.composerDraft),
@@ -2483,6 +2484,21 @@ function updateRecordValue<T>(
     ...record,
     [key]: value,
   };
+}
+
+function reconcileWorkspaceOrder(
+  currentOrder: readonly string[],
+  workspaces: DesktopAppState["workspaces"],
+): readonly string[] {
+  const primaryIds = workspaces.filter((workspace) => workspace.kind === "primary").map((workspace) => workspace.id);
+  const primaryIdSet = new Set(primaryIds);
+  const nextOrder = currentOrder.filter((workspaceId) => primaryIdSet.has(workspaceId));
+  for (const workspaceId of primaryIds) {
+    if (!nextOrder.includes(workspaceId)) {
+      nextOrder.push(workspaceId);
+    }
+  }
+  return nextOrder;
 }
 
 function applyModelSettingsSnapshot(

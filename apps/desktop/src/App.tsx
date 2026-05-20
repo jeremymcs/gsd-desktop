@@ -317,9 +317,17 @@ export default function App() {
     const nextRootWorkspace =
       (nextRootWorkspaceId ? snapshot.workspaces.find((workspace) => workspace.id === nextRootWorkspaceId) : undefined)
       ?? selectedWorkspace;
-    const nextRootWorkspaceOptions = [...new Set(snapshot.workspaces.map((workspace) => resolveRepoWorkspaceId(snapshot.workspaces, workspace.id) ?? workspace.id))]
+    const discoveredRootWorkspaceIds = [
+      ...new Set(snapshot.workspaces.map((workspace) => resolveRepoWorkspaceId(snapshot.workspaces, workspace.id) ?? workspace.id)),
+    ];
+    const discoveredRootIndex = new Map(discoveredRootWorkspaceIds.map((workspaceId, index) => [workspaceId, index]));
+    const workspaceOrderIndex = new Map(snapshot.workspaceOrder.map((workspaceId, index) => [workspaceId, index]));
+    const nextRootWorkspaceOptions = discoveredRootWorkspaceIds
       .map((workspaceId) => snapshot.workspaces.find((workspace) => workspace.id === workspaceId))
-      .filter((workspace): workspace is WorkspaceRecord => Boolean(workspace));
+      .filter((workspace): workspace is WorkspaceRecord => Boolean(workspace))
+      .sort((left, right) =>
+        compareWorkspaceTabOrder(left.id, right.id, workspaceOrderIndex, discoveredRootIndex),
+      );
 
     return {
       linkedWorktreeByWorkspaceId: nextLinkedWorktreeByWorkspaceId,
@@ -2591,6 +2599,26 @@ export default function App() {
 function buildTranscriptChangeMarker(sessionKey: string, transcript: SelectedTranscriptRecord["transcript"]): string {
   const lastItem = transcript.at(-1);
   return `${sessionKey}:${transcript.length}:${lastItem ? JSON.stringify(lastItem) : ""}`;
+}
+
+function compareWorkspaceTabOrder(
+  leftWorkspaceId: string,
+  rightWorkspaceId: string,
+  workspaceOrderIndex: ReadonlyMap<string, number>,
+  discoveredRootIndex: ReadonlyMap<string, number>,
+): number {
+  const leftOrderedIndex = workspaceOrderIndex.get(leftWorkspaceId);
+  const rightOrderedIndex = workspaceOrderIndex.get(rightWorkspaceId);
+  if (leftOrderedIndex !== undefined && rightOrderedIndex !== undefined) {
+    return leftOrderedIndex - rightOrderedIndex;
+  }
+  if (leftOrderedIndex !== undefined) {
+    return -1;
+  }
+  if (rightOrderedIndex !== undefined) {
+    return 1;
+  }
+  return (discoveredRootIndex.get(leftWorkspaceId) ?? 0) - (discoveredRootIndex.get(rightWorkspaceId) ?? 0);
 }
 
 function isNearBottom(element: HTMLDivElement): boolean {
