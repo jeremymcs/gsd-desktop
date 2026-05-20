@@ -817,7 +817,7 @@
 }
 
 .sidebar__settings {
-  width: 100%;
+  width: calc(100% - 44px);
   min-height: 36px;
   display: inline-flex;
   align-items: center;
