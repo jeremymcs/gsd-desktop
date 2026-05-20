@@ -127,12 +127,12 @@ import {
 } from "./plan-builder-templates";
 
 const planPhases: readonly { readonly id: PlanPhase; readonly label: string }[] = [
-  { id: "discuss", label: "DISCUSS" },
-  { id: "research", label: "RESEARCH" },
-  { id: "plan", label: "PLAN" },
-  { id: "execute", label: "EXECUTE" },
-  { id: "verify", label: "VERIFY" },
-  { id: "ship", label: "SHIP" },
+  { id: "discuss", label: "Discuss" },
+  { id: "research", label: "Research" },
+  { id: "plan", label: "Plan" },
+  { id: "execute", label: "Execute" },
+  { id: "verify", label: "Verify" },
+  { id: "ship", label: "Ship" },
 ] as const;
 
 interface PlanBuilderViewProps {
@@ -1420,28 +1420,28 @@ export function PlanBuilderView({
     ? activeQuestion.prompt
     : shipStarted
       ? latestShipSummary
-        ? "SHIP summary saved; update the final handoff summary from the composer"
-        : "Write the final SHIP handoff summary in the composer"
+        ? "The ship summary is saved. Add an update here if the handoff changes."
+        : "Write the final handoff summary here."
     : verifyStarted
       ? verificationReadyForShip
-        ? "Start SHIP when all task verifications pass"
-        : "Pass every VERIFY task before SHIP"
+        ? "Everything is verified. You can prepare the ship handoff."
+        : "Check each finished task against its acceptance notes."
       : executeStarted
       ? executionReadyForVerify
-        ? "Start VERIFY when all task evidence is ready"
-        : "Complete every EXECUTE task with evidence before VERIFY"
+        ? "The task evidence is ready. Move on to verification."
+        : "Work through the task queue and save evidence as you go."
     : acceptedPlanOutputs.length > 0
-      ? "Start EXECUTE when the accepted plan is ready for task work"
+      ? "The plan is accepted. Start the task work when you are ready."
     : planStarted
-      ? "Structured plan proposals are validated before approval"
+      ? "Shape the roadmap until it is clear enough to execute."
     : acceptedResearchOutputs.length > 0
-      ? "Start PLAN when you are ready to structure the roadmap"
+      ? "Use the accepted research to shape the roadmap."
     : researchStarted
-      ? "Reviewable research is persisted in the planning database"
+      ? "Add findings that should influence the plan, then accept the ones you trust."
       : allDiscussConfirmed
-        ? "Start research when you are ready to stage findings"
+        ? "The project context is set. Decide whether research is needed before planning."
         : snapshot
-          ? "DISCUSS memory is persisted in the planning database"
+          ? "Answer the current question so GSD can remember the important planning context."
           : "Start with the project outcome, constraints, and users";
   const composerPhaseAction = !activeQuestion && snapshot && allDiscussConfirmed
     ? !researchStarted
@@ -1556,24 +1556,25 @@ export function PlanBuilderView({
               <h1 data-testid="plan-builder-title">Build a plan for {workspace.name}</h1>
               <p>
                 {snapshot
-                  ? "DISCUSS captures the context GSD needs before research or execution."
-                  : "Turn the project discussion into milestones, phases, slices, and tasks before execution starts."}
+                  ? "Answer a few focused questions, then turn the useful context into work GSD can execute and verify."
+                  : "Start with the idea. GSD will help turn it into milestones, slices, tasks, and a clear ship path."}
               </p>
             </div>
 
             <div className="plan-phase-strip" aria-label="Planning workflow">
-              {planPhases.map((phase, index) => (
-                <div
-                  className={`plan-phase ${snapshot?.activePhase === phase.id || (!snapshot && index === 0) ? "plan-phase--active" : ""}`}
-                  key={phase.id}
-                >
-                  <span className="plan-phase__index">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="plan-phase__label">{phase.label}</span>
-                  <span className="plan-phase__status">
-                    {snapshot?.activePhase === phase.id || (!snapshot && index === 0) ? "Active" : "Queued"}
-                  </span>
-                </div>
-              ))}
+              {planPhases.map((phase, index) => {
+                const activePhaseIndex = snapshot
+                  ? Math.max(planPhases.findIndex((item) => item.id === snapshot.activePhase), 0)
+                  : 0;
+                const isActive = index === activePhaseIndex;
+                return (
+                  <div className={`plan-phase ${isActive ? "plan-phase--active" : ""}`} key={phase.id}>
+                    <span className="plan-phase__index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="plan-phase__label">{phase.label}</span>
+                    <span className="plan-phase__status">{formatPhaseStripStatus(index, activePhaseIndex)}</span>
+                  </div>
+                );
+              })}
             </div>
 
             <WorkflowGuidanceCard guidance={workflowGuidance} />
@@ -1620,9 +1621,9 @@ export function PlanBuilderView({
               </form>
             ) : allDiscussConfirmed && !researchStarted ? (
               <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
-                <div className="plan-depth-card__eyebrow">DISCUSS complete</div>
-                <h2>Ready for RESEARCH</h2>
-                <p>The project, requirements, and milestone depth gates are confirmed.</p>
+                <div className="plan-depth-card__eyebrow">Project context saved</div>
+                <h2>Decide what you need to learn</h2>
+                <p>The project shape is clear enough to either research open questions or move toward a plan.</p>
                 {guidanceRollup.length > 0 ? (
                   <ReadinessWarning
                     acknowledged={researchReadinessAcknowledged}
@@ -1644,8 +1645,8 @@ export function PlanBuilderView({
               <div className="plan-research" data-testid="plan-research-panel">
                 <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
                   <div className="plan-depth-card__eyebrow">RESEARCH {formatStageStatus(researchStage?.status)}</div>
-                  <h2>Stage Research Findings</h2>
-                  <p>Proposed research stays reviewable until it is accepted or rejected.</p>
+                  <h2>Add findings for review</h2>
+                  <p>Capture only the findings that should change the plan. Accept the ones GSD should rely on.</p>
                 </div>
 
                 <form className="plan-research-form" onSubmit={proposeResearch}>
@@ -1724,8 +1725,8 @@ export function PlanBuilderView({
             ) : allDiscussConfirmed && acceptedResearchOutputs.length > 0 && !planStarted ? (
               <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-ready-card">
                 <div className="plan-depth-card__eyebrow">RESEARCH approved</div>
-                <h2>Ready for PLAN</h2>
-                <p>Accepted research is available. Structure milestones, slices, tasks, dependencies, and boundaries next.</p>
+                <h2>Shape the work</h2>
+                <p>Use the accepted findings to define milestones, slices, tasks, dependencies, and boundaries.</p>
                 {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
                 <button className="plan-action-button" disabled={submitting} onClick={startPlan} type="button">
                   Start Plan
@@ -1811,10 +1812,10 @@ export function PlanBuilderView({
               </div>
             ) : currentProgress?.readyForReview && !currentProgress.depthConfirmed ? (
               <div className="plan-depth-card" data-testid="plan-depth-gate">
-                <div className="plan-depth-card__eyebrow">{stageLabel(currentProgress.stage)} depth gate</div>
-                <h2>Confirm This Stage Is Deep Enough</h2>
+                <div className="plan-depth-card__eyebrow">{stageLabel(currentProgress.stage)} answers saved</div>
+                <h2>Confirm this section is clear enough</h2>
                 <p>
-                  {currentProgress.answered} of {currentProgress.total} load-bearing answers are captured.
+                  {currentProgress.answered} of {currentProgress.total} important answers are saved.
                 </p>
                 <button className="plan-action-button" disabled={submitting} onClick={confirmStage} type="button">
                   Confirm {stageLabel(currentProgress.stage)}
@@ -3505,9 +3506,9 @@ function buildWorkflowGuidance({
 }): WorkflowGuidance {
   if (!snapshot) {
     return {
-      banner: "QUESTIONING / project",
-      title: "Open with the user's language",
-      nextAction: "Create a plan, then capture the project outcome, users, anti-goals, and constraints.",
+      banner: "Start",
+      title: "Begin with the idea",
+      nextAction: "Create a plan, then capture the outcome, users, constraints, and anything that should stay out of scope.",
       artifact: ".gsd/PROJECT.md",
       frame: "Project discussion",
       promptSource: workflowPromptSources.discussProject,
@@ -3516,9 +3517,9 @@ function buildWorkflowGuidance({
 
   if (shipStarted) {
     return {
-      banner: "SHIP",
+      banner: "Ship",
       title: "Prepare the handoff",
-      nextAction: "Summarize what shipped, the verification evidence, and any follow-up the next thread needs.",
+      nextAction: "Summarize what changed, what passed verification, and what the next thread should know.",
       artifact: "Ship summary",
       frame: "Closeout",
       promptSource: workflowPromptSources.shipCloseout,
@@ -3527,9 +3528,9 @@ function buildWorkflowGuidance({
 
   if (verifyStarted) {
     return {
-      banner: "VERIFY",
-      title: "Check acceptance against evidence",
-      nextAction: "Record pass or fail for each completed task using the acceptance text from the accepted plan.",
+      banner: "Verify",
+      title: "Check the work",
+      nextAction: "Compare each finished task with its acceptance notes, then record what passed or failed.",
       artifact: "Task verification",
       frame: "UAT and verification",
       promptSource: workflowPromptSources.verifyUat,
@@ -3538,9 +3539,9 @@ function buildWorkflowGuidance({
 
   if (executeStarted) {
     return {
-      banner: "EXECUTE",
-      title: "Work through linked task threads",
-      nextAction: "Create or open each task thread, then save status, blockers, notes, and evidence before VERIFY.",
+      banner: "Execute",
+      title: "Work the task queue",
+      nextAction: "Create or open the task thread, update status and blockers, and save evidence as the work lands.",
       artifact: "Task execution state",
       frame: "Task execution",
       promptSource: workflowPromptSources.executeTask,
@@ -3549,9 +3550,9 @@ function buildWorkflowGuidance({
 
   if (planStarted) {
     return {
-      banner: "PLAN",
+      banner: "Plan",
       title: "Make the work executable",
-      nextAction: "Shape milestones, slices, tasks, dependencies, and boundary notes before accepting the plan.",
+      nextAction: "Shape milestones, slices, tasks, dependencies, and boundaries until the plan is ready to accept.",
       artifact: ".gsd/milestones/*",
       frame: "Milestone and slice plan",
       promptSource: workflowPromptSources.planRoadmap,
@@ -3560,9 +3561,9 @@ function buildWorkflowGuidance({
 
   if (acceptedResearchCount > 0) {
     return {
-      banner: "PLAN",
+      banner: "Plan",
       title: "Turn findings into structure",
-      nextAction: "Start PLAN and convert accepted research into milestones, slices, tasks, dependencies, and boundaries.",
+      nextAction: "Start planning and convert accepted research into milestones, slices, tasks, dependencies, and boundaries.",
       artifact: ".gsd/milestones/*",
       frame: "Milestone and slice plan",
       promptSource: workflowPromptSources.planRoadmap,
@@ -3571,8 +3572,8 @@ function buildWorkflowGuidance({
 
   if (researchStarted) {
     return {
-      banner: "RESEARCH",
-      title: "Stage findings for review",
+      banner: "Research",
+      title: "Review what you learned",
       nextAction: "Capture findings that change planning decisions, then accept only the research the plan should trust.",
       artifact: "Research output",
       frame: "Project research",
@@ -3582,9 +3583,9 @@ function buildWorkflowGuidance({
 
   if (allDiscussConfirmed) {
     return {
-      banner: "RESEARCH DECISION",
+      banner: "Research decision",
       title: "Choose the research path",
-      nextAction: "Start RESEARCH when findings are useful, or keep the deterministic skip decision from preferences.",
+      nextAction: "Start research if there are open questions. If the path is already clear, keep the skip decision and move toward planning.",
       artifact: ".gsd/runtime/research-decision.json",
       frame: "Research decision",
       promptSource: workflowPromptSources.researchDecision,
@@ -3597,9 +3598,9 @@ function buildWorkflowGuidance({
 
   if (currentProgress?.readyForReview && !currentProgress.depthConfirmed) {
     return {
-      banner: `DEPTH CHECK / ${stageLabel(currentProgress.stage).toLowerCase()}`,
-      title: "Confirm the stage has enough signal",
-      nextAction: `${currentProgress.answered}/${currentProgress.total} load-bearing answers are captured. Confirm the depth gate when the stage is ready.`,
+      banner: `${stageLabel(currentProgress.stage)} check`,
+      title: "Confirm this section is clear enough",
+      nextAction: `${currentProgress.answered}/${currentProgress.total} important answers are saved. Confirm when this section is ready for the next step.`,
       artifact: stageArtifact(currentProgress.stage),
       frame: stagePromptFrame(currentProgress.stage),
       promptSource: promptSourceForDiscussStage(currentProgress.stage),
@@ -3607,9 +3608,9 @@ function buildWorkflowGuidance({
   }
 
   return {
-    banner: "QUESTIONING / project",
-    title: "Keep the next answer load-bearing",
-    nextAction: "Capture the next answer that should affect requirements, milestone scope, or verification.",
+    banner: "Discuss",
+    title: "Answer what matters next",
+    nextAction: "Capture the next answer that should shape requirements, scope, milestones, or verification.",
     artifact: ".gsd/PROJECT.md",
     frame: "Project discussion",
     promptSource: workflowPromptSources.discussProject,
@@ -3619,13 +3620,26 @@ function buildWorkflowGuidance({
 function guidanceForQuestion(question: DiscussQuestion): WorkflowGuidance {
   const label = stageLabel(question.stage);
   return {
-    banner: question.stage === "requirements" ? "REQUIREMENTS" : `QUESTIONING / ${label.toLowerCase()}`,
-    title: question.stage === "requirements" ? "Keep capabilities testable" : "Ask one focused question",
-    nextAction: `Answer the ${label.toLowerCase()} question below. If you think of something useful that does not belong in the answer, park it for later.`,
+    banner: question.stage === "requirements" ? "Requirements" : label,
+    title: question.stage === "requirements" ? "Make the promise testable" : "Answer one focused question",
+    nextAction: `Answer the ${label.toLowerCase()} question below. If another useful thought comes up, park it for later.`,
     artifact: stageArtifact(question.stage),
     frame: stagePromptFrame(question.stage),
     promptSource: promptSourceForDiscussStage(question.stage),
   };
+}
+
+function formatPhaseStripStatus(index: number, activePhaseIndex: number): string {
+  if (index < activePhaseIndex) {
+    return "Done";
+  }
+  if (index === activePhaseIndex) {
+    return "Now";
+  }
+  if (index === activePhaseIndex + 1) {
+    return "Next";
+  }
+  return "Later";
 }
 
 function stageArtifact(stage: DiscussStage): string {
@@ -3662,15 +3676,15 @@ function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidanc
       </div>
       <dl className="plan-guidance-card__meta">
         <div>
-          <dt>Saved File</dt>
+          <dt>What gets saved</dt>
           <dd data-testid="workflow-guidance-artifact">{guidance.artifact}</dd>
         </div>
         <div>
-          <dt>Guidance Area</dt>
+          <dt>Current focus</dt>
           <dd>{guidance.frame}</dd>
         </div>
         <div>
-          <dt>Guide Source</dt>
+          <dt>Guide in use</dt>
           <dd data-testid="workflow-guidance-prompt-source">
             {guidance.promptSource.family} · {guidance.promptSource.prompt}
             <span>{guidance.promptSource.purpose}</span>
