@@ -2807,6 +2807,11 @@
 }
 
 .canvas--plans {
+  --plan-space-1: 6px;
+  --plan-space-2: 10px;
+  --plan-space-3: 14px;
+  --plan-space-4: 18px;
+  --plan-space-5: 24px;
   --plan-font-xs: 11px;
   --plan-font-sm: 12px;
   --plan-font-md: 13px;
@@ -2891,6 +2896,11 @@
 }
 
 .canvas--project-preferences {
+  --plan-space-1: 6px;
+  --plan-space-2: 10px;
+  --plan-space-3: 14px;
+  --plan-space-4: 18px;
+  --plan-space-5: 24px;
   --plan-text: #1f2638;
   --plan-header-text: #39435b;
   --plan-muted-text: #5f6b82;
@@ -2966,8 +2976,8 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 38%);
-  gap: 6px;
-  padding: 8px;
+  gap: var(--plan-space-2);
+  padding: var(--plan-space-2);
   background: var(--plan-workbench-bg);
 }
 
@@ -2999,8 +3009,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 0 14px;
+  gap: var(--plan-space-3);
+  padding: 0 var(--plan-space-4);
   border-bottom: 1px solid var(--plan-pane-border);
   color: var(--plan-header-text);
   font-size: 13px;
@@ -3059,7 +3069,7 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 24px;
+  gap: var(--plan-space-5);
   overflow: auto;
   padding: 34px min(6vw, 64px);
 }
@@ -3067,8 +3077,8 @@
 .plan-builder__body--wizard {
   align-content: start;
   justify-items: stretch;
-  gap: 14px;
-  padding-block: 18px;
+  gap: var(--plan-space-4);
+  padding: var(--plan-space-4) min(3vw, 32px);
 }
 
 .plan-builder__mark {
@@ -3091,7 +3101,7 @@
   max-width: 760px;
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: var(--plan-space-2);
   text-align: center;
 }
 
@@ -3127,8 +3137,8 @@
 .plan-research-form {
   width: min(760px, 100%);
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--plan-space-3);
+  padding: var(--plan-space-4);
   border: 1px solid var(--plan-pane-border);
   border-radius: 8px;
   background: var(--plan-pane-subtle-bg);
@@ -3138,7 +3148,7 @@
 .plan-create__field,
 .plan-research-form__field {
   display: grid;
-  gap: 8px;
+  gap: var(--plan-space-1);
   color: #9aa1ad;
   font-size: 12px;
   font-weight: 680;
@@ -3191,20 +3201,20 @@
 .plan-research {
   width: min(760px, 100%);
   display: grid;
-  gap: 14px;
+  gap: var(--plan-space-3);
 }
 
 .plan-roadmap {
   width: min(860px, 100%);
   display: grid;
-  gap: 14px;
+  gap: var(--plan-space-3);
 }
 
 .plan-roadmap-form {
   width: 100%;
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--plan-space-3);
+  padding: var(--plan-space-4);
   border: 1px solid var(--plan-pane-border);
   border-radius: 8px;
   background: var(--plan-pane-subtle-bg);
@@ -3215,8 +3225,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--plan-space-3);
+  padding: var(--plan-space-3);
   border: 1px solid rgba(128, 201, 141, 0.34);
   border-radius: 8px;
   background: rgba(128, 201, 141, 0.08);
@@ -4419,8 +4429,8 @@
   width: min(860px, 100%);
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-rows: minmax(58px, auto);
-  min-height: 58px;
+  grid-auto-rows: minmax(60px, auto);
+  min-height: 60px;
   overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid var(--plan-pane-border);
@@ -4439,10 +4449,10 @@
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto auto;
   align-content: center;
-  column-gap: 9px;
+  column-gap: var(--plan-space-2);
   row-gap: 2px;
-  min-height: 58px;
-  padding: 10px 12px;
+  min-height: 60px;
+  padding: var(--plan-space-2) var(--plan-space-3);
   border-right: 1px solid var(--plan-pane-border);
   color: #8f96a3;
 }
@@ -4493,8 +4503,8 @@
   width: min(860px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 14px;
-  padding: 14px;
+  gap: var(--plan-space-4);
+  padding: var(--plan-space-4);
   border: 1px solid rgba(142, 162, 255, 0.28);
   border-radius: 8px;
   background: var(--plan-pane-raised-bg);
@@ -4515,7 +4525,7 @@
 .plan-guidance-card__main {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--plan-space-1);
 }
 
 .plan-guidance-card__banner {
@@ -4541,7 +4551,7 @@
 
 .plan-guidance-card__meta {
   display: grid;
-  gap: 10px;
+  gap: var(--plan-space-2);
   margin: 0;
   padding: 0;
 }
@@ -4778,8 +4788,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
-  gap: 10px;
-  padding: 12px 14px 14px;
+  gap: var(--plan-space-3);
+  padding: var(--plan-space-3) var(--plan-space-4) var(--plan-space-4);
   border-top: 1px solid var(--plan-pane-border);
 }
 
@@ -4788,8 +4798,8 @@
   min-height: 72px;
   display: grid;
   align-content: center;
-  gap: 9px;
-  padding: 12px;
+  gap: var(--plan-space-2);
+  padding: var(--plan-space-3);
   border-radius: 8px;
   border: 1px solid var(--plan-pane-border);
   background: var(--plan-pane-raised-bg);
@@ -4801,7 +4811,7 @@
 .plan-composer__field--active {
   align-content: stretch;
   grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1fr);
-  gap: 12px;
+  gap: var(--plan-space-3);
 }
 
 .plan-composer__field span {
@@ -4815,7 +4825,7 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: var(--plan-space-1);
 }
 
 .plan-composer__question-frame {
@@ -4880,7 +4890,7 @@
 .plan-composer__actions {
   display: grid;
   align-content: stretch;
-  gap: 8px;
+  gap: var(--plan-space-2);
 }
 
 .plan-composer__send {
@@ -4928,17 +4938,17 @@
 .plan-composer__field--question-header {
   align-content: stretch;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--plan-space-3);
   padding: 0;
   border: 0;
   background: transparent;
 }
 
 .plan-composer__field--question-header .plan-composer__question-frame {
-  gap: 8px;
+  gap: var(--plan-space-2);
   border-color: var(--plan-accent-border);
   border-radius: 10px 10px 6px 6px;
-  padding: 14px 16px;
+  padding: var(--plan-space-3) var(--plan-space-4);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--plan-accent-bg) 88%, transparent), transparent 82%),
     var(--plan-pane-raised-bg);
@@ -4946,10 +4956,10 @@
 
 .plan-composer__answer-frame--sheet {
   display: grid;
-  gap: 8px;
+  gap: var(--plan-space-2);
   border: 1px solid var(--plan-pane-border);
   border-radius: 6px;
-  padding: 13px 14px;
+  padding: var(--plan-space-3) var(--plan-space-4);
   background: var(--plan-pane-raised-bg);
 }
 
@@ -4966,7 +4976,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: var(--plan-space-3);
 }
 
 .plan-composer__footer > span {
@@ -5055,9 +5065,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
-  margin: 0 14px 10px;
-  padding: 10px 12px;
+  gap: var(--plan-space-3);
+  margin: 0 var(--plan-space-4) var(--plan-space-3);
+  padding: var(--plan-space-2) var(--plan-space-3);
   border: 1px solid var(--plan-accent-border, rgba(142, 162, 255, 0.28));
   border-radius: 8px;
   background: var(--plan-accent-bg, rgba(142, 162, 255, 0.06));
@@ -5836,13 +5846,13 @@
 .canvas--plans .plan-depth-card,
 .canvas--plans .plan-research-form,
 .canvas--plans .plan-roadmap-form {
-  gap: 13px;
-  padding: 16px;
+  gap: var(--plan-space-3);
+  padding: var(--plan-space-4);
 }
 
 .canvas--plans .plan-guidance-card {
-  gap: 12px;
-  padding: 13px;
+  gap: var(--plan-space-4);
+  padding: var(--plan-space-4);
 }
 
 .canvas--plans .plan-builder__body--wizard .plan-guidance-card {
@@ -5850,14 +5860,13 @@
 }
 
 .canvas--plans .plan-phase {
-  column-gap: 9px;
+  column-gap: var(--plan-space-2);
   row-gap: 2px;
-  padding: 9px 12px;
+  padding: var(--plan-space-2) var(--plan-space-3);
 }
 
 .canvas--plans .plan-builder__body--wizard .plan-phase {
-  min-height: 56px;
-  padding: 8px 11px;
+  min-height: 60px;
 }
 
 .canvas--plans .plan-phase__label {
@@ -6275,8 +6284,8 @@
 
 @media (max-height: 720px) {
   .canvas--plans .plan-builder__body--wizard {
-    gap: 10px;
-    padding-block: 14px;
+    gap: var(--plan-space-3);
+    padding-block: var(--plan-space-3);
   }
 
   .canvas--plans .plan-builder__body--wizard .plan-phase-strip {
@@ -6287,10 +6296,10 @@
 
   .canvas--plans .plan-builder__body--wizard .plan-phase {
     align-content: center;
-    column-gap: 8px;
+    column-gap: var(--plan-space-2);
     row-gap: 2px;
     min-height: 52px;
-    padding: 7px 10px;
+    padding: 7px var(--plan-space-2);
   }
 
   .canvas--plans .plan-builder__body--wizard .plan-phase__index {
