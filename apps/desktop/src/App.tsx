@@ -55,6 +55,8 @@ import {
   readComposerAttachmentsFromFiles,
 } from "./composer-attachments";
 
+const BACKLOG_NOTICE_TIMEOUT_MS = 3500;
+
 function useDesktopAppState() {
   const [snapshot, setSnapshot] = useState<DesktopAppState | null>(null);
   const [selectedTranscript, setSelectedTranscript] = useState<SelectedTranscriptRecord | null>(null);
@@ -286,6 +288,16 @@ export default function App() {
     void refreshNotificationPermissionStatus();
     return undefined;
   }, [refreshNotificationPermissionStatus, settingsSection, snapshot?.activeView]);
+
+  useEffect(() => {
+    if (!backlogNotice) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => {
+      setBacklogNotice(null);
+    }, BACKLOG_NOTICE_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [backlogNotice]);
 
   const selectedWorkspace = snapshot ? (getSelectedWorkspace(snapshot) ?? snapshot.workspaces[0]) : undefined;
   const selectedSession = snapshot ? (getSelectedSession(snapshot) ?? selectedWorkspace?.sessions[0]) : undefined;
@@ -2691,7 +2703,14 @@ export default function App() {
       {backlogNotice ? (
         <div className="backlog-toast" data-testid="backlog-capture-toast">
           <span>Saved to backlog.</span>
-          <button type="button" onClick={() => openBacklog(backlogNotice.workspaceId)}>
+          <button
+            type="button"
+            onClick={() => {
+              const { workspaceId } = backlogNotice;
+              setBacklogNotice(null);
+              openBacklog(workspaceId);
+            }}
+          >
             Open backlog
           </button>
           <button type="button" onClick={handleUndoBacklogCapture}>

@@ -227,7 +227,8 @@ test("saves highlighted thread text to the project backlog", async () => {
       .poll(async () => (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0]?.text)
       .toBe("Save feature two for later.");
 
-    await window.getByRole("button", { name: "Open backlog" }).click();
+    await expect(window.getByTestId("backlog-capture-toast")).toBeHidden({ timeout: 5_000 });
+    await window.getByRole("button", { name: "Backlog", exact: true }).click();
     await expect(window.getByTestId("project-backlog-view")).toBeVisible();
     await expect(window.getByTestId("project-backlog-item")).toContainText("Save feature two for later.");
   } finally {
