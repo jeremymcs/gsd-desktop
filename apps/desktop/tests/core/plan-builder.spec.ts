@@ -75,7 +75,7 @@ async function completeDiscussFromComposer(window: Page): Promise<void> {
   for (const [prompt, answer] of discussAnswers) {
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
     await window.getByTestId("plan-composer-textarea").fill(answer);
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     if (prompt === projectDepthGatePrompt) {
       await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
@@ -94,16 +94,16 @@ async function completeDiscussFromComposer(window: Page): Promise<void> {
 async function createAcceptedPlanFromComposer(window: Page, planName: string): Promise<void> {
   await window.getByRole("button", { name: "Plans", exact: true }).click();
   await window.getByTestId("plan-name-input").fill(planName);
-  await window.getByRole("button", { name: "Create plan" }).click();
+  await window.getByRole("button", { name: "Create Plan" }).click();
   await completeDiscussFromComposer(window);
-  await window.getByRole("button", { name: "Start research" }).click();
+  await window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" }).click();
   await window.getByTestId("research-title-input").fill(`${planName} research`);
   await window.getByTestId("research-content-textarea").fill("Research accepted before composer completion handoff.");
-  await window.getByRole("button", { name: "Stage research" }).click();
+  await window.getByRole("button", { name: "Stage Research" }).click();
   await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
-  await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+  await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" }).click();
   await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
-  await window.getByRole("button", { name: "Stage plan" }).click();
+  await window.getByRole("button", { name: "Stage Plan" }).click();
   await window
     .getByTestId("plan-output-proposed")
     .locator(".plan-research-output")
@@ -275,10 +275,10 @@ async function reachShipFromComposer(window: Page, planName: string): Promise<vo
   await createAcceptedPlanFromComposer(window, planName);
   await window.getByTestId("start-execution-button").click();
   await saveDoneExecutionEvidenceForAllTasks(window);
-  await window.getByLabel("Advance composer to VERIFY").click();
+  await window.getByLabel("Start Verify").click();
   await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
   await savePassedVerificationForAllTasks(window);
-  await window.getByLabel("Advance composer to SHIP").click();
+  await window.getByLabel("Start Ship").click();
   await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
 }
 
@@ -312,7 +312,7 @@ test("uses global EXECUTE model when the project has no override", async () => {
     const routing = window.getByTestId("phase-model-routing-summary");
     await expect(routing).toContainText("All phases have a resolved model");
     await expect(routing.getByTestId("phase-model-routing-row").filter({ hasText: "DISCUSS" })).toContainText(
-      "session default",
+      "thread default",
     );
     const executeRoute = routing.getByTestId("phase-model-routing-row").filter({ hasText: "EXECUTE" });
     await expect(executeRoute).toContainText("openai/gpt-5");
@@ -352,10 +352,10 @@ test("creates a blank plan without starter template output", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-template-select")).toHaveValue("blank");
-    await expect(window.getByTestId("gsd-source-proof")).toContainText("The proof is in the plan source");
+    await expect(window.getByTestId("gsd-source-proof")).toContainText("The plan stays grounded in source");
     await expect(window.getByTestId("gsd-source-proof")).toContainText(".gsd/NEXT.md");
     await window.getByTestId("plan-name-input").fill("Blank starter plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("gsd-operations-inspector")).toContainText(".gsd/gsd.db");
@@ -398,7 +398,7 @@ test("creates a plan from a starter template with editable seeded answers", asyn
     await window.getByTestId("plan-name-input").fill("Template starter plan");
     await window.getByTestId("plan-template-select").selectOption("web-app");
     await expect(window.getByTestId("plan-template-summary")).toContainText("Web app");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
 
     await expect(window.getByTestId("plan-template-seed")).toContainText("Web app");
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
@@ -415,7 +415,7 @@ test("creates a plan from a starter template with editable seeded answers", asyn
       "complex - UI, persistence, verification, and shipping concerns need explicit planning.",
     );
     await shapeAnswer.getByTestId("plan-revision-textarea").fill("simple - starter narrowed for first release.");
-    await shapeAnswer.getByRole("button", { name: "Save revision" }).click();
+    await shapeAnswer.getByRole("button", { name: "Save Revision" }).click();
     await expect(shapeAnswer).toContainText("simple - starter narrowed for first release.");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
@@ -466,7 +466,7 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(window.getByTestId("run-guardrails-summary")).toContainText("Dirty worktree conflict");
     await expect(autopilot).toContainText("Ready to run M1/S1/T1");
     await expect(autopilot).toContainText("Build foundation");
-    await expect(autopilot).toContainText("A task session will be created");
+    await expect(autopilot).toContainText("A task thread will be created");
     await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Run M1/S1/T1");
     await expect(panel).toContainText("2 ready / 1 blocked");
     await expect(panel.getByTestId("next-work-item").nth(0)).toContainText("M1/S1/T1: Build foundation");
@@ -475,7 +475,7 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(panel.getByTestId("next-work-item").nth(2)).toContainText(
       "M1/S1/T1: Dependency is not done with evidence",
     );
-    await expect(panel.getByTestId("next-work-item").nth(2).getByRole("button", { name: "Create session" })).toBeDisabled();
+    await expect(panel.getByTestId("next-work-item").nth(2).getByRole("button", { name: "Create Thread" })).toBeDisabled();
 
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Start M1/S1/T1");
     await autopilot.getByTestId("autopilot-start-button").click();
@@ -485,8 +485,8 @@ test("shows next work ordering and updates after dependency completion", async (
     expect(linkedSessionId).not.toBe("");
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
-    await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open session" })).toBeVisible();
-    await expect(autopilot).toContainText("Existing task session will open");
+    await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open Thread" })).toBeVisible();
+    await expect(autopilot).toContainText("Existing task thread will open");
     await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Open M1/S1/T1");
     await expect(panel.getByTestId("start-next-work-button")).toHaveText("Open M1/S1/T1");
     await autopilot.getByTestId("autopilot-start-button").click();
@@ -566,7 +566,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText("Projection drift was detected");
     await expect(guardrails).toContainText("Informational · scope-ambiguous");
     await expect(guardrails.getByTestId("guardrail-regenerate-projections-button")).toHaveText(
-      "Repair projection drift",
+      "Repair Saved Files",
     );
     await expect(guardrails).toContainText("Previous run stopped before clean completion");
     await expect(guardrails).toContainText("Waiting on credentials.");
@@ -576,7 +576,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(autopilot.getByTestId("autopilot-blocking-warnings")).toContainText(
       "Previous run stopped before clean completion",
     );
-    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Autopilot blocked");
+    await expect(autopilot.getByTestId("autopilot-start-button")).toHaveText("Run blocked");
     await expect(autopilot.getByTestId("autopilot-start-button")).toBeDisabled();
     await guardrails.getByTestId("guardrail-regenerate-projections-button").click();
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(1);
@@ -586,7 +586,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(activity).toContainText("Stop updated");
     await expect(activity).toContainText("M1/S1/T1: Build foundation");
     await expect(activity).toContainText("Waiting on credentials.");
-    await expect(window.getByTestId("copy-handoff-button")).toHaveText("Copy handoff");
+    await expect(window.getByTestId("copy-handoff-button")).toHaveText("Copy Handoff");
     const handoffText = await window.getByTestId("handoff-bundle-text").inputValue();
     expect(handoffText).toContain("# Handoff Bundle");
     expect(handoffText).toContain("Recovery handoff plan");
@@ -606,7 +606,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     );
     expect(handoffText).toContain("Task evidence: 0 items");
     expect(handoffText).toContain("Stop updated: M1/S1/T1: Build foundation");
-    await expect(window.getByTestId("copy-overnight-report-button")).toHaveText("Copy report");
+    await expect(window.getByTestId("copy-overnight-report-button")).toHaveText("Copy Report");
     const overnightReportText = await window.getByTestId("overnight-run-report-text").inputValue();
     expect(overnightReportText).toContain("# Overnight Run Report");
     expect(overnightReportText).toContain("Recovery handoff plan");
@@ -630,7 +630,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await writeFile(join(workspacePath, ".gsd", "NEXT.md"), "# Hand-written next work\n", "utf8");
     await window
       .getByTestId("execution-projection-summary")
-      .getByRole("button", { name: "Regenerate projections" })
+      .getByRole("button", { name: "Refresh Saved Files" })
       .click();
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(2);
     await expect(guardrails).toContainText("2 blocking / 0 informational");
@@ -638,10 +638,10 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText(".gsd/NEXT.md");
     await expect(guardrails).toContainText("dirty-conflict");
     await expect(window.getByTestId("execution-overwrite-legacy-projections-button")).toHaveText(
-      "Overwrite legacy projections",
+      "Replace Imported Files",
     );
     await expect(guardrails.getByTestId("guardrail-overwrite-projections-button")).toHaveText(
-      "Overwrite legacy projections",
+      "Replace Imported Files",
     );
     await expect(autopilot).toContainText("2 blocking guardrails");
     await guardrails.getByTestId("guardrail-overwrite-projections-button").click();
@@ -841,14 +841,14 @@ test("shows legacy GSD Markdown references and ignores generated projections", a
     await waitForWorkspaceByPath(window, workspacePath);
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Reference import plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
 
     const references = window.getByTestId("legacy-reference-list");
     await expect(references).toContainText("Legacy Blueprint");
     await expect(references).toContainText(".gsd/legacy/BLUEPRINT.md");
     await expect(references).toContainText("Use prior planning notes as context, not canonical plan state.");
     await expect(references).not.toContainText("Generated Project");
-    await references.getByRole("button", { name: "Park excerpt" }).click();
+    await references.getByRole("button", { name: "Park Excerpt" }).click();
     const ideaPool = window.getByTestId("plan-idea-pool");
     await expect(ideaPool).toContainText("Legacy reference: .gsd/legacy/BLUEPRINT.md");
     await expect(ideaPool).toContainText("Use prior planning notes as context, not canonical plan state.");
@@ -973,9 +973,9 @@ test("opens the workspace-aware Plan Builder from sidebar and New Thread", async
     await expect(window.getByRole("button", { name: "Plans", exact: true })).toHaveClass(/sidebar__nav-item--active/);
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("plans");
 
-    await window.getByRole("button", { name: "New session", exact: true }).click();
+    await window.getByRole("button", { name: "New Thread", exact: true }).click();
     await expect(window.getByTestId("new-thread-composer")).toBeVisible();
-    await window.getByRole("button", { name: "Create the guided plan", exact: true }).click();
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("plans");
@@ -1006,55 +1006,67 @@ test("keeps Plan Builder workflow controls readable in light and dark themes", a
     await window.locator(".plan-phase-strip").scrollIntoViewIfNeeded();
     await expectPhaseStripTextNotClipped(window);
     await window.getByTestId("plan-name-input").fill("Theme plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
-    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
-    await window.getByTestId("apply-workflow-preferences-button").click();
-    await expect(window.getByTestId("workflow-preferences-compact")).toContainText("All phases use team defaults");
+    await window.getByRole("button", { name: "Create Plan" }).click();
+    await expect(window.getByTestId("workflow-preferences-card")).toHaveCount(0);
     await expect(window.getByTestId("phase-model-select-execute")).toHaveCount(0);
-    await window.getByRole("button", { name: "Project preferences", exact: true }).click();
-    await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
-    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
+    await window.getByRole("button", { name: "Project Preferences", exact: true }).click();
+    await expect(window.getByTestId("project-preferences-view")).toBeVisible();
+    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Project Preferences");
+    await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await harness.electronApp.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1180, height: 520 });
     });
     await window.locator(".plan-phase-strip").scrollIntoViewIfNeeded();
     await expectPhaseStripTextNotClipped(window);
     const phaseStripBox = await window.locator(".plan-phase-strip").boundingBox();
-    const workflowPreferencesBox = await window.getByTestId("workflow-preferences-card").boundingBox();
     expect(phaseStripBox).not.toBeNull();
-    expect(workflowPreferencesBox).not.toBeNull();
-    expect(Math.abs((phaseStripBox?.x ?? 0) - (workflowPreferencesBox?.x ?? 0))).toBeLessThanOrEqual(2);
-    expect(Math.abs((phaseStripBox?.width ?? 0) - (workflowPreferencesBox?.width ?? 0))).toBeLessThanOrEqual(2);
+    await expect(window.getByTestId("workflow-preferences-card")).toHaveCount(0);
     const phaseIndexFontFamily = await window
       .locator(".plan-phase__index")
       .first()
       .evaluate((node) => getComputedStyle(node).fontFamily);
     expect(phaseIndexFontFamily).not.toMatch(/mono/i);
+    await window.getByTestId("plan-composer-textarea").fill("Readable action contrast check");
 
-    const readableTargets = [
+    const planReadableTargets = [
       { name: "plan title", locator: window.getByTestId("plan-builder-title") },
       { name: "answer textarea", locator: window.getByTestId("plan-composer-textarea") },
-      { name: "phase model select", locator: window.getByTestId("phase-model-select-execute") },
-      {
-        name: "workflow preference summary",
-        locator: window.getByTestId("workflow-preferences-summary"),
-      },
+      { name: "Save Answer button", locator: window.getByLabel("Save Answer") },
+      { name: "Park for Later button", locator: window.getByLabel("Park for Later") },
       { name: "prompt source", locator: window.getByTestId("workflow-guidance-prompt-source") },
     ] as const;
-    const expectReadableContrast = async (theme: "light" | "dark") => {
+    const expectReadableContrast = async (
+      theme: "light" | "dark",
+      targets: readonly { readonly name: string; readonly locator: ReturnType<typeof window.getByTestId> }[],
+    ) => {
       await window.evaluate((nextTheme) => {
         document.documentElement.classList.toggle("dark", nextTheme === "dark");
       }, theme);
-      for (const target of readableTargets) {
+      for (const target of targets) {
         await expect
           .poll(() => contrastRatioFor(target.locator), { message: `${target.name} contrast in ${theme} theme` })
           .toBeGreaterThanOrEqual(4.5);
       }
     };
 
-    await expectReadableContrast("light");
-    await expectReadableContrast("dark");
+    await expectReadableContrast("light", planReadableTargets);
+    await expectReadableContrast("dark", planReadableTargets);
+
+    await window.getByRole("button", { name: "Project Preferences", exact: true }).click();
+    await expect(window.getByTestId("project-preferences-view")).toBeVisible();
+    await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
+    await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
+    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+
+    const preferencesReadableTargets = [
+      { name: "phase model select", locator: window.getByTestId("phase-model-select-execute") },
+      { name: "workflow preference summary", locator: window.getByTestId("workflow-preferences-summary") },
+    ] as const;
+    await expectReadableContrast("light", preferencesReadableTargets);
+    await expectReadableContrast("dark", preferencesReadableTargets);
   } finally {
     await harness.close();
   }
@@ -1075,20 +1087,20 @@ test("resolves saved follow-up guidance through answer revision", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Follow-up resolution plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("not sure");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
     await expect(window.getByTestId("adaptive-guidance-rollup-summary")).toContainText("1 unresolved");
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await expect(nameMemory.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
-    await expect(nameMemory.getByTestId("adaptive-follow-up-action")).toHaveText("Edit answer");
+    await expect(nameMemory.getByTestId("adaptive-follow-up-action")).toHaveText("Edit Answer");
     await nameMemory.getByTestId("adaptive-follow-up-action").click();
     await expect(nameMemory.getByTestId("plan-revision-textarea")).toHaveValue("not sure");
     await nameMemory.getByTestId("plan-revision-textarea").fill("Resolved launch plan");
-    await nameMemory.getByRole("button", { name: "Save revision" }).click();
+    await nameMemory.getByRole("button", { name: "Save Revision" }).click();
 
     await expect(nameMemory).toContainText("Resolved launch plan");
     await expect(nameMemory.getByTestId("adaptive-follow-up")).toHaveCount(0);
@@ -1128,11 +1140,11 @@ test("saves the active DISCUSS answer from the Plan Builder composer", async () 
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer answer plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Driven Plan");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("Composer Driven Plan");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     await expectActivePromptOnlyInComposer(
       window,
@@ -1175,20 +1187,20 @@ test("keeps the active DISCUSS question visible inside the Plan Builder composer
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer question context plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expectActivePromptOnlyInComposer(window, "What should we call this project?");
     await expect(window.getByTestId("plan-composer-question-frame")).toBeVisible();
     await expect(window.getByTestId("plan-composer-answer-frame")).toBeVisible();
-    await expect(window.getByLabel("Submit composer answer")).toContainText("Save answer");
-    await expect(window.getByLabel("Move composer draft to idea pool")).toContainText("Park for later");
+    await expect(window.getByLabel("Save Answer")).toContainText("Save Answer");
+    await expect(window.getByLabel("Park for Later")).toContainText("Park for Later");
     const composerActionLabels = await window
       .getByTestId("plan-composer-actions")
       .locator("button")
       .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
-    expect(composerActionLabels).toEqual(["Submit composer answer", "Move composer draft to idea pool"]);
+    expect(composerActionLabels).toEqual(["Save Answer", "Park for Later"]);
     await window.getByTestId("plan-composer-textarea").fill("Question Stays Visible");
     await expectActivePromptOnlyInComposer(window, "What should we call this project?");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     await expectActivePromptOnlyInComposer(
       window,
@@ -1214,16 +1226,16 @@ test("keeps focus in the Plan Builder composer after submit and park", async () 
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer focus plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await window.getByTestId("plan-composer-textarea").fill("Focus stays on composer");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await expect(window.getByTestId("plan-composer-textarea")).toBeFocused();
     await window.getByTestId("plan-composer-textarea").fill("Park this composer draft");
-    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+    await window.getByRole("button", { name: "Park for Later" }).click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
@@ -1249,7 +1261,7 @@ test("submits the active DISCUSS answer from the Plan Builder composer keyboard 
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer keyboard plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await window.getByTestId("plan-composer-textarea").fill("Keyboard Shortcut Plan");
     await window.getByTestId("plan-composer-textarea").press("Control+Enter");
 
@@ -1291,10 +1303,10 @@ test("starts RESEARCH from the Plan Builder composer handoff", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer research handoff plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await completeDiscussFromComposer(window);
     await expect(window.getByText("Start research when you are ready to stage findings")).toBeVisible();
-    await window.getByLabel("Advance composer to RESEARCH").click();
+    await window.getByLabel("Start Research").click();
 
     await expect(window.getByTestId("plan-research-panel")).toBeVisible();
     await expect.poll(async () => {
@@ -1330,17 +1342,17 @@ test("starts PLAN from the Plan Builder composer handoff", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer plan handoff plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await completeDiscussFromComposer(window);
-    await window.getByRole("button", { name: "Start research" }).click();
+    await window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" }).click();
     await expect(window.getByTestId("plan-research-panel")).toBeVisible();
     await window.getByTestId("research-title-input").fill("Composer handoff research");
     await window.getByTestId("research-content-textarea").fill("Research accepted before composer PLAN handoff.");
-    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByRole("button", { name: "Stage Research" }).click();
     await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
     await expect(window.getByTestId("plan-ready-card")).toBeVisible();
     await expect(window.getByText("Start PLAN when you are ready to structure the roadmap")).toBeVisible();
-    await window.getByLabel("Advance composer to PLAN").click();
+    await window.getByLabel("Create Plan").click();
 
     await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
     await expect.poll(async () => {
@@ -1376,16 +1388,16 @@ test("starts EXECUTE from the Plan Builder composer handoff", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer execute handoff plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await completeDiscussFromComposer(window);
-    await window.getByRole("button", { name: "Start research" }).click();
+    await window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" }).click();
     await window.getByTestId("research-title-input").fill("Composer execute research");
     await window.getByTestId("research-content-textarea").fill("Research accepted before composer EXECUTE handoff.");
-    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByRole("button", { name: "Stage Research" }).click();
     await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
-    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" }).click();
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
-    await window.getByRole("button", { name: "Stage plan" }).click();
+    await window.getByRole("button", { name: "Stage Plan" }).click();
     await window
       .getByTestId("plan-output-proposed")
       .locator(".plan-research-output")
@@ -1394,7 +1406,7 @@ test("starts EXECUTE from the Plan Builder composer handoff", async () => {
       .click();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByText("Start EXECUTE when the accepted plan is ready for task work")).toBeVisible();
-    await window.getByLabel("Advance composer to EXECUTE").click();
+    await window.getByLabel("Start Execute").click();
 
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect.poll(async () => {
@@ -1433,7 +1445,7 @@ test("parks later-phase idea from the Plan Builder composer", async () => {
     await expect(window.getByTestId("plan-composer-question")).toHaveText("Complete every EXECUTE task with evidence before VERIFY");
     await window.getByTestId("plan-composer-textarea").fill("Consider a post-ship audit task.");
     await expect(window.getByTestId("plan-composer-question")).toHaveText("Park a planning note or change request");
-    await window.getByLabel("Park composer idea").click();
+    await window.getByLabel("Park Note").click();
 
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: "Consider a post-ship audit task." });
@@ -1496,7 +1508,7 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
-    await window.getByLabel("Park composer idea").click();
+    await window.getByLabel("Park Note").click();
 
     const review = window.getByTestId("plan-composer-parked-review");
     await expect(review).toContainText(ideaText);
@@ -1506,7 +1518,7 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     const editForm = window.getByTestId("plan-idea-edit-form");
     await expect(editForm).toBeVisible();
     await editForm.getByTestId("plan-idea-text-textarea").fill(revisedIdeaText);
-    await editForm.getByRole("button", { name: "Save idea" }).click();
+    await editForm.getByRole("button", { name: "Save Idea" }).click();
     const revisedIdea = window.getByTestId("plan-idea-item").filter({ hasText: revisedIdeaText });
     await expect(revisedIdea.getByTestId("plan-idea-status")).toHaveText("Parked");
     await expect(review).toContainText(revisedIdeaText);
@@ -1572,36 +1584,36 @@ test("starts a change draft from a prepared composer idea", async () => {
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
-    await window.getByLabel("Park composer idea").click();
+    await window.getByLabel("Park Note").click();
 
     const review = window.getByTestId("plan-composer-parked-review");
     const originalIdea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await originalIdea.getByRole("button", { name: "Edit idea" }).click();
     const editForm = window.getByTestId("plan-idea-edit-form");
     await editForm.getByTestId("plan-idea-text-textarea").fill(revisedIdeaText);
-    await editForm.getByRole("button", { name: "Save idea" }).click();
+    await editForm.getByRole("button", { name: "Save Idea" }).click();
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: revisedIdeaText });
     await expect(review).toContainText(revisedIdeaText);
     await review.getByRole("button", { name: "Prepare" }).click();
-    await expect(review.getByRole("button", { name: "Draft change" })).toBeEnabled();
-    await review.getByRole("button", { name: "Draft change" }).click();
+    await expect(review.getByRole("button", { name: "Draft Change" })).toBeEnabled();
+    await review.getByRole("button", { name: "Draft Change" }).click();
 
     await expect(idea.getByTestId("plan-change-draft-form")).toBeVisible();
     const titleInput = idea.getByTestId("plan-change-title-input");
     await expect(titleInput).toBeFocused();
     await expect(idea.getByTestId("plan-change-summary-textarea")).toHaveValue(revisedIdeaText);
     await titleInput.fill("Retry budget change");
-    await idea.getByRole("button", { name: "Save draft" }).click();
+    await idea.getByRole("button", { name: "Save Draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget change");
     await expect(window.getByTestId("plan-change-proposals")).toContainText(revisedIdeaText);
-    await expect(idea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
+    await expect(idea.getByRole("button", { name: "Review Proposal" })).toBeEnabled();
     await expect(idea.getByRole("button", { name: "Drafted" })).toHaveCount(0);
-    await idea.getByRole("button", { name: "Review proposal" }).click();
+    await idea.getByRole("button", { name: "Review Proposal" }).click();
     await expect(
       window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-injection-target-select"),
     ).toBeFocused();
-    await expect(review.getByRole("button", { name: "Review proposal" })).toBeEnabled();
-    await review.getByRole("button", { name: "Review proposal" }).click();
+    await expect(review.getByRole("button", { name: "Review Proposal" })).toBeEnabled();
+    await review.getByRole("button", { name: "Review Proposal" }).click();
     await expect(
       window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-injection-target-select"),
     ).toBeFocused();
@@ -1611,17 +1623,17 @@ test("starts a change draft from a prepared composer idea", async () => {
     await idea.getByRole("button", { name: "Edit idea" }).click();
     const replacementEditForm = window.getByTestId("plan-idea-edit-form");
     await replacementEditForm.getByTestId("plan-idea-text-textarea").fill(replacementIdeaText);
-    await replacementEditForm.getByRole("button", { name: "Save idea" }).click();
+    await replacementEditForm.getByRole("button", { name: "Save Idea" }).click();
     const replacementIdea = window.getByTestId("plan-idea-item").filter({ hasText: replacementIdeaText });
-    await expect(replacementIdea.getByRole("button", { name: "Draft change" })).toBeEnabled();
-    await replacementIdea.getByRole("button", { name: "Draft change" }).click();
+    await expect(replacementIdea.getByRole("button", { name: "Draft Change" })).toBeEnabled();
+    await replacementIdea.getByRole("button", { name: "Draft Change" }).click();
     await expect(replacementIdea.getByTestId("plan-change-draft-form")).toBeVisible();
     await expect(replacementIdea.getByTestId("plan-change-summary-textarea")).toHaveValue(replacementIdeaText);
     await replacementIdea.getByTestId("plan-change-title-input").fill("Retry budget replacement");
-    await replacementIdea.getByRole("button", { name: "Save draft" }).click();
+    await replacementIdea.getByRole("button", { name: "Save Draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement");
     await expect(window.getByTestId("plan-change-proposals")).toContainText(replacementIdeaText);
-    await expect(replacementIdea.getByRole("button", { name: "Review proposal" })).toBeEnabled();
+    await expect(replacementIdea.getByRole("button", { name: "Review Proposal" })).toBeEnabled();
     const replacementProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget replacement" });
     await replacementProposal.getByRole("button", { name: "Edit draft details" }).click();
     await expect(replacementProposal.getByTestId("plan-change-proposal-edit-form")).toBeVisible();
@@ -1708,11 +1720,11 @@ test("starts VERIFY from the Plan Builder composer handoff", async () => {
     await window.getByTestId("start-execution-button").click();
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await expect(window.getByText("Complete every EXECUTE task with evidence before VERIFY")).toBeVisible();
-    await expect(window.getByLabel("Advance composer to VERIFY")).toHaveCount(0);
+    await expect(window.getByLabel("Start Verify")).toHaveCount(0);
 
     await saveDoneExecutionEvidenceForAllTasks(window);
     await expect(window.getByText("Start VERIFY when all task evidence is ready")).toBeVisible();
-    await window.getByLabel("Advance composer to VERIFY").click();
+    await window.getByLabel("Start Verify").click();
 
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
     await expect(window.getByTestId("verification-evidence-report")).toBeVisible();
@@ -1724,7 +1736,7 @@ test("starts VERIFY from the Plan Builder composer handoff", async () => {
     );
     await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(/Verification: Pending/);
     await expect(window.getByTestId("verification-evidence-report-text")).toHaveValue(/Gaps: verification pending/);
-    await expect(window.getByTestId("copy-evidence-report-button")).toHaveText("Copy report");
+    await expect(window.getByTestId("copy-evidence-report-button")).toHaveText("Copy Report");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -1759,14 +1771,14 @@ test("starts SHIP from the Plan Builder composer handoff", async () => {
     await createAcceptedPlanFromComposer(window, "Composer ship handoff plan");
     await window.getByTestId("start-execution-button").click();
     await saveDoneExecutionEvidenceForAllTasks(window);
-    await window.getByLabel("Advance composer to VERIFY").click();
+    await window.getByLabel("Start Verify").click();
     await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
     await expect(window.getByText("Pass every VERIFY task before SHIP")).toBeVisible();
-    await expect(window.getByLabel("Advance composer to SHIP")).toHaveCount(0);
+    await expect(window.getByLabel("Start Ship")).toHaveCount(0);
 
     await savePassedVerificationForAllTasks(window);
     await expect(window.getByText("Start SHIP when all task verifications pass")).toBeVisible();
-    await window.getByLabel("Advance composer to SHIP").click();
+    await window.getByLabel("Start Ship").click();
 
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("overnight-run-report")).toBeVisible();
@@ -1808,11 +1820,11 @@ test("records SHIP summary from the Plan Builder composer", async () => {
 
     await reachShipFromComposer(window, "Composer ship summary plan");
     await expect(window.getByTestId("plan-composer-question")).toHaveText("Final SHIP handoff summary");
-    await window.getByTestId("plan-composer-textarea").fill("Composer closeout saved for the next session.");
-    await window.getByLabel("Record composer ship summary").click();
+    await window.getByTestId("plan-composer-textarea").fill("Composer closeout saved for the next thread.");
+    await window.getByLabel("Save Summary").click();
 
     await expect(window.getByTestId("ship-summary-recorded")).toContainText(
-      "Composer closeout saved for the next session.",
+      "Composer closeout saved for the next thread.",
     );
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
     await expect.poll(async () => {
@@ -1821,7 +1833,7 @@ test("records SHIP summary from the Plan Builder composer", async () => {
         (entry) => entry.selectedPlan?.name === "Composer ship summary plan",
       )?.selectedPlan;
       return plan?.shipSummaries.at(-1)?.summary ?? "";
-    }).toBe("Composer closeout saved for the next session.");
+    }).toBe("Composer closeout saved for the next thread.");
   } finally {
     await harness.close();
   }
@@ -1897,11 +1909,11 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer park plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Revisit naming after research");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("Revisit naming after research");
-    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+    await window.getByRole("button", { name: "Park for Later" }).click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
@@ -1945,10 +1957,10 @@ test("restores a dismissed composer draft idea after restart", async () => {
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer restore plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
-    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+    await window.getByRole("button", { name: "Park for Later" }).click();
 
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await expect(idea.getByTestId("plan-idea-status")).toHaveText("Parked");
@@ -2013,16 +2025,16 @@ test("restores composer-submitted answers and parked drafts across restart", asy
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Composer restart plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("Composer Restart Plan");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
     );
     await window.getByTestId("plan-composer-textarea").fill("Park restart-risk cleanup for later");
-    await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+    await window.getByRole("button", { name: "Park for Later" }).click();
     await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
@@ -2089,12 +2101,12 @@ test("labels weak requirements answers with requirement contract context", async
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Requirement guidance plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
 
     for (const [prompt, answer] of discussAnswers.slice(0, 7)) {
       await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
-      await window.getByLabel("Submit composer answer").click();
+      await window.getByLabel("Save Answer").click();
 
       if (prompt === projectDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
@@ -2107,7 +2119,7 @@ test("labels weak requirements answers with requirement contract context", async
       "What must the first useful version be able to do?",
     );
     await window.getByTestId("plan-composer-textarea").fill("yes");
-    await window.getByLabel("Submit composer answer").click();
+    await window.getByLabel("Save Answer").click();
 
     const capabilitiesMemory = window
       .getByTestId("plan-answer-history")
@@ -2147,7 +2159,7 @@ test("requires research override and repeats unresolved guidance before planning
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await window.getByTestId("plan-name-input").fill("Readiness warning plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
 
     const answersWithUnresolvedGuidance = [
       ["What should we call this project?", "not sure"],
@@ -2158,7 +2170,7 @@ test("requires research override and repeats unresolved guidance before planning
     for (const [prompt, answer] of answersWithUnresolvedGuidance) {
       await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
-      await window.getByLabel("Submit composer answer").click();
+      await window.getByLabel("Save Answer").click();
 
       if (prompt === projectDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
@@ -2177,20 +2189,20 @@ test("requires research override and repeats unresolved guidance before planning
       "High-signal answers should be revised before later phases rely on them.",
     );
     await expect(window.getByTestId("plan-readiness-warning-stages")).toContainText("DISCUSS / Project");
-    await expect(window.getByRole("button", { name: "Start research" })).toBeDisabled();
+    await expect(window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" })).toBeDisabled();
     await window.getByTestId("plan-readiness-override-checkbox").check();
-    await expect(window.getByRole("button", { name: "Start research" })).toBeEnabled();
-    await window.getByRole("button", { name: "Start research" }).click();
+    await expect(window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" })).toBeEnabled();
+    await window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" }).click();
     await expect(window.getByTestId("plan-research-panel")).toBeVisible();
     await window.getByTestId("research-title-input").fill("Readiness research");
     await window.getByTestId("research-content-textarea").fill("Findings: unresolved guidance remains visible at handoff gates.");
-    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByRole("button", { name: "Stage Research" }).click();
     await window.getByTestId("research-output-proposed").getByRole("button", { name: "Accept" }).click();
     await expect(window.getByTestId("plan-ready-card")).toBeVisible();
     await expect(window.getByTestId("plan-ready-card").getByTestId("plan-readiness-warning")).toContainText(
       "1 unresolved guidance item",
     );
-    await expect(window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" })).toBeEnabled();
+    await expect(window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" })).toBeEnabled();
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -2251,17 +2263,18 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-title")).toHaveText(`Build a plan for ${workspaceName}`);
     await window.getByTestId("plan-name-input").fill("Launch plan");
-    await window.getByRole("button", { name: "Create plan" }).click();
+    await window.getByRole("button", { name: "Create Plan" }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("QUESTIONING / project");
     await expect(window.getByTestId("workflow-guidance-next-action")).toContainText("Answer the project question below");
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-discuss-project.md");
-    await expect(window.getByTestId("workflow-preferences-card")).toContainText("Workflow preferences");
+    await expect(window.getByTestId("workflow-preferences-card")).toHaveCount(0);
+    await expect(window.getByTestId("phase-model-select-discuss")).toHaveCount(0);
+    await window.getByRole("button", { name: "Project Preferences", exact: true }).click();
+    await expect(window.getByTestId("project-preferences-view")).toBeVisible();
     await window.getByTestId("apply-workflow-preferences-button").click();
     await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
-    await expect(window.getByTestId("phase-model-select-discuss")).toHaveCount(0);
-    await window.getByTestId("workflow-preferences-edit-button").click();
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("phase-model-global-discuss")).toContainText("GPT-5");
@@ -2300,6 +2313,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     ) as { decision: string; source: string };
     expect(researchDecision.decision).toBe("skip");
     expect(researchDecision.source).toBe("workflow-preferences");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill("not sure");
     await expect(window.getByTestId("adaptive-follow-up")).toContainText("Suggested follow-up");
@@ -2324,7 +2338,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       "Drop onboarding banner",
     ]) {
       await window.getByTestId("plan-composer-textarea").fill(idea);
-      await window.getByRole("button", { name: "Move composer draft to idea pool" }).click();
+      await window.getByRole("button", { name: "Park for Later" }).click();
       await expect(window.getByTestId("plan-idea-pool")).toContainText(idea);
     }
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
@@ -2335,7 +2349,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const promotionIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Prepare integration change" });
     await promotionIdea.getByRole("button", { name: "Prepare" }).click();
     await expect(promotionIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
-    await promotionIdea.getByRole("button", { name: "Draft change" }).click();
+    await promotionIdea.getByRole("button", { name: "Draft Change" }).click();
     await expect(promotionIdea.getByTestId("plan-change-draft-form")).toBeVisible();
     await promotionIdea.getByTestId("plan-change-title-input").fill("Integration change draft");
     await promotionIdea
@@ -2344,13 +2358,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await promotionIdea
       .getByTestId("plan-change-impact-textarea")
       .fill("Impact: review roadmap boundaries, task dependencies, and verification evidence before approval.");
-    await promotionIdea.getByRole("button", { name: "Save draft" }).click();
+    await promotionIdea.getByRole("button", { name: "Save Draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Integration change draft");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: review roadmap boundaries");
     const modificationIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Tighten primary task acceptance" });
     await modificationIdea.getByRole("button", { name: "Prepare" }).click();
     await expect(modificationIdea.getByTestId("plan-idea-status")).toHaveText("Ready to promote");
-    await modificationIdea.getByRole("button", { name: "Draft change" }).click();
+    await modificationIdea.getByRole("button", { name: "Draft Change" }).click();
     await expect(modificationIdea.getByTestId("plan-change-draft-form")).toBeVisible();
     await modificationIdea.getByTestId("plan-change-title-input").fill("Primary task acceptance update");
     await modificationIdea
@@ -2359,7 +2373,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await modificationIdea
       .getByTestId("plan-change-impact-textarea")
       .fill("Impact: acceptance must include generated projections and change-control persistence.");
-    await modificationIdea.getByRole("button", { name: "Save draft" }).click();
+    await modificationIdea.getByRole("button", { name: "Save Draft" }).click();
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Primary task acceptance update");
     const dismissedIdea = window.getByTestId("plan-idea-item").filter({ hasText: "Drop onboarding banner" });
     await dismissedIdea.getByRole("button", { name: "Dismiss" }).click();
@@ -2368,7 +2382,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     for (const [prompt, answer] of discussAnswers) {
       await expect(window.getByTestId("plan-composer-prompt")).toHaveText(prompt);
       await window.getByTestId("plan-composer-textarea").fill(answer);
-      await window.getByLabel("Submit composer answer").click();
+      await window.getByLabel("Save Answer").click();
 
       if (prompt === projectDepthGatePrompt) {
         await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
@@ -2407,7 +2421,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("RESEARCH DECISION");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-research-decision.md");
-    await window.getByRole("button", { name: "Start research" }).click();
+    await window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" }).click();
     await expect(window.getByTestId("plan-research-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("RESEARCH");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("guided-research-project.md");
@@ -2416,13 +2430,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window
       .getByTestId("research-content-textarea")
       .fill("Findings: Planning state lives in the GSD database, and research output must be accepted before PLAN.");
-    await window.getByRole("button", { name: "Stage research" }).click();
+    await window.getByRole("button", { name: "Stage Research" }).click();
     await expect(window.getByTestId("research-output-proposed")).toContainText("Codebase and workflow research");
     await window.getByRole("button", { name: "Accept" }).click();
     await expect(window.getByTestId("plan-ready-card")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("PLAN");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("plan-milestone.md / plan-slice.md");
-    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start plan" }).click();
+    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" }).click();
     await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("PLAN");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("plan-milestone.md / plan-slice.md");
@@ -2442,7 +2456,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
     await window.getByTestId("plan-task-dependencies-input").fill("T404");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Unknown dependency T404");
-    await window.getByRole("button", { name: "Stage plan" }).click();
+    await window.getByRole("button", { name: "Stage Plan" }).click();
     const draftPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Draft" });
     await expect(draftPlan).toContainText("Unknown dependency T404");
     await expect(draftPlan.getByRole("button", { name: "Accept plan" })).toBeDisabled();
@@ -2450,7 +2464,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const requirementRefs = window.getByTestId("plan-task-requirements-input");
     await requirementRefs.fill("R999");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Unknown requirement R999");
-    await window.getByRole("button", { name: "Stage plan" }).click();
+    await window.getByRole("button", { name: "Stage Plan" }).click();
     const blockedRequirementPlan = window
       .getByTestId("plan-output-proposed")
       .locator(".plan-research-output")
@@ -2463,12 +2477,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await requirementRefs.fill("R001, R002");
     await expect(requirementRefs).toHaveValue("R001, R002");
     await expect(window.getByTestId("plan-validation-errors").first()).toContainText("Validation passed");
-    await window.getByRole("button", { name: "Stage plan" }).click();
+    await window.getByRole("button", { name: "Stage Plan" }).click();
     const proposedPlan = window.getByTestId("plan-output-proposed").locator(".plan-research-output").filter({ hasText: "Proposed" });
     await proposedPlan.getByRole("button", { name: "Accept plan" }).click();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Reqs R001, R002");
-    await expect(window.getByTestId("projection-summary")).toContainText("Projections");
+    await expect(window.getByTestId("projection-summary")).toContainText("Saved Files");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "REQUIREMENTS.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
@@ -2559,7 +2573,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await nameMemory.getByRole("button", { name: "Edit" }).click();
     await window.getByTestId("plan-revision-textarea").fill("Launch Control Revised");
-    await nameMemory.getByRole("button", { name: "Save revision" }).click();
+    await nameMemory.getByRole("button", { name: "Save Revision" }).click();
     await expect(nameMemory).toContainText("Launch Control Revised");
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     const projectProjectionPath = join(workspacePath, ".gsd", "PROJECT.md");
@@ -2572,9 +2586,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await rm(join(workspacePath, ".gsd", "NEXT.md"), { force: true });
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("written");
-    await expect(window.getByTestId("projection-summary")).toContainText("drift repaired");
     await expect(window.getByTestId("projection-summary")).toContainText("1 missing / 2 stale");
-    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Repair projection drift");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Repair Saved Files");
 
     const projectProjection = await readFile(projectProjectionPath, "utf8");
     expect(projectProjection).toContain("pi-gui-plan-builder-generated");
@@ -2585,16 +2598,16 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     );
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("current");
-    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Regenerate projections");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Refresh Saved Files");
     const requirementsProjectionPath = join(workspacePath, ".gsd", "REQUIREMENTS.md");
     await writeFile(requirementsProjectionPath, "# Hand-written requirements\n", "utf8");
     await window.getByTestId("regenerate-projections-button").click();
-    await expect(window.getByTestId("projection-summary")).toContainText("1 legacy file conflict");
+    await expect(window.getByTestId("projection-summary")).toContainText("1 imported file conflict");
     await expect(window.getByTestId("regenerate-projections-button")).toHaveCount(0);
-    await expect(window.getByTestId("overwrite-legacy-projections-button")).toHaveText("Overwrite legacy projections");
+    await expect(window.getByTestId("overwrite-legacy-projections-button")).toHaveText("Replace Imported Files");
     await expect(window.getByTestId("start-execution-button")).toBeDisabled();
     await window.getByTestId("overwrite-legacy-projections-button").click();
-    await expect(window.getByTestId("projection-summary")).not.toContainText("legacy file conflict");
+    await expect(window.getByTestId("projection-summary")).not.toContainText("imported file conflict");
     await expect(window.getByTestId("start-execution-button")).toBeEnabled();
     const requirementsProjection = await readFile(requirementsProjectionPath, "utf8");
     expect(requirementsProjection).toContain("### R001: First useful version capabilities");
@@ -2720,10 +2733,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-outline-title")).toHaveText("Launch plan");
-    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
+    await expect(window.getByTestId("workflow-preferences-card")).toHaveCount(0);
     await expect(window.getByTestId("phase-model-select-execute")).toHaveCount(0);
-    await window.getByRole("button", { name: "Project preferences", exact: true }).click();
+    await window.getByRole("button", { name: "Project Preferences", exact: true }).click();
+    await expect(window.getByTestId("project-preferences-view")).toBeVisible();
+    await expect(window.getByTestId("workflow-preferences-status")).toHaveText("Saved");
     await expect(window.getByTestId("phase-model-select-execute")).toHaveValue("openai:gpt-4o");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("SHIP");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("complete-slice.md / complete-milestone.md");
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();

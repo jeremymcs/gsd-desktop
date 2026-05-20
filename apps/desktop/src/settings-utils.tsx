@@ -43,11 +43,11 @@ export function sectionDescription(section: SettingsSection, workspaceName: stri
     case "providers":
       return `Connect the services GSD can use for ${workspaceName}.`;
     case "models":
-      return "Choose defaults for new threads, planning phases, and model pickers.";
+      return "Choose model defaults for new threads, planning phases, and pickers.";
     case "notifications":
       return "Decide when GSD should let you know background work needs attention.";
     default:
-      return "Tune the workspace behavior you use most often.";
+      return "Tune the project behavior you use most often.";
   }
 }
 
@@ -198,7 +198,7 @@ function resolveProviderAction(
   if (provider.authSource === "oauth") {
     return {
       disabled: false,
-      label: "Logout",
+      label: "Log Out",
       onClick: () => onLogoutProvider(provider.id),
     };
   }
@@ -206,7 +206,7 @@ function resolveProviderAction(
   if (provider.oauthSupported && provider.authSource === "none") {
     return {
       disabled: false,
-      label: "Login",
+      label: "Log In",
       onClick: () => onLoginProvider(provider.id),
     };
   }
@@ -214,13 +214,13 @@ function resolveProviderAction(
   if (provider.apiKeySetupSupported && (provider.authSource === "none" || provider.authSource === "auth_file")) {
     return {
       disabled: false,
-      label: provider.authSource === "auth_file" ? "Manage" : "Set API key",
+      label: provider.authSource === "auth_file" ? "Manage Key" : "Set API Key",
       onClick: () => onConfigureApiKey(provider),
     };
   }
 
   return {
     disabled: true,
-    label: provider.authSource === "env" || provider.authSource === "external" ? "Managed externally" : "Configure externally",
+    label: provider.authSource === "env" || provider.authSource === "external" ? "Managed Externally" : "Configure Externally",
   };
 }

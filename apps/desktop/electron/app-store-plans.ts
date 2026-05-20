@@ -35,6 +35,7 @@ import type {
   ApplyPlanningWorkflowPreferencesInput,
   ApprovePlanningChangeProposalInput,
   ApprovePlanningTaskModificationInput,
+  AppView,
   ConfirmPlanningStageInput,
   CreatePlanningPlanInput,
   DesktopAppState,
@@ -267,7 +268,9 @@ export async function applyPlanningWorkflowPreferences(
       }
 
       await writeWorkflowPreferenceFiles({ workspaceRoot: workspace.path, plan: snapshot });
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        activeView: currentPlanningPreferencesView(store),
+      });
     });
   });
 }
@@ -294,7 +297,9 @@ export async function updatePlanningWorkflowPreferences(
       });
 
       await writeWorkflowPreferenceFiles({ workspaceRoot: workspace.path, plan: snapshot });
-      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot, {
+        activeView: currentPlanningPreferencesView(store),
+      });
     });
   });
 }
@@ -2678,6 +2683,12 @@ function getNextVisiblePlanSnapshot(planningStore: PlanningStore, ignoredPlanId:
   return planId ? planningStore.getPlanSnapshot(planId) : undefined;
 }
 
+function currentPlanningPreferencesView(
+  store: AppStoreInternals,
+): Extract<AppView, "plans" | "project-preferences"> {
+  return store.state.activeView === "project-preferences" ? "project-preferences" : "plans";
+}
+
 function getPlanSnapshots(planningStore: PlanningStore, plans: readonly PlanListEntry[]): readonly PlanSnapshot[] {
   return plans.flatMap((plan) => {
     const snapshot = planningStore.getPlanSnapshot(plan.id);
@@ -2825,13 +2836,16 @@ async function publishCurrentPlanningState(
   workspaceId: string,
   workspacePath: string,
   selectedPlan: PlanSnapshot | undefined,
-  options: { readonly projectionSummary?: PlanningProjectionSummary } = {},
+  options: {
+    readonly activeView?: Extract<AppView, "plans" | "project-preferences">;
+    readonly projectionSummary?: PlanningProjectionSummary;
+  } = {},
 ): Promise<DesktopAppState> {
   const plans = planningStore.listPlans();
   const planSnapshots = getPlanSnapshots(planningStore, plans);
   const planDashboardRows = await buildPlanDashboardRows(workspacePath, planSnapshots);
   return publishPlanningState(store, workspaceId, workspacePath, plans, selectedPlan, {
-    activeView: "plans",
+    activeView: options.activeView ?? "plans",
     ...(options.projectionSummary ? { projectionSummary: options.projectionSummary } : {}),
     planDashboardRows,
   });
@@ -2844,7 +2858,7 @@ async function publishPlanningState(
   plans: readonly PlanListEntry[],
   selectedPlan: PlanSnapshot | undefined,
   options: {
-    readonly activeView?: "plans";
+    readonly activeView?: Extract<AppView, "plans" | "project-preferences">;
     readonly projectionSummary?: PlanningProjectionSummary;
     readonly planDashboardRows?: readonly PlanningPlanDashboardRow[];
   } = {},

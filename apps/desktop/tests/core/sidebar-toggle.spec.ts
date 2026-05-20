@@ -77,10 +77,12 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expect(window.locator(".sidebar")).toBeVisible();
     await expect(window.getByTestId("sidebar-toggle")).toBeVisible();
     await expect(window.locator(".sidebar__nav .sidebar__nav-item")).toHaveText([
-      "Sessions",
+      "Home",
       "Plans",
+      "Threads",
       "Skills",
       "Extensions",
+      "Project Preferences",
     ]);
     await expect(window.locator(".sidebar__footer").getByRole("button", { name: "Settings", exact: true })).toHaveClass(
       /sidebar__settings--active/,
@@ -89,7 +91,7 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expectSidebarCollapsed(window, true);
     await window.keyboard.press(desktopShortcut("B"));
     await expectSidebarCollapsed(window, false);
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
 
     await restoreSidebarIfNeeded(window);
     await window.getByRole("button", { name: "Skills", exact: true }).click();
@@ -101,7 +103,7 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expectSidebarCollapsed(window, true);
     await window.keyboard.press(desktopShortcut("B"));
     await expectSidebarCollapsed(window, false);
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
 
     await restoreSidebarIfNeeded(window);
     await window.getByRole("button", { name: "Extensions", exact: true }).click();
@@ -113,7 +115,7 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expectSidebarCollapsed(window, true);
     await window.keyboard.press(desktopShortcut("B"));
     await expectSidebarCollapsed(window, false);
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
 
     await restoreSidebarIfNeeded(window);
     await window.getByTestId("sidebar-toggle").click();

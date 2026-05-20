@@ -40,7 +40,12 @@ export function Topbar(props: TopbarProps) {
       return;
     }
 
-    if (target.closest(".topbar__actions") || target.closest(".workspace-tabs")) {
+    const workspaceTab = target.closest(".workspace-tabs__tab");
+    if (
+      target.closest(".topbar__actions") ||
+      target.closest(".workspace-tabs__add") ||
+      (workspaceTab && !workspaceTab.classList.contains("workspace-tabs__tab--active"))
+    ) {
       return;
     }
 
@@ -50,7 +55,7 @@ export function Topbar(props: TopbarProps) {
   return (
     <header className="topbar" data-testid="topbar" onDoubleClick={handleDoubleClick}>
       <span className="topbar__session sr-only">{activeTitle}</span>
-      <nav className="workspace-tabs" aria-label="Project workspaces" data-testid="workspace-list">
+      <nav className="workspace-tabs" aria-label="Projects" data-testid="workspace-list">
         {workspaces.length > 0 ? (
           workspaces.map((workspace) => {
             const active = workspace.id === activeWorkspaceId;
@@ -70,10 +75,10 @@ export function Topbar(props: TopbarProps) {
         ) : (
           <button className="workspace-tabs__tab workspace-tabs__tab--empty" type="button" onClick={onAddWorkspace}>
             <FolderIcon />
-            <span>Open workspace</span>
+            <span>Open Project</span>
           </button>
         )}
-        <button aria-label="Add folder" className="workspace-tabs__add" type="button" onClick={onAddWorkspace}>
+        <button aria-label="Add Project Folder" className="workspace-tabs__add" type="button" onClick={onAddWorkspace}>
           <PlusIcon />
         </button>
       </nav>
@@ -81,7 +86,7 @@ export function Topbar(props: TopbarProps) {
       <div className="topbar__actions">
         <div className="shortcut-tooltip-wrap topbar__tooltip-wrap">
           <button
-            aria-label="Toggle terminal"
+            aria-label="Toggle Terminal"
             className={`icon-button topbar__icon ${terminalVisible ? "icon-button--active" : ""}`}
             type="button"
             disabled={!terminalAvailable}
@@ -90,13 +95,13 @@ export function Topbar(props: TopbarProps) {
             <TerminalIcon />
           </button>
           <span className="shortcut-tooltip topbar__tooltip" role="tooltip">
-            <span>Toggle terminal</span>
+            <span>Toggle Terminal</span>
             <kbd>{terminalShortcut}</kbd>
           </span>
         </div>
         <div className="shortcut-tooltip-wrap topbar__tooltip-wrap">
           <button
-            aria-label="Toggle changes"
+            aria-label="Toggle Changes"
             className={`icon-button topbar__icon ${showDiffPanel ? "icon-button--active" : ""}`}
             type="button"
             onClick={onToggleDiffPanel}
@@ -104,7 +109,7 @@ export function Topbar(props: TopbarProps) {
             <DiffIcon />
           </button>
           <span className="shortcut-tooltip topbar__tooltip" role="tooltip">
-            <span>Toggle changes</span>
+            <span>Toggle Changes</span>
             <kbd>{diffShortcut}</kbd>
           </span>
         </div>

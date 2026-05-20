@@ -55,7 +55,7 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     const composer = window.getByTestId("composer");
     await expect(composer).toHaveAttribute(
       "placeholder",
-      "Ask GSD to inspect the repo, run a fix, or continue the current thread...",
+      "Ask GSD to inspect the project, make a change, or continue this thread...",
     );
 
     await window.keyboard.press(desktopShortcut(","));
@@ -124,20 +124,20 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
 
     await composer.fill("/model");
     await expect(optionsMenu).toBeVisible();
-    await expect(optionsMenu).toContainText("No models available");
-    await expect(optionsMenu).toContainText("Open Settings > Models to enable models.");
+    await expect(optionsMenu).toContainText("No Models Available");
+    await expect(optionsMenu).toContainText("Open Model Settings to enable models.");
     await composer.fill("continue");
     await expect(optionsMenu).toHaveCount(0);
 
     const onboardingNotice = window.getByTestId("model-onboarding-notice");
-    await expect(onboardingNotice).toContainText("No models available");
-    await expect(onboardingNotice).toContainText("Settings > Models");
+    await expect(onboardingNotice).toContainText("No Models Available");
+    await expect(onboardingNotice).toContainText("Model Settings");
     await expect(window.getByTestId("send")).toBeDisabled();
 
-    await onboardingNotice.getByRole("button", { name: "Open Settings > Models" }).click();
+    await onboardingNotice.getByRole("button", { name: "Open Model Settings" }).click();
     await expect(window.getByTestId("settings-surface")).toBeVisible();
     await expect(window.locator(".view-header__title")).toHaveText("Models");
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
     await expect(window.getByTestId("send")).toBeDisabled();
 
     const appRegions = await window.evaluate(() => {
@@ -191,7 +191,7 @@ test("dark mode keeps the send button visible before and after typing", async ()
       .poll(() => window.evaluate(() => document.documentElement.classList.contains("dark")))
       .toBe(true);
 
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
     await selectSession(window, "Dark send button session");
 
     const sendButton = window.getByTestId("send");

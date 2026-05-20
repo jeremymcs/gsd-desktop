@@ -5,7 +5,7 @@ import type { SessionExtensionDialogRecord, SessionExtensionUiStateRecord } from
 
 const ANSI_ESCAPE_PATTERN = /\u001B\[[0-?]*[ -/]*[@-~]/g;
 const DOCK_SEGMENT_SEPARATOR = "--------------------";
-const GENERIC_ACTIVE_LABEL = "Extension UI active";
+const GENERIC_ACTIVE_LABEL = "Extension UI Active";
 
 interface ExtensionDockBlock {
   readonly key: string;
@@ -128,7 +128,7 @@ export function ExtensionDialog({
           <input
             autoFocus
             className="skills-search"
-            placeholder={dialog.placeholder ?? "Enter a value"}
+            placeholder={dialog.placeholder ?? "Enter value"}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />

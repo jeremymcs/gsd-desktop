@@ -67,8 +67,8 @@ test("opens /tree from the composer, navigates branches, and blocks it on the ne
     await treeModal.locator(".tree-row__content", { hasText: "Branch alpha" }).click();
     await treeModal.getByRole("button", { name: "Continue" }).click();
     await expect(window.getByTestId("tree-summary-step")).toBeVisible();
-    await treeModal.getByRole("button", { name: "No summary" }).click();
-    await treeModal.getByRole("button", { name: "Switch branch" }).click();
+    await treeModal.getByRole("button", { name: "No Summary" }).click();
+    await treeModal.getByRole("button", { name: "Switch Branch" }).click();
 
     await expect(treeModal).toHaveCount(0);
     await expect(composer).toHaveValue("Branch alpha");
@@ -80,8 +80,8 @@ test("opens /tree from the composer, navigates branches, and blocks it on the ne
     await expect(treeModal).toBeVisible();
     await treeModal.locator(".tree-row__content", { hasText: "Beta answer" }).click();
     await treeModal.getByRole("button", { name: "Continue" }).click();
-    await treeModal.getByRole("button", { name: "No summary" }).click();
-    await treeModal.getByRole("button", { name: "Switch branch" }).click();
+    await treeModal.getByRole("button", { name: "No Summary" }).click();
+    await treeModal.getByRole("button", { name: "Switch Branch" }).click();
 
     await expect(treeModal).toHaveCount(0);
     await expect(composer).toHaveValue("");
@@ -95,7 +95,7 @@ test("opens /tree from the composer, navigates branches, and blocks it on the ne
     await expect(window.getByTestId("slash-menu")).toHaveCount(0);
     await newThreadComposer.press("Enter");
     await expect(window.getByTestId("composer-error-banner")).toContainText(
-      "/tree is only available inside an existing session.",
+      "/tree is only available inside an existing thread.",
     );
     await expect(newThreadComposer).toHaveValue("/tree");
   } finally {

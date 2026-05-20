@@ -156,11 +156,11 @@ export function ConversationTimeline({
       ) : null}
       {isTranscriptLoading ? (
         <div className="timeline" data-testid="transcript">
-          <div className="timeline-empty">Loading transcript…</div>
+          <div className="timeline-empty">Loading thread...</div>
         </div>
       ) : transcript.length === 0 ? (
         <div className="timeline" data-testid="transcript">
-          <div className="timeline-empty">Send a prompt to start the session.</div>
+          <div className="timeline-empty">Send a prompt to start the thread.</div>
         </div>
       ) : shouldVirtualize ? (
         <VirtualizedTranscriptList

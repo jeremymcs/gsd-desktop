@@ -65,47 +65,47 @@
 
 :root.dark {
   color-scheme: dark;
-  --window: #0d1117;
-  --sidebar: #151b23;
-  --main: #0d1117;
-  --surface: #161b22;
-  --surface-muted: #21262d;
-  --line: #30363d;
-  --line-strong: #3d444d;
-  --text: #c9d1d9;
-  --text-strong: #f0f6fc;
-  --muted: #8b949e;
-  --muted-strong: #c9d1d9;
-  --muted-soft: #8b949e;
-  --muted-subtle: #6e7681;
-  --muted-icon: #8b949e;
-  --muted-path: #8b949e;
-  --muted-settings: #8b949e;
-  --accent: #7d8590;
-  --accent-soft: #30363d;
-  --accent-ink: #f0f6fc;
-  --run: #65d68a;
-  --run-soft: rgba(101, 214, 138, 0.13);
-  --proof: #58a6ff;
-  --proof-soft: rgba(88, 166, 255, 0.14);
-  --source-window: #090b18;
-  --source-surface: #111529;
-  --source-line: #283052;
-  --source-text: #dce2ed;
-  --workbench-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
-  --error: #e05467;
-  --error-ink: #f87171;
+  --window: #0f1124;
+  --sidebar: #111426;
+  --main: #101225;
+  --surface: #141629;
+  --surface-muted: #1b1e37;
+  --line: #2a3150;
+  --line-strong: #39436a;
+  --text: #d9dce3;
+  --text-strong: #f4f4f5;
+  --muted: #a3a8b3;
+  --muted-strong: #d9dce3;
+  --muted-soft: #9aa1ad;
+  --muted-subtle: #8f96a3;
+  --muted-icon: #9aa1ad;
+  --muted-path: #8f96a3;
+  --muted-settings: #a3a8b3;
+  --accent: #8ea2ff;
+  --accent-soft: #20264a;
+  --accent-ink: #dbe3ff;
+  --run: #a9d8b1;
+  --run-soft: #1c3028;
+  --proof: #84bcff;
+  --proof-soft: #182844;
+  --source-window: #0c0f1f;
+  --source-surface: #111426;
+  --source-line: #2a3150;
+  --source-text: #d9dce3;
+  --workbench-shadow: 0 22px 70px rgba(0, 0, 0, 0.38);
+  --error: #f1a5a5;
+  --error-ink: #f1a5a5;
   --border: var(--line);
   --ink: var(--text);
   --ink-strong: var(--text-strong);
-  --button-primary-bg: #f4f4f5;
-  --button-primary-border: #f4f4f5;
-  --button-primary-ink: #1f2638;
-  --button-primary-hover-bg: #d4d4d8;
-  --button-primary-hover-border: #d4d4d8;
-  --button-primary-disabled-bg: #5f636b;
-  --button-primary-disabled-border: #5f636b;
-  --button-primary-disabled-ink: #f4f4f5;
+  --button-primary-bg: #8ea2ff;
+  --button-primary-border: #aab8ff;
+  --button-primary-ink: #0f1124;
+  --button-primary-hover-bg: #aab8ff;
+  --button-primary-hover-border: #aab8ff;
+  --button-primary-disabled-bg: #39436a;
+  --button-primary-disabled-border: #39436a;
+  --button-primary-disabled-ink: #a3a8b3;
 }
 
 * {
@@ -294,19 +294,19 @@ svg {
 
 /* Dark mode overrides for hardcoded light colors */
 :root.dark .empty-state {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface);
 }
 
 :root.dark .button--ghost {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
 }
 
 :root.dark .button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--accent-soft) 74%, var(--surface-muted) 26%);
+  border-color: var(--line-strong);
 }
 
 :root.dark .meta-chip {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
   border-color: var(--line);
 }

@@ -7,9 +7,9 @@ interface SettingsAppearanceSectionProps {
 }
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string; description: string }[] = [
-  { mode: "system", label: "System", description: "Follow your OS appearance setting" },
-  { mode: "light", label: "Light", description: "Always use the light theme" },
-  { mode: "dark", label: "Dark", description: "Always use the dark theme" },
+  { mode: "system", label: "System", description: "Follow your OS appearance setting." },
+  { mode: "light", label: "Light", description: "Use the light theme." },
+  { mode: "dark", label: "Dark", description: "Use the dark theme." },
 ];
 
 export function SettingsAppearanceSection({ themeMode, onSetThemeMode }: SettingsAppearanceSectionProps) {

@@ -33,11 +33,11 @@ test("queues follow-ups with Enter and steers the current run with Cmd+Enter", a
   try {
     const window = await harness.firstWindow();
 
-    await window.getByRole("complementary").getByRole("button", { name: "New session" }).click();
+    await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
     await window.getByLabel("New thread prompt").fill(
       "Use your bash or shell tool to run `python - <<'PY'\nimport time\nprint(\"queue-start\")\ntime.sleep(8)\nprint(\"queue-end\")\nPY` and, after the tool call, reply with exactly BASELINE_DONE.",
     );
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
 
     await expect
       .poll(async () => {

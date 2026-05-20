@@ -48,8 +48,8 @@ export function SkillsView({
       <section className="canvas canvas--empty" data-testid="skills-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Skills</div>
-          <h1>Select a workspace</h1>
-          <p>Skills are discovered from the selected workspace plus your user-level skill directories.</p>
+          <h1>Select a Project</h1>
+          <p>Choose a project to see its project and user-level skills.</p>
         </div>
       </section>
     );
@@ -66,9 +66,9 @@ export function SkillsView({
             </span>
             <div>
               <div className="chat-header__eyebrow">Skills</div>
-              <h1 className="view-header__title">Workspace skills</h1>
+              <h1 className="view-header__title">Project Skills</h1>
               <p className="view-header__body">
-                Choose the reusable prompts and workflow moves GSD can bring into this project.
+                Choose the reusable prompts and guided actions GSD can use in this project.
               </p>
             </div>
           </div>
@@ -89,7 +89,7 @@ export function SkillsView({
                 onClick={() =>
                   onTrySkill({
                     name: "new-skill",
-                    description: "Create a new skill for this workspace",
+                    description: "Create a new project skill",
                     filePath: "",
                     baseDir: workspace.path,
                     source: "project",
@@ -99,7 +99,7 @@ export function SkillsView({
                   })
                 }
               >
-                New skill
+                New Skill
               </button>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function SkillsView({
 
         <div className="skills-toolbar">
           <input
-            aria-label="Search skills"
+            aria-label="Search Skills"
             className="skills-search"
             placeholder="Search skills"
             value={query}
@@ -123,7 +123,7 @@ export function SkillsView({
         <div className="skills-layout">
           <div className="skills-grid" data-testid="skills-list">
             {filteredSkills.length === 0 ? (
-              <SkillsEmptyState message="Refresh discovery or create a new skill for this workspace." />
+              <SkillsEmptyState message="Refresh discovery or create a project skill." />
             ) : (
               filteredSkills.map((skill) => (
                 <button
@@ -149,7 +149,7 @@ export function SkillsView({
                   <span className="skill-card__meta">
                     <span>{skill.source}</span>
                     <span>{skill.slashCommand}</span>
-                    {skill.disableModelInvocation ? <span>slash only</span> : null}
+                    {skill.disableModelInvocation ? <span>Slash Only</span> : null}
                   </span>
                 </button>
               ))
@@ -186,7 +186,7 @@ export function SkillsView({
                 </div>
                 <div className="skill-detail__actions">
                   <button className="button button--secondary" type="button" onClick={() => onOpenSkillFolder(selectedSkill.filePath)}>
-                    Open folder
+                    Open Folder
                   </button>
                   <button
                     className="button button--secondary"
@@ -196,12 +196,12 @@ export function SkillsView({
                     {selectedSkill.enabled ? "Disable" : "Enable"}
                   </button>
                   <button className="button button--primary" type="button" onClick={() => onTrySkill(selectedSkill)}>
-                    Try
+                    Try Skill
                   </button>
                 </div>
               </>
             ) : (
-              <SkillsEmptyState message="Refresh runtime discovery to load workspace and user-level skills." />
+              <SkillsEmptyState message="Refresh discovery to load project and user-level skills." />
             )}
           </div>
         </div>
@@ -231,7 +231,7 @@ function DetailMetric({ label, value }: { readonly label: string; readonly value
 function SkillsEmptyState({ message }: { readonly message: string }) {
   return (
     <div className="empty-state">
-      <h2>No skills found</h2>
+      <h2>No Skills Found</h2>
       <p>{message}</p>
     </div>
   );

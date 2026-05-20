@@ -27,11 +27,11 @@ export async function assertPackagedAppCanStartThread(
   await waitForWorkspaceByPath(window, options.workspacePath);
   await expect(window.getByTestId("workspace-list")).toContainText(basename(options.workspacePath));
 
-  await window.getByRole("complementary").getByRole("button", { name: "New session" }).click();
+  await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
   const prompt = window.getByLabel("New thread prompt");
   await expect(prompt).toBeVisible();
   await prompt.fill(options.promptText);
-  await window.getByRole("button", { name: "Start thread" }).click();
+  await window.getByRole("button", { name: "Start Thread" }).click();
 
   await expect(window.locator(".topbar__session")).toHaveText(/\S+/);
   await expect(window.getByTestId("composer")).toBeFocused();

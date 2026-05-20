@@ -72,7 +72,7 @@ test("new thread reuses drag-drop attachments and carries them into the transcri
     await expect(window.locator(".new-thread .composer-attachment--image")).toHaveCount(1);
     await expect(window.locator(".new-thread .composer-attachment--file")).toHaveCount(1);
 
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
 
     await expect(window.getByTestId("composer")).toBeVisible({ timeout: 15_000 });
     await expect

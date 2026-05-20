@@ -16,11 +16,11 @@ test("runs /tree summarize flow against a real provider and surfaces the branch 
 
   try {
     const window = await harness.firstWindow();
-    await window.getByRole("complementary").getByRole("button", { name: "New session" }).click();
+    await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
 
     const newThreadComposer = window.getByTestId("new-thread-composer");
     await newThreadComposer.fill("Reply with exactly ROOT-ONE.");
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
     await expect(window.getByTestId("transcript")).toContainText("ROOT-ONE", { timeout: 150_000 });
 
     const composer = window.getByTestId("composer");
@@ -37,7 +37,7 @@ test("runs /tree summarize flow against a real provider and surfaces the branch 
     await treeModal.getByRole("button", { name: "Continue" }).click();
     await expect(window.getByTestId("tree-summary-step")).toBeVisible();
     await treeModal.getByRole("button", { name: "Summarize" }).click();
-    await treeModal.getByRole("button", { name: "Switch branch" }).click();
+    await treeModal.getByRole("button", { name: "Switch Branch" }).click();
 
     await expect(treeModal).toHaveCount(0, { timeout: 150_000 });
     await expect(window.locator(".timeline-item--summary-card")).toContainText("Branch summary", { timeout: 150_000 });

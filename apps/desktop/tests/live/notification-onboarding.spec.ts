@@ -10,7 +10,7 @@ async function openNotificationSettings(window: Page): Promise<void> {
 }
 
 async function returnToThreads(window: Page): Promise<void> {
-  await window.getByRole("button", { name: "Sessions", exact: true }).click();
+  await window.getByRole("button", { name: "Threads", exact: true }).click();
 }
 
 test("requests notification permission when the user switches away from a running session", async () => {

@@ -268,11 +268,11 @@ export function TreeModal({
       >
         <div className="tree-modal__header">
           <div>
-            <div className="tree-modal__eyebrow">Session tree</div>
-            <h2 className="tree-modal__title">{step === "summary" ? "Switch branch" : "Browse branches"}</h2>
+            <div className="tree-modal__eyebrow">Thread Tree</div>
+            <h2 className="tree-modal__title">{step === "summary" ? "Switch Branch" : "Browse Branches"}</h2>
           </div>
           <button
-            aria-label="Close tree modal"
+            aria-label="Close Thread Tree"
             className="tree-modal__close"
             disabled={submitting}
             type="button"
@@ -296,7 +296,7 @@ export function TreeModal({
 
         {loading ? (
           <div className="tree-modal__loading" data-testid="tree-modal-loading">
-            Loading session tree…
+            Loading thread tree...
           </div>
         ) : null}
 
@@ -305,10 +305,10 @@ export function TreeModal({
             <div className="tree-modal__search-row">
               <input
                 autoFocus
-                aria-label="Search session tree"
+                aria-label="Search Thread Tree"
                 className="tree-modal__search"
                 data-testid="tree-modal-search"
-                placeholder="Search visible tree entries"
+                placeholder="Search visible branches"
                 ref={searchRef}
                 value={search}
                 onChange={(event) => {
@@ -373,7 +373,7 @@ export function TreeModal({
 
             <div className="tree-modal__footer">
               <div className="tree-modal__hint">
-                Selecting a user prompt reopens it in the composer. Selecting any other node jumps directly there.
+                Select a prompt to reopen it in the composer. Select any other node to jump there.
               </div>
               <div className="tree-modal__actions">
                 <button className="button button--secondary" type="button" onClick={onClose}>
@@ -385,7 +385,7 @@ export function TreeModal({
                   type="button"
                   onClick={() => setStep("summary")}
                 >
-                  {currentLeafSelected ? "Already here" : "Continue"}
+                  {currentLeafSelected ? "Already Here" : "Continue"}
                 </button>
               </div>
             </div>
@@ -403,7 +403,7 @@ export function TreeModal({
                 type="button"
                 onClick={() => setSummaryMode("none")}
               >
-                <span className="tree-summary-option__title">No summary</span>
+                <span className="tree-summary-option__title">No Summary</span>
                 <span className="tree-summary-option__description">Jump immediately with no branch summary.</span>
               </button>
               <button
@@ -419,7 +419,7 @@ export function TreeModal({
                 type="button"
                 onClick={() => setSummaryMode("custom")}
               >
-                <span className="tree-summary-option__title">Summarize with custom prompt</span>
+                <span className="tree-summary-option__title">Summarize With Instructions</span>
                 <span className="tree-summary-option__description">Provide extra instructions for the summary.</span>
               </button>
             </div>
@@ -439,7 +439,7 @@ export function TreeModal({
             <div className="tree-modal__footer">
               <div className="tree-modal__hint">
                 {submitting
-                  ? "Switching branches…"
+                  ? "Switching branches..."
                   : summaryMode === "none"
                     ? "The current branch will be left as-is."
                     : "The summary will be attached to the branch you switch to."}
@@ -460,7 +460,7 @@ export function TreeModal({
                   type="button"
                   onClick={handleSubmit}
                 >
-                  {submitting ? "Switching…" : "Switch branch"}
+                  {submitting ? "Switching..." : "Switch Branch"}
                 </button>
               </div>
             </div>

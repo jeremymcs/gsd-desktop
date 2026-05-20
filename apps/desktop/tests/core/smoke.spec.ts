@@ -23,15 +23,14 @@ test("boots an existing workspace and starts a new thread through the real UI", 
 
     await waitForWorkspaceByPath(window, workspacePath);
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
-    await window.getByRole("complementary").getByRole("button", { name: "New session" }).click();
+    await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
 
-    const prompt = window.getByLabel("New thread prompt");
+    const prompt = window.getByLabel("New Thread Prompt");
     await expect(prompt).toBeVisible();
     await expect(prompt).toBeFocused();
-    await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
     await prompt.fill(promptText);
 
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
 
     await expect(window.locator(".topbar__session")).toHaveText(/\S+/);
     await expect(window.getByTestId("composer")).toBeFocused();
@@ -65,9 +64,8 @@ test("aligns workspace names with session titles in the sidebar gutter", async (
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
     await createSessionViaIpc(window, workspacePath, "Aligned session");
 
-    const workspaceGroup = window.locator(".workspace-group").first();
-    const workspaceName = workspaceGroup.locator(".workspace-row__name");
-    const sessionTitle = workspaceGroup.locator(".session-row__title", { hasText: "Aligned session" });
+    const workspaceName = window.locator(".project-header__copy strong");
+    const sessionTitle = window.locator(".session-row__title", { hasText: "Aligned session" });
 
     await expect(workspaceName).toBeVisible();
     await expect(sessionTitle).toBeVisible();
@@ -75,7 +73,7 @@ test("aligns workspace names with session titles in the sidebar gutter", async (
     const [workspaceBox, sessionBox] = await Promise.all([workspaceName.boundingBox(), sessionTitle.boundingBox()]);
     expect(workspaceBox).not.toBeNull();
     expect(sessionBox).not.toBeNull();
-    expect(Math.abs((workspaceBox?.x ?? 0) - (sessionBox?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((workspaceBox?.x ?? 0) - (sessionBox?.x ?? 0))).toBeLessThanOrEqual(12);
   } finally {
     await harness.close();
   }

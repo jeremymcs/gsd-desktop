@@ -60,7 +60,7 @@ test("settings lets the user save an API key for a built-in provider", async () 
 
     await window.getByRole("button", { name: "Models", exact: true }).click();
     const enabledModels = window.locator(".settings-section", {
-      has: window.locator(".settings-section__title", { hasText: "Enabled models" }),
+      has: window.locator(".settings-section__title", { hasText: "Enabled Models" }),
     });
     await expect(enabledModels).toContainText("openai/gpt-5");
     await expect(enabledModels).toContainText("openai/gpt-4o");
@@ -189,7 +189,7 @@ test("opening the first workspace from the empty state hydrates provider and mod
     await expect(emptyState).toBeVisible();
 
     await stubNextOpenDialog(harness, [workspacePath]);
-    await emptyState.getByRole("button", { name: "Open first folder" }).click();
+    await emptyState.getByRole("button", { name: "Open Project" }).click();
 
     await expect(emptyState).toHaveCount(0);
     await expect(window.getByTestId("workspace-list")).toContainText("provider-settings-first-workspace");
@@ -213,7 +213,7 @@ test("opening the first workspace from the empty state hydrates provider and mod
     await expect(window.locator(".view-header__title")).toHaveText("Models");
 
     const enabledModels = window.locator(".settings-section", {
-      has: window.locator(".settings-section__title", { hasText: "Enabled models" }),
+      has: window.locator(".settings-section__title", { hasText: "Enabled Models" }),
     });
     await expect(enabledModels).toContainText("openai/gpt-5");
     await expect(enabledModels).toContainText("openai/gpt-4o");

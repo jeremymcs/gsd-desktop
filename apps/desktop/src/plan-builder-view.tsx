@@ -142,13 +142,10 @@ interface PlanBuilderViewProps {
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly planningState: WorkspacePlanningState | undefined;
   readonly lastError?: string;
-  readonly workflowPreferencesFocusToken?: number;
   readonly onSelectWorkspace: (workspaceId: string) => void;
   readonly onCreatePlan: (input: CreatePlanningPlanInput) => Promise<DesktopAppState>;
   readonly onSelectPlan: (input: SelectPlanningPlanInput) => Promise<DesktopAppState>;
   readonly onUpdatePlanStatus: (input: UpdatePlanningPlanStatusInput) => Promise<DesktopAppState>;
-  readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
-  readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onParkIdea: (input: ParkPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
@@ -203,13 +200,10 @@ export function PlanBuilderView({
   globalPlanningPreferences,
   planningState,
   lastError,
-  workflowPreferencesFocusToken,
   onSelectWorkspace,
   onCreatePlan,
   onSelectPlan,
   onUpdatePlanStatus,
-  onApplyWorkflowPreferences,
-  onUpdateWorkflowPreferences,
   onRecordAnswer,
   onParkIdea,
   onReviseAnswer,
@@ -262,13 +256,10 @@ export function PlanBuilderView({
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
   const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
-  const [workflowPreferencesExpanded, setWorkflowPreferencesExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const changeDraftTitleInputRef = useRef<HTMLInputElement | null>(null);
-  const workflowPreferencesRef = useRef<HTMLDivElement | null>(null);
   const snapshot = planningState?.selectedPlan;
-  const workflowPreferencesSaved = Boolean(snapshot?.workflowPreferences?.capturedAt);
   const visiblePlans = useMemo(
     () => planningState?.plans.filter((plan) => plan.status !== "archived") ?? [],
     [planningState?.plans],
@@ -401,7 +392,6 @@ export function PlanBuilderView({
     (item) => item.id === composerReviewItemId && item.sourceType === "composer",
   );
   const composerReviewProposal = composerReviewItem ? changeProposalsBySource.get(composerReviewItem.id) : undefined;
-  const modelOptions = useMemo(() => buildModelOptions(runtime), [runtime]);
   const answerActionDisabled = !activeQuestion || !answerDraft.trim() || submitting;
 
   useEffect(() => {
@@ -427,20 +417,6 @@ export function PlanBuilderView({
   useEffect(() => {
     setResearchReadinessAcknowledged(false);
   }, [readinessSignature, snapshot?.id]);
-
-  useEffect(() => {
-    setWorkflowPreferencesExpanded(!workflowPreferencesSaved);
-  }, [snapshot?.id, workflowPreferencesSaved]);
-
-  useEffect(() => {
-    if (!workflowPreferencesFocusToken || !snapshot) {
-      return;
-    }
-    setWorkflowPreferencesExpanded(true);
-    window.requestAnimationFrame(() => {
-      workflowPreferencesRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
-  }, [snapshot?.id, workflowPreferencesFocusToken]);
 
   useEffect(() => {
     if (!draftingIdeaId) {
@@ -485,7 +461,7 @@ export function PlanBuilderView({
       <section className="canvas canvas--empty">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Plans</div>
-          <h1>Open a folder to plan</h1>
+          <h1>Open a Project to Plan</h1>
           <p>Add a project folder before starting the planning workflow.</p>
         </div>
       </section>
@@ -526,39 +502,6 @@ export function PlanBuilderView({
       planId: plan.id,
       expectedRevision: plan.revision,
       status,
-    }).finally(() => {
-      setSubmitting(false);
-    });
-  };
-
-  const applyWorkflowPreferences = () => {
-    if (!snapshot || submitting) {
-      return;
-    }
-    setSubmitting(true);
-    void onApplyWorkflowPreferences({
-      workspaceId: workspace.id,
-      planId: snapshot.id,
-      expectedRevision: snapshot.revision,
-    })
-      .then(() => {
-        setWorkflowPreferencesExpanded(false);
-      })
-      .finally(() => {
-        setSubmitting(false);
-      });
-  };
-
-  const updateWorkflowPhaseOverrides = (phaseOverrides: WorkflowPhaseModelPreferences) => {
-    if (!snapshot?.workflowPreferences || submitting) {
-      return;
-    }
-    setSubmitting(true);
-    void onUpdateWorkflowPreferences({
-      workspaceId: workspace.id,
-      planId: snapshot.id,
-      expectedRevision: snapshot.revision,
-      preferences: buildWorkflowPreferenceUpdate(snapshot.workflowPreferences, phaseOverrides),
     }).finally(() => {
       setSubmitting(false);
     });
@@ -1503,31 +1446,31 @@ export function PlanBuilderView({
   const composerPhaseAction = !activeQuestion && snapshot && allDiscussConfirmed
     ? !researchStarted
       ? {
-          ariaLabel: "Advance composer to RESEARCH",
+          ariaLabel: "Start Research",
           disabled: submitting || (researchReadinessRequiresOverride && !researchReadinessAcknowledged),
           run: startResearch,
         }
       : acceptedResearchOutputs.length > 0 && !planStarted
         ? {
-            ariaLabel: "Advance composer to PLAN",
+            ariaLabel: "Create Plan",
             disabled: submitting,
             run: startPlan,
           }
         : planStarted && acceptedPlanOutputs.length > 0 && !executeStarted && !verifyStarted && !shipStarted
           ? {
-              ariaLabel: "Advance composer to EXECUTE",
+              ariaLabel: "Start Execute",
               disabled: submitting,
               run: startExecution,
             }
           : executeStarted && !verifyStarted && !shipStarted && executionReadyForVerify
             ? {
-                ariaLabel: "Advance composer to VERIFY",
+                ariaLabel: "Start Verify",
                 disabled: submitting,
                 run: startVerify,
               }
             : verifyStarted && !shipStarted && verificationReadyForShip
               ? {
-                  ariaLabel: "Advance composer to SHIP",
+                  ariaLabel: "Start Ship",
                   disabled: submitting,
                   run: startShip,
                 }
@@ -1542,7 +1485,7 @@ export function PlanBuilderView({
   const composerPlaceholder = activeQuestion
     ? activeQuestion.helper
     : composerCanRecordShipSummary
-      ? "Write the final handoff summary for the next session."
+      ? "Write the final handoff summary for the next thread."
       : "Capture a parking-lot note, change request, or follow-up without changing the active plan.";
   const composerSubmitDisabled = activeQuestion
     ? answerActionDisabled
@@ -1552,11 +1495,11 @@ export function PlanBuilderView({
         ? submitting
         : !composerPhaseAction || composerPhaseAction.disabled;
   const composerSubmitLabel = activeQuestion
-    ? "Save answer"
+    ? "Save Answer"
     : composerCanRecordShipSummary
-      ? "Save summary"
+      ? "Save Summary"
       : composerCanParkIdea && composerHasDraft
-        ? "Park note"
+        ? "Park Note"
         : "Continue";
   const submitComposerAction = () => {
     if (activeQuestion) {
@@ -1609,11 +1552,11 @@ export function PlanBuilderView({
               <PlanIcon />
             </div>
             <div className="plan-builder__copy">
-              <div className="plan-builder__eyebrow">Project planning</div>
+              <div className="plan-builder__eyebrow">Project Planning</div>
               <h1 data-testid="plan-builder-title">Build a plan for {workspace.name}</h1>
               <p>
                 {snapshot
-                  ? "DISCUSS captures the load-bearing context before research and execution."
+                  ? "DISCUSS captures the context GSD needs before research or execution."
                   : "Turn the project discussion into milestones, phases, slices, and tasks before execution starts."}
               </p>
             </div>
@@ -1636,21 +1579,6 @@ export function PlanBuilderView({
             <WorkflowGuidanceCard guidance={workflowGuidance} />
 
             {!snapshot ? <GsdSourceProofPanel /> : null}
-
-            {snapshot ? (
-              <WorkflowPreferencesCard
-                cardRef={workflowPreferencesRef}
-                expanded={workflowPreferencesExpanded}
-                preferences={snapshot.workflowPreferences}
-                globalPlanningPreferences={globalPlanningPreferences}
-                modelOptions={modelOptions}
-                runtime={runtime}
-                submitting={submitting}
-                onApply={applyWorkflowPreferences}
-                onToggleExpanded={setWorkflowPreferencesExpanded}
-                onUpdatePhaseOverrides={updateWorkflowPhaseOverrides}
-              />
-            ) : null}
 
             {!snapshot ? (
               <form className="plan-create" onSubmit={handleCreatePlan}>
@@ -1686,7 +1614,7 @@ export function PlanBuilderView({
                   </div>
                 ) : null}
                 <button className="plan-action-button" disabled={!planName.trim() || submitting} type="submit">
-                  Create plan
+                  Create Plan
                 </button>
                 {lastError ? <div className="plan-error">{lastError}</div> : null}
               </form>
@@ -1709,14 +1637,14 @@ export function PlanBuilderView({
                   onClick={startResearch}
                   type="button"
                 >
-                  Start research
+                  Start Research
                 </button>
               </div>
             ) : allDiscussConfirmed && researchStarted && acceptedResearchOutputs.length === 0 ? (
               <div className="plan-research" data-testid="plan-research-panel">
                 <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
                   <div className="plan-depth-card__eyebrow">RESEARCH {formatStageStatus(researchStage?.status)}</div>
-                  <h2>Stage research findings</h2>
+                  <h2>Stage Research Findings</h2>
                   <p>Proposed research stays reviewable until it is accepted or rejected.</p>
                 </div>
 
@@ -1744,14 +1672,14 @@ export function PlanBuilderView({
                       disabled={!researchTitle.trim() || !researchContent.trim() || submitting}
                       type="submit"
                     >
-                      Stage research
+                      Stage Research
                     </button>
                   </div>
                 </form>
 
                 {pendingResearchOutputs.length > 0 ? (
                   <div className="plan-research-list" data-testid="research-output-proposed">
-                    <div className="plan-memory__title">Pending review</div>
+                    <div className="plan-memory__title">Pending Review</div>
                     {pendingResearchOutputs.map((output) => (
                       <ResearchOutputCard key={output.id} output={output}>
                         <button
@@ -1777,7 +1705,7 @@ export function PlanBuilderView({
 
                 {acceptedResearchOutputs.length > 0 ? (
                   <div className="plan-research-list" data-testid="research-output-accepted">
-                    <div className="plan-memory__title">Accepted research</div>
+                    <div className="plan-memory__title">Accepted Research</div>
                     {acceptedResearchOutputs.map((output) => (
                       <ResearchOutputCard key={output.id} output={output} />
                     ))}
@@ -1786,7 +1714,7 @@ export function PlanBuilderView({
 
                 {rejectedResearchOutputs.length > 0 ? (
                   <div className="plan-research-list" data-testid="research-output-rejected">
-                    <div className="plan-memory__title">Rejected research</div>
+                    <div className="plan-memory__title">Rejected Research</div>
                     {rejectedResearchOutputs.map((output) => (
                       <ResearchOutputCard key={output.id} output={output} />
                     ))}
@@ -1800,7 +1728,7 @@ export function PlanBuilderView({
                 <p>Accepted research is available. Structure milestones, slices, tasks, dependencies, and boundaries next.</p>
                 {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
                 <button className="plan-action-button" disabled={submitting} onClick={startPlan} type="button">
-                  Start plan
+                  Start Plan
                 </button>
               </div>
             ) : allDiscussConfirmed && shipStarted ? (
@@ -1884,7 +1812,7 @@ export function PlanBuilderView({
             ) : currentProgress?.readyForReview && !currentProgress.depthConfirmed ? (
               <div className="plan-depth-card" data-testid="plan-depth-gate">
                 <div className="plan-depth-card__eyebrow">{stageLabel(currentProgress.stage)} depth gate</div>
-                <h2>Confirm this stage is deep enough</h2>
+                <h2>Confirm This Stage Is Deep Enough</h2>
                 <p>
                   {currentProgress.answered} of {currentProgress.total} load-bearing answers are captured.
                 </p>
@@ -1898,7 +1826,7 @@ export function PlanBuilderView({
           {composerReviewItem ? (
             <div className="plan-composer-review" data-testid="plan-composer-parked-review">
               <div>
-                <div className="plan-composer-review__eyebrow">Parked idea</div>
+                <div className="plan-composer-review__eyebrow">Parked Idea</div>
                 <p>{composerReviewItem.text}</p>
               </div>
               <small data-testid="plan-composer-parked-review-status">
@@ -1948,7 +1876,7 @@ export function PlanBuilderView({
                           onClick={() => focusChangeProposal(composerReviewProposal)}
                           type="button"
                         >
-                          Review proposal
+                          Review Proposal
                         </button>
                       ) : (
                         <button
@@ -1957,7 +1885,7 @@ export function PlanBuilderView({
                           onClick={() => startDraftChangeProposal(composerReviewItem)}
                           type="button"
                         >
-                          Draft change
+                          Draft Change
                         </button>
                       )
                     ) : null}
@@ -1968,79 +1896,112 @@ export function PlanBuilderView({
           ) : null}
 
           <form
-            className={`plan-composer ${composerInputEnabled ? "plan-composer--active" : "plan-composer--status"}`}
+            className={`plan-composer ${
+              composerInputEnabled ? "plan-composer--active plan-composer--question-header" : "plan-composer--status"
+            }`}
             aria-label="Plan prompt composer"
             onSubmit={(event) => {
               event.preventDefault();
               submitComposerAction();
             }}
           >
-            <div className={`plan-composer__field ${composerInputEnabled ? "plan-composer__field--active" : ""}`}>
-              {composerInputEnabled ? (
-                <>
-                  <div className="plan-composer__question-frame" data-testid="plan-composer-question-frame">
-                    <span className="plan-composer__label">Question</span>
-                    <div className="plan-composer__question" data-testid="plan-composer-question">
-                      {activeQuestion ? (
-                        <span data-testid="plan-composer-prompt">{composerQuestion}</span>
-                      ) : (
-                        composerQuestion
-                      )}
-                    </div>
+            {composerInputEnabled ? (
+              <div className="plan-composer__field plan-composer__field--active plan-composer__field--question-header">
+                <div className="plan-composer__question-frame" data-testid="plan-composer-question-frame">
+                  <span className="plan-composer__label">Current question</span>
+                  <div className="plan-composer__question" data-testid="plan-composer-question">
+                    {activeQuestion ? <span data-testid="plan-composer-prompt">{composerQuestion}</span> : composerQuestion}
                   </div>
-                  <label className="plan-composer__answer-frame" data-testid="plan-composer-answer-frame">
-                    <span className="plan-composer__label">Answer</span>
-                    <textarea
+                </div>
+                <label className="plan-composer__answer-frame plan-composer__answer-frame--sheet" data-testid="plan-composer-answer-frame">
+                  <span className="plan-composer__label">Your answer</span>
+                  <textarea
+                    aria-label={
+                      activeQuestion
+                        ? "Answer current planning question"
+                        : composerCanRecordShipSummary
+                          ? "Write SHIP handoff summary"
+                          : "Park planning note"
+                    }
+                    data-testid="plan-composer-textarea"
+                    onChange={(event) => setAnswerDraft(event.target.value)}
+                    onKeyDown={submitComposerFromKeyboard}
+                    placeholder={composerPlaceholder}
+                    ref={composerTextareaRef}
+                    value={answerDraft}
+                  />
+                </label>
+                <div className="plan-composer__footer">
+                  <span>Save clear answers here. Park rough notes only when they need later review.</span>
+                  <div className="plan-composer__actions" data-testid="plan-composer-actions">
+                    <button
+                      className="plan-composer__send"
+                      type="submit"
+                      disabled={composerSubmitDisabled}
                       aria-label={
                         activeQuestion
-                          ? "Answer current planning question"
+                          ? "Save Answer"
                           : composerCanRecordShipSummary
-                            ? "Write SHIP handoff summary"
-                            : "Park planning note"
+                            ? "Save Summary"
+                            : composerCanParkIdea && composerHasDraft
+                              ? "Park Note"
+                              : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
                       }
-                      data-testid="plan-composer-textarea"
-                      onChange={(event) => setAnswerDraft(event.target.value)}
-                      onKeyDown={submitComposerFromKeyboard}
-                      placeholder={composerPlaceholder}
-                      ref={composerTextareaRef}
-                      value={answerDraft}
-                    />
-                  </label>
-                </>
-              ) : (
-                <span className="plan-composer__status-text">{composerStatus}</span>
-              )}
-            </div>
-            <div className="plan-composer__actions" data-testid="plan-composer-actions">
-              <button
-                className="plan-composer__send"
-                type="submit"
-                disabled={composerSubmitDisabled}
-                aria-label={
-                  activeQuestion
-                    ? "Submit composer answer"
-                    : composerCanRecordShipSummary
-                      ? "Record composer ship summary"
-                      : composerCanParkIdea && composerHasDraft
-                        ? "Park composer idea"
-                        : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
-                }
-              >
-                <span>{composerSubmitLabel}</span>
-                <ArrowUpIcon />
-              </button>
-              {activeQuestion ? (
-                <button
-                  className="plan-composer__park"
-                  type="button"
-                  disabled={answerActionDisabled}
-                  aria-label="Move composer draft to idea pool"
-                  onClick={() => recordAnswer(false)}
-                >
-                  Park for later
-                </button>
-              ) : null}
-            </div>
+                    >
+                      <span>{composerSubmitLabel}</span>
+                      <ArrowUpIcon />
+                    </button>
+                    {activeQuestion ? (
+                      <button
+                        className="plan-composer__park"
+                        type="button"
+                        disabled={answerActionDisabled}
+                        aria-label="Park for Later"
+                        onClick={() => recordAnswer(false)}
+                      >
+                        Park for Later
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="plan-composer__field">
+                  <span className="plan-composer__status-text">{composerStatus}</span>
+                </div>
+                <div className="plan-composer__actions" data-testid="plan-composer-actions">
+                  <button
+                    className="plan-composer__send"
+                    type="submit"
+                    disabled={composerSubmitDisabled}
+                    aria-label={
+                      activeQuestion
+                        ? "Save Answer"
+                        : composerCanRecordShipSummary
+                          ? "Save Summary"
+                          : composerCanParkIdea && composerHasDraft
+                            ? "Park Note"
+                            : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
+                    }
+                  >
+                    <span>{composerSubmitLabel}</span>
+                    <ArrowUpIcon />
+                  </button>
+                  {activeQuestion ? (
+                    <button
+                      className="plan-composer__park"
+                      type="button"
+                      disabled={answerActionDisabled}
+                      aria-label="Park for Later"
+                      onClick={() => recordAnswer(false)}
+                    >
+                      Park for Later
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </form>
         </div>
 
@@ -2056,7 +2017,7 @@ export function PlanBuilderView({
 
           <div className="plan-side">
             <label className="plan-side__workspace">
-              <span>Workspace</span>
+              <span>Project</span>
               <select value={workspace.id} onChange={(event) => onSelectWorkspace(event.target.value)}>
                 {workspaces.map((entry) => (
                   <option key={entry.id} value={entry.id}>
@@ -2210,7 +2171,7 @@ export function PlanBuilderView({
 
             {latestAnswers.length > 0 ? (
               <div className="plan-memory" data-testid="plan-answer-history">
-                <div className="plan-memory__title">Discussion memory</div>
+                <div className="plan-memory__title">Discussion Memory</div>
                 {latestAnswers.map((answer) => {
                   const question = getDiscussQuestion(answer.questionId);
                   const prompt = answer.prompt || question?.prompt;
@@ -2247,7 +2208,7 @@ export function PlanBuilderView({
                               onClick={() => saveRevision(answer)}
                               type="button"
                             >
-                              Save revision
+                              Save Revision
                             </button>
                             <button
                               className="plan-secondary-button plan-secondary-button--compact"
@@ -2266,7 +2227,7 @@ export function PlanBuilderView({
                       )}
                       {followUp ? (
                         <AdaptiveFollowUpCard
-                          actionLabel="Edit answer"
+                          actionLabel="Edit Answer"
                           followUp={followUp}
                           compact
                           onAction={() => startAnswerRevision(answer)}
@@ -2290,7 +2251,7 @@ export function PlanBuilderView({
 
             {snapshot?.parkedItems?.length ? (
               <div className="plan-memory" data-testid="plan-idea-pool">
-                <div className="plan-memory__title">Idea pool</div>
+                <div className="plan-memory__title">Idea Pool</div>
                 {snapshot.parkedItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
                   const sourceLabel =
@@ -2325,7 +2286,7 @@ export function PlanBuilderView({
                               onClick={() => saveIdeaEdit(item)}
                               type="button"
                             >
-                              Save idea
+                              Save Idea
                             </button>
                             <button
                               className="plan-secondary-button plan-secondary-button--compact"
@@ -2349,7 +2310,7 @@ export function PlanBuilderView({
                             onClick={() => startIdeaEdit(item)}
                             type="button"
                           >
-                            Edit idea
+                            Edit Idea
                           </button>
                           {item.reviewStatus === "dismissed" ? (
                             <button
@@ -2394,7 +2355,7 @@ export function PlanBuilderView({
                                     onClick={() => focusChangeProposal(proposal)}
                                     type="button"
                                   >
-                                    Review proposal
+                                    Review Proposal
                                   </button>
                                 ) : (
                                   <button
@@ -2403,7 +2364,7 @@ export function PlanBuilderView({
                                     onClick={() => startDraftChangeProposal(item)}
                                     type="button"
                                   >
-                                    Draft change
+                                    Draft Change
                                   </button>
                                 )
                               ) : null}
@@ -2431,7 +2392,7 @@ export function PlanBuilderView({
                             />
                           </label>
                           <label>
-                            <span>Impact notes</span>
+                            <span>Impact Notes</span>
                             <textarea
                               data-testid="plan-change-impact-textarea"
                               onChange={(event) => setChangeProposalImpactDraft(event.target.value)}
@@ -2450,7 +2411,7 @@ export function PlanBuilderView({
                               onClick={() => draftChangeProposal(item)}
                               type="button"
                             >
-                              Save draft
+                              Save Draft
                             </button>
                             <button
                               className="plan-secondary-button plan-secondary-button--compact"
@@ -2470,7 +2431,7 @@ export function PlanBuilderView({
 
             {snapshot?.changeProposals?.length ? (
               <div className="plan-memory" data-testid="plan-change-proposals">
-                <div className="plan-memory__title">Change proposals</div>
+                <div className="plan-memory__title">Change Proposals</div>
                 {snapshot.changeProposals.map((proposal) => (
                   <ChangeProposalCard
                     acceptedPlanProposal={acceptedPlanProposal}
@@ -2490,6 +2451,137 @@ export function PlanBuilderView({
             ) : null}
           </div>
         </aside>
+      </div>
+    </section>
+  );
+}
+
+interface ProjectPreferencesViewProps {
+  readonly workspaces: readonly WorkspaceRecord[];
+  readonly selectedWorkspaceId: string;
+  readonly runtime?: RuntimeSnapshot;
+  readonly globalPlanningPreferences: GlobalPlanningPreferences;
+  readonly planningState: WorkspacePlanningState | undefined;
+  readonly lastError?: string;
+  readonly onSelectWorkspace: (workspaceId: string) => void;
+  readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
+  readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
+}
+
+export function ProjectPreferencesView({
+  workspaces,
+  selectedWorkspaceId,
+  runtime,
+  globalPlanningPreferences,
+  planningState,
+  lastError,
+  onSelectWorkspace,
+  onApplyWorkflowPreferences,
+  onUpdateWorkflowPreferences,
+}: ProjectPreferencesViewProps) {
+  const workspace = workspaces.find((entry) => entry.id === selectedWorkspaceId) ?? workspaces[0];
+  const [submitting, setSubmitting] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const snapshot = planningState?.selectedPlan;
+  const modelOptions = useMemo(() => buildModelOptions(runtime), [runtime]);
+
+  const applyWorkflowPreferences = () => {
+    if (!workspace || !snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onApplyWorkflowPreferences({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const updateWorkflowPhaseOverrides = (phaseOverrides: WorkflowPhaseModelPreferences) => {
+    if (!workspace || !snapshot?.workflowPreferences || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdateWorkflowPreferences({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      preferences: buildWorkflowPreferenceUpdate(snapshot.workflowPreferences, phaseOverrides),
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  if (!workspace) {
+    return (
+      <section className="canvas canvas--project-preferences canvas--empty" data-testid="project-preferences-view">
+        <div className="empty-panel">
+          <div className="session-header__eyebrow">Project Preferences</div>
+          <h1>Open a Project First</h1>
+          <p>Add a project folder before setting workflow defaults.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="canvas canvas--project-preferences" data-testid="project-preferences-view">
+      <div className="conversation project-preferences-view">
+        <header className="view-header project-preferences-header">
+          <div>
+            <div className="chat-header__eyebrow">Project Preferences</div>
+            <h1 className="view-header__title">{workspace.name}</h1>
+            <p className="view-header__body">
+              Set the planning defaults this project should remember before GSD moves work through DISCUSS, EXECUTE, and SHIP.
+            </p>
+          </div>
+          {workspaces.length > 1 ? (
+            <div className="surface-toolbar">
+              <label className="surface-toolbar__field">
+                <span>Project</span>
+                <select value={workspace.id} onChange={(event) => onSelectWorkspace(event.target.value)}>
+                  {workspaces.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+        </header>
+
+        {lastError ? <div className="error-banner">{lastError}</div> : null}
+
+        {!planningState ? (
+          <div className="empty-panel empty-panel--compact">
+            <div className="session-header__eyebrow">Loading</div>
+            <h1>Reading Project Plans</h1>
+            <p>GSD is loading the saved planning database for this project.</p>
+          </div>
+        ) : !snapshot ? (
+          <div className="empty-panel empty-panel--compact">
+            <div className="session-header__eyebrow">No Active Plan</div>
+            <h1>Create a Plan First</h1>
+            <p>Project-specific workflow preferences attach to the active plan. Start or select a plan from Plans, then tune it here.</p>
+          </div>
+        ) : (
+          <WorkflowPreferencesCard
+            cardRef={cardRef}
+            expanded
+            mode="project-page"
+            preferences={snapshot.workflowPreferences}
+            globalPlanningPreferences={globalPlanningPreferences}
+            modelOptions={modelOptions}
+            runtime={runtime}
+            submitting={submitting}
+            onApply={applyWorkflowPreferences}
+            onToggleExpanded={() => undefined}
+            onUpdatePhaseOverrides={updateWorkflowPhaseOverrides}
+          />
+        )}
       </div>
     </section>
   );
@@ -2640,8 +2732,8 @@ function RequirementsContractCard({
     <div className="plan-memory" data-testid="requirements-contract">
       <div className="plan-requirements-contract__header">
         <div>
-          <div className="plan-memory__title">Requirements contract</div>
-          <p>{saved ? "Requirements contract saved" : "Drafted from requirements answers"}</p>
+          <div className="plan-memory__title">Requirements Contract</div>
+          <p>{saved ? "Requirements contract saved." : "Drafted from requirements answers."}</p>
         </div>
         <button
           className="plan-inline-button"
@@ -2769,7 +2861,7 @@ function PlanStatusCard({
             onClick={() => onStatusChange("active")}
             type="button"
           >
-            Restore plan
+            Restore Plan
           </button>
         ) : (
           <>
@@ -2781,7 +2873,7 @@ function PlanStatusCard({
                 onClick={() => onStatusChange("shipped")}
                 type="button"
               >
-                Mark shipped
+                Mark Shipped
               </button>
             ) : null}
             <button
@@ -2791,7 +2883,7 @@ function PlanStatusCard({
               onClick={() => onStatusChange("archived")}
               type="button"
             >
-              Archive plan
+              Archive Plan
             </button>
           </>
         )}
@@ -2816,7 +2908,7 @@ function ArchivedPlansPanel({
 }) {
   return (
     <section className="plan-archived-list" data-testid="archived-plan-list">
-      <div className="plan-memory__title">Archived plans</div>
+      <div className="plan-memory__title">Archived Plans</div>
       {plans.map((plan) => (
         <article className="plan-archived-list__row" data-testid="archived-plan-row" key={plan.id}>
           <div>
@@ -2851,7 +2943,7 @@ function PlanDashboard({
 }) {
   return (
     <section className="plan-dashboard" data-testid="plan-dashboard">
-      <div className="plan-memory__title">Plans dashboard</div>
+      <div className="plan-memory__title">Plans Dashboard</div>
       {rows.map((row) => (
         <button
           aria-label={`Open ${row.readableId} plan`}
@@ -2869,7 +2961,7 @@ function PlanDashboard({
           <span>{row.activePhase.toUpperCase()} / {stageLabel(row.activeStage)}</span>
           <span>{row.readyCount} ready / {row.blockedCount} blocked</span>
           <span>{row.nextWork}</span>
-          <span>Projection: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
+          <span>Saved files: {row.projectionState === "ready" ? "ready" : "not ready"}</span>
           <span data-testid="plan-dashboard-conflicts">{row.crossPlanConflictSummary}</span>
           <span data-testid="plan-dashboard-health">{formatPlanDashboardHealth(row)}</span>
         </button>
@@ -2889,7 +2981,7 @@ function LegacyReferencesPanel({
 }) {
   return (
     <section className="plan-legacy-references" data-testid="legacy-reference-list">
-      <div className="plan-memory__title">Legacy references</div>
+      <div className="plan-memory__title">Legacy References</div>
       {references.map((reference) => (
         <article className="plan-legacy-reference" data-testid="legacy-reference-item" key={reference.path}>
           <div className="plan-legacy-reference__header">
@@ -2903,7 +2995,7 @@ function LegacyReferencesPanel({
             onClick={() => onParkReference(reference)}
             type="button"
           >
-            Park excerpt
+            Park Excerpt
           </button>
         </article>
       ))}
@@ -2981,7 +3073,7 @@ function PlanProposalEditor({
 }) {
   const projectionStatus = projectionSummary
     ? formatProjectionSummary(projectionSummary)
-    : "Ready to regenerate generated Markdown files";
+    : "Ready to refresh saved planning files";
   const hasProjectionConflict = hasProjectionConflicts(projectionSummary);
 
   return (
@@ -3001,7 +3093,7 @@ function PlanProposalEditor({
             data-testid="projection-summary"
           >
             <div>
-              <strong>Projections</strong>
+              <strong>Saved Files</strong>
               <span>{projectionStatus}</span>
             </div>
             <ProjectionRepairControls
@@ -3018,7 +3110,7 @@ function PlanProposalEditor({
               onClick={onStartExecution}
               type="button"
             >
-              Start execute
+              Start Execute
             </button>
           </div>
           <CoverageWarningPanel warnings={acceptedCoverageWarnings} />
@@ -3027,7 +3119,7 @@ function PlanProposalEditor({
 
       <form className="plan-roadmap-form" onSubmit={onProposePlan}>
         <label className="plan-roadmap-form__field">
-          <span>Boundary map</span>
+          <span>Boundary Map</span>
           <textarea
             data-testid="plan-boundary-map-textarea"
             onChange={(event) => onBoundaryMapChange(event.target.value)}
@@ -3035,7 +3127,7 @@ function PlanProposalEditor({
           />
         </label>
         <label className="plan-roadmap-form__field">
-          <span>Idea pool</span>
+          <span>Idea Pool</span>
           <textarea
             data-testid="plan-idea-pool-textarea"
             onChange={(event) => onIdeaPoolChange(event.target.value)}
@@ -3053,7 +3145,7 @@ function PlanProposalEditor({
                 onClick={onAddPhase}
                 type="button"
               >
-                Add phase
+                Add Phase
               </button>
             </div>
             {planProposal.phases.map((phase, phaseIndex) => (
@@ -3067,7 +3159,7 @@ function PlanProposalEditor({
                     onClick={() => onRemovePhase(phaseIndex)}
                     type="button"
                   >
-                    Delete phase
+                    Delete Phase
                   </button>
                 </div>
                 <div className="plan-roadmap-grid">
@@ -3080,7 +3172,7 @@ function PlanProposalEditor({
                     />
                   </label>
                   <label className="plan-roadmap-form__field">
-                    <span>Phase title</span>
+                    <span>Phase Title</span>
                     <input
                       data-testid="plan-phase-title-input"
                       onChange={(event) => onUpdatePhase(phaseIndex, { title: event.target.value })}
@@ -3089,7 +3181,7 @@ function PlanProposalEditor({
                   </label>
                 </div>
                 <label className="plan-roadmap-form__field">
-                  <span>Phase goal</span>
+                  <span>Phase Goal</span>
                   <textarea
                     data-testid="plan-phase-goal-textarea"
                     onChange={(event) => onUpdatePhase(phaseIndex, { goal: event.target.value })}
@@ -3111,12 +3203,12 @@ function PlanProposalEditor({
                   onClick={() => onRemoveMilestone(milestoneIndex)}
                   type="button"
                 >
-                  Delete milestone
+                  Delete Milestone
                 </button>
               </div>
               <div className="plan-roadmap-grid">
                 <label className="plan-roadmap-form__field">
-                  <span>Milestone title</span>
+                  <span>Milestone Title</span>
                   <input
                     data-testid={milestoneIndex === 0 ? "plan-milestone-title-input" : undefined}
                     onChange={(event) => onUpdateMilestone(milestoneIndex, { title: event.target.value })}
@@ -3158,11 +3250,11 @@ function PlanProposalEditor({
                       onClick={() => onRemoveSlice(milestoneIndex, sliceIndex)}
                       type="button"
                     >
-                      Delete slice
+                      Delete Slice
                     </button>
                   </div>
                   <label className="plan-roadmap-form__field">
-                    <span>Slice title</span>
+                    <span>Slice Title</span>
                     <input
                       data-testid={milestoneIndex === 0 && sliceIndex === 0 ? "plan-slice-title-input" : undefined}
                       onChange={(event) => onUpdateSlice(milestoneIndex, sliceIndex, { title: event.target.value })}
@@ -3193,11 +3285,11 @@ function PlanProposalEditor({
                           onClick={() => onRemoveTask(milestoneIndex, sliceIndex, taskIndex)}
                           type="button"
                         >
-                          Delete task
+                          Delete Task
                         </button>
                       </div>
                       <label className="plan-roadmap-form__field">
-                        <span>Task title</span>
+                        <span>Task Title</span>
                         <input
                           data-testid={
                             milestoneIndex === 0 && sliceIndex === 0 && taskIndex === 0
@@ -3237,7 +3329,7 @@ function PlanProposalEditor({
                         />
                       </label>
                       <label className="plan-roadmap-form__field">
-                        <span>Requirement refs</span>
+                        <span>Requirement Refs</span>
                         <input
                           data-testid={
                             milestoneIndex === 0 && sliceIndex === 0 && taskIndex === 0
@@ -3261,7 +3353,7 @@ function PlanProposalEditor({
                     onClick={() => onAddTask(milestoneIndex, sliceIndex)}
                     type="button"
                   >
-                    Add task
+                    Add Task
                   </button>
                 </div>
               ))}
@@ -3271,14 +3363,14 @@ function PlanProposalEditor({
                 onClick={() => onAddSlice(milestoneIndex)}
                 type="button"
               >
-                Add slice
+                Add Slice
               </button>
             </article>
           ))}
         </div>
 
         <button className="plan-secondary-button" onClick={onAddMilestone} type="button">
-          Add milestone
+          Add Milestone
         </button>
 
         <ValidationPanel issues={validationIssues} />
@@ -3286,13 +3378,13 @@ function PlanProposalEditor({
         {lastError ? <div className="plan-error">{lastError}</div> : null}
 
         <button className="plan-action-button" disabled={submitting} type="submit">
-          Stage plan
+          Stage Plan
         </button>
       </form>
 
       {pendingPlanOutputs.length > 0 ? (
         <div className="plan-research-list" data-testid="plan-output-proposed">
-          <div className="plan-memory__title">Pending plan review</div>
+          <div className="plan-memory__title">Pending Plan Review</div>
           {pendingPlanOutputs.map((output) => (
             <PlanOutputCard
               key={output.id}
@@ -3307,7 +3399,7 @@ function PlanProposalEditor({
 
       {acceptedPlanOutputs.length > 0 ? (
         <div className="plan-research-list" data-testid="plan-output-accepted">
-          <div className="plan-memory__title">Accepted plan</div>
+          <div className="plan-memory__title">Accepted Plan</div>
           {acceptedPlanOutputs.map((output) => (
             <PlanOutputCard
               key={output.id}
@@ -3322,7 +3414,7 @@ function PlanProposalEditor({
 
       {rejectedPlanOutputs.length > 0 ? (
         <div className="plan-research-list" data-testid="plan-output-rejected">
-          <div className="plan-memory__title">Rejected plan</div>
+          <div className="plan-memory__title">Rejected Plan</div>
           {rejectedPlanOutputs.map((output) => (
             <PlanOutputCard
               key={output.id}
@@ -3426,7 +3518,7 @@ function buildWorkflowGuidance({
     return {
       banner: "SHIP",
       title: "Prepare the handoff",
-      nextAction: "Summarize what shipped, the verification evidence, and any follow-up the next session needs.",
+      nextAction: "Summarize what shipped, the verification evidence, and any follow-up the next thread needs.",
       artifact: "Ship summary",
       frame: "Closeout",
       promptSource: workflowPromptSources.shipCloseout,
@@ -3447,8 +3539,8 @@ function buildWorkflowGuidance({
   if (executeStarted) {
     return {
       banner: "EXECUTE",
-      title: "Work through linked task sessions",
-      nextAction: "Create or open each task session, then save status, blockers, notes, and evidence before VERIFY.",
+      title: "Work through linked task threads",
+      nextAction: "Create or open each task thread, then save status, blockers, notes, and evidence before VERIFY.",
       artifact: "Task execution state",
       frame: "Task execution",
       promptSource: workflowPromptSources.executeTask,
@@ -3570,15 +3662,15 @@ function WorkflowGuidanceCard({ guidance }: { readonly guidance: WorkflowGuidanc
       </div>
       <dl className="plan-guidance-card__meta">
         <div>
-          <dt>Artifact</dt>
+          <dt>Saved File</dt>
           <dd data-testid="workflow-guidance-artifact">{guidance.artifact}</dd>
         </div>
         <div>
-          <dt>Prompt frame</dt>
+          <dt>Guidance Area</dt>
           <dd>{guidance.frame}</dd>
         </div>
         <div>
-          <dt>GSD prompt</dt>
+          <dt>Guide Source</dt>
           <dd data-testid="workflow-guidance-prompt-source">
             {guidance.promptSource.family} · {guidance.promptSource.prompt}
             <span>{guidance.promptSource.purpose}</span>
@@ -3594,30 +3686,30 @@ function GsdSourceProofPanel() {
     <section className="gsd-source-proof" data-testid="gsd-source-proof">
       <div className="gsd-source-proof__header">
         <div>
-          <span>GSD source proof</span>
-          <strong>The proof is in the plan source</strong>
+          <span>Plan Source</span>
+          <strong>The plan stays grounded in source</strong>
         </div>
-        <small>{".gsd/gsd.db -> generated projections"}</small>
+        <small>{".gsd/gsd.db -> saved planning files"}</small>
       </div>
       <div className="gsd-source-proof__windows">
         <GsdSourceWindow
-          badge="canonical"
+          badge="source"
           path=".gsd/gsd.db"
           title="DISCUSS memory"
           lines={[
-            "project: durable planning workspace",
+            "project: durable planning record",
             "decision: database remains canonical",
             "memory: questions, answers, revisions",
             "status: ready for RESEARCH",
           ]}
         />
         <GsdSourceWindow
-          badge="projection"
+          badge="files"
           path=".gsd/NEXT.md"
           title="Next work"
           lines={[
             "queue: milestones -> phases -> slices -> tasks",
-            "guardrails: stop before ambiguous scope",
+            "review stops: before ambiguous scope",
             "evidence: required before VERIFY",
             "ship: summary from durable records",
           ]}
@@ -3672,16 +3764,16 @@ function GsdOperationsInspector({
   return (
     <section className="gsd-ops-inspector" data-testid="gsd-operations-inspector">
       <div className="gsd-ops-inspector__header">
-        <strong>GSD source</strong>
+        <strong>GSD Source</strong>
         <span>{formatPlanningPhase(activePhase)} / {stageLabel(activeStage)}</span>
       </div>
       <div className="gsd-ops-inspector__rows">
         <div>
-          <span>Canonical</span>
+          <span>Source</span>
           <strong>.gsd/gsd.db</strong>
         </div>
         <div>
-          <span>Projection</span>
+          <span>Files</span>
           <strong>REQUIREMENTS.md</strong>
         </div>
         <div>
@@ -3699,11 +3791,11 @@ function GsdOperationsInspector({
 
 function formatProjectionSummary(summary: PlanningProjectionSummary): string {
   if (summary.conflicts.length > 0) {
-    return `${summary.conflicts.length} legacy file conflict${summary.conflicts.length === 1 ? "" : "s"}`;
+    return `${summary.conflicts.length} imported file conflict${summary.conflicts.length === 1 ? "" : "s"}`;
   }
   const driftCount = summary.missing + summary.stale;
   const driftStatus = driftCount > 0
-    ? `${driftCount} drift repaired (${summary.missing} missing / ${summary.stale} stale)`
+    ? `${driftCount} saved file update${driftCount === 1 ? "" : "s"} needed (${summary.missing} missing / ${summary.stale} stale)`
     : `${summary.current} current`;
   return `${driftStatus} · ${summary.written} written / ${summary.skipped} unchanged`;
 }
@@ -3730,7 +3822,7 @@ function ProjectionRepairControls({
         onClick={() => onRegenerateProjections(true)}
         type="button"
       >
-        Overwrite legacy projections
+        Replace Imported Files
       </button>
     );
   }
@@ -3743,7 +3835,7 @@ function ProjectionRepairControls({
       onClick={() => onRegenerateProjections()}
       type="button"
     >
-      {hasProjectionDrift(projectionSummary) ? "Repair projection drift" : "Regenerate projections"}
+      {hasProjectionDrift(projectionSummary) ? "Repair Saved Files" : "Refresh Saved Files"}
     </button>
   );
 }
@@ -3792,27 +3884,32 @@ function countLabel(count: number, noun: string): string | undefined {
 function WorkflowPreferencesCard({
   cardRef,
   expanded,
+  mode = "inline",
   preferences,
   globalPlanningPreferences,
   modelOptions,
   runtime,
   submitting,
   onApply,
+  onOpenProjectPreferences,
   onToggleExpanded,
   onUpdatePhaseOverrides,
 }: {
   readonly cardRef: RefObject<HTMLDivElement | null>;
   readonly expanded: boolean;
+  readonly mode?: "inline" | "project-page";
   readonly preferences: WorkflowPreferencesRecord | undefined;
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly modelOptions: readonly ComposerModelOption[];
   readonly runtime: RuntimeSnapshot | undefined;
   readonly submitting: boolean;
   readonly onApply: () => void;
+  readonly onOpenProjectPreferences?: () => void;
   readonly onToggleExpanded: (expanded: boolean) => void;
   readonly onUpdatePhaseOverrides: (phaseOverrides: WorkflowPhaseModelPreferences) => void;
 }) {
   const saved = Boolean(preferences?.capturedAt);
+  const showExpandedControls = saved && (mode === "project-page" || expanded);
   const phaseOverrides = preferences?.models.phaseOverrides ?? {};
   const projectOverrideCount = planningPhaseModelOptions.filter((phase) => phaseOverrides[phase.id]).length;
   const projectModelSummary =
@@ -3825,16 +3922,16 @@ function WorkflowPreferencesCard({
       : undefined;
   return (
     <div
-      className={`plan-projection-card plan-projection-card--workflow ${saved && !expanded ? "plan-projection-card--workflow-compact" : ""}`}
+      className={`plan-projection-card plan-projection-card--workflow ${saved && !showExpandedControls ? "plan-projection-card--workflow-compact" : ""}`}
       data-testid="workflow-preferences-card"
       ref={cardRef}
     >
       <div className="plan-workflow-preferences">
         <div className="plan-workflow-preferences__header">
           <div>
-            <strong>{saved ? "Project preferences" : "Workflow preferences"}</strong>
+            <strong>{saved || mode === "project-page" ? "Project Preferences" : "Workflow Preferences"}</strong>
             <span data-testid="workflow-preferences-summary">
-              Defaults: one branch, one commit per task, UAT on, research skipped unless needed, supervised runs.
+              Defaults: one branch, one commit per task, testing on, research skipped unless needed, supervised runs.
             </span>
           </div>
           {saved ? (
@@ -3842,16 +3939,25 @@ function WorkflowPreferencesCard({
               <span className="plan-workflow-preferences__status" data-testid="workflow-preferences-status">
                 Saved
               </span>
-              <button
-                aria-expanded={expanded}
-                className="plan-action-button plan-action-button--compact plan-action-button--ghost"
-                data-testid="workflow-preferences-edit-button"
-                disabled={submitting}
-                onClick={() => onToggleExpanded(!expanded)}
-                type="button"
-              >
-                {expanded ? "Done" : "Edit"}
-              </button>
+              {mode === "inline" ? (
+                <button
+                  aria-label={expanded ? "Done editing project preferences" : "Project Preferences"}
+                  aria-expanded={expanded}
+                  className="plan-action-button plan-action-button--compact plan-action-button--ghost"
+                  data-testid="workflow-preferences-edit-button"
+                  disabled={submitting}
+                  onClick={() => {
+                    if (!expanded && onOpenProjectPreferences) {
+                      onOpenProjectPreferences();
+                      return;
+                    }
+                    onToggleExpanded(!expanded);
+                  }}
+                  type="button"
+                >
+                  {expanded ? "Done" : "Project Preferences"}
+                </button>
+              ) : null}
             </div>
           ) : (
             <button
@@ -3861,22 +3967,22 @@ function WorkflowPreferencesCard({
               onClick={onApply}
               type="button"
             >
-              Use recommended defaults
+              Use Recommended Defaults
             </button>
           )}
         </div>
-        {saved && !expanded ? (
+        {saved && !showExpandedControls ? (
           <div className="plan-workflow-preferences__compact" data-testid="workflow-preferences-compact">
             <span>{projectModelSummary}</span>
-            <span>Open Project preferences from the sidebar any time.</span>
+            <span>Open Project Preferences from the sidebar any time.</span>
           </div>
         ) : null}
-        {saved && expanded ? (
+        {showExpandedControls ? (
           <p className="plan-workflow-preferences__help">
-            Choose a model for each phase. Leave a phase on team default to inherit Settings.
+            Choose a model for each phase, or keep the team default from Settings.
           </p>
         ) : null}
-        {saved && expanded ? (
+        {showExpandedControls ? (
           <div className="plan-phase-model-grid">
             {planningPhaseModelOptions.map((phase) => {
               const globalPreference = globalPlanningPreferences.phaseModels[phase.id];
@@ -3921,7 +4027,7 @@ function WorkflowPreferencesCard({
                       });
                     }}
                   >
-                    <option value="">Use team default</option>
+                    <option value="">Use Team Default</option>
                     {modelOptions.map((model) => (
                       <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
                         {model.label}
@@ -3973,7 +4079,7 @@ function formatPhaseModelPreference(
 
 function formatResolvedPhaseModel(model: ResolvedWorkflowPhaseModel): string {
   if (model.source === "not-configured") {
-    return "No model selected yet - choose one here or in Settings";
+    return "No model selected yet. Choose one here or in Settings.";
   }
   return `${workflowPhaseModelValueLabel(model)} (${formatFriendlyPhaseModelSource(model.source)})`;
 }
@@ -3985,7 +4091,7 @@ function formatFriendlyPhaseModelSource(source: ResolvedWorkflowPhaseModel["sour
     case "global-default":
       return "Settings";
     case "session-default":
-      return "session default";
+      return "thread default";
     case "not-configured":
       return "not configured";
   }
@@ -4180,7 +4286,7 @@ function PlanExecutionQueue({
         <h2>Execution queue</h2>
         <p>
           {acceptedPlanProposal
-            ? `${acceptedPlanProposal.milestones.length} milestone${acceptedPlanProposal.milestones.length === 1 ? "" : "s"} and ${taskCount} task${taskCount === 1 ? "" : "s"} are ready for linked execution sessions.`
+            ? `${acceptedPlanProposal.milestones.length} milestone${acceptedPlanProposal.milestones.length === 1 ? "" : "s"} and ${taskCount} task${taskCount === 1 ? "" : "s"} are ready for linked execution threads.`
             : "Accepted plan content could not be loaded."}
         </p>
       </div>
@@ -4208,7 +4314,7 @@ function PlanExecutionQueue({
           onClick={onStartVerify}
           type="button"
         >
-          Start verify
+          Start Verify
         </button>
       </div>
 
@@ -4345,7 +4451,7 @@ function PlanExecutionQueue({
                             {linkedSession ? (
                               <>
                                 <span className="plan-execution-task__link" data-testid="execution-task-link">
-                                  Linked session: {linkedSession.title}
+                                  Linked thread: {linkedSession.title}
                                   {linkedSession.executionModel
                                     ? ` · Execution model: ${formatTaskSessionExecutionModel(linkedSession)}`
                                     : ""}
@@ -4357,7 +4463,7 @@ function PlanExecutionQueue({
                                   onClick={() => onOpenTaskSession(linkedSession)}
                                   type="button"
                                 >
-                                  Open session
+                                  Open Thread
                                 </button>
                               </>
                             ) : (
@@ -4368,7 +4474,7 @@ function PlanExecutionQueue({
                                 onClick={() => onLinkTaskSession(task, taskPath)}
                                 type="button"
                               >
-                                Create session
+                                Create Thread
                               </button>
                             )}
                           </div>
@@ -4458,14 +4564,14 @@ function AutopilotPreflightCard({
   return (
     <section className="plan-projection-card plan-autopilot-preflight" data-testid="autopilot-preflight">
       <div className="plan-autopilot-preflight__header">
-        <strong>Autopilot preflight</strong>
+        <strong>Next task check</strong>
         <span>{formatAutopilotPreflightStatus(firstReadyItem, blockingWarnings)}</span>
       </div>
       {firstReadyItem ? (
         <div className="plan-autopilot-preflight__target">
           <span>{firstReadyItem.taskPath}</span>
           <strong>{firstReadyItem.title}</strong>
-          <small>{firstReadyLink ? "Existing task session will open" : "A task session will be created"}</small>
+          <small>{firstReadyLink ? "Existing task thread will open" : "A task thread will be created"}</small>
         </div>
       ) : null}
       {blockingWarnings.length > 0 ? (
@@ -4587,7 +4693,7 @@ function GuardrailWarningAction({
         onClick={() => onRegenerateProjections()}
         type="button"
       >
-        Repair projection drift
+        Repair Saved Files
       </button>
     );
   }
@@ -4601,7 +4707,7 @@ function GuardrailWarningAction({
         onClick={() => onRegenerateProjections(true)}
         type="button"
       >
-        Overwrite legacy projections
+        Replace Imported Files
       </button>
     );
   }
@@ -4687,7 +4793,7 @@ function PlanHandoffBundleCard({ handoffText }: { readonly handoffText: string }
       <div className="plan-handoff-bundle__header">
         <div>
           <strong>Handoff bundle</strong>
-          <span>Copy this into another session to resume from the current database state.</span>
+          <span>Copy this into another thread to resume from the current database state.</span>
         </div>
         <button
           className="plan-action-button plan-action-button--compact"
@@ -4695,7 +4801,7 @@ function PlanHandoffBundleCard({ handoffText }: { readonly handoffText: string }
           onClick={copyHandoff}
           type="button"
         >
-          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy handoff"}
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy Failed" : "Copy Handoff"}
         </button>
       </div>
       <textarea
@@ -4736,7 +4842,7 @@ function PlanOvernightReportCard({ reportText }: { readonly reportText: string }
           onClick={copyReport}
           type="button"
         >
-          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy report"}
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy Failed" : "Copy Report"}
         </button>
       </div>
       <textarea
@@ -4948,7 +5054,7 @@ function NextWorkPanel({
                     onClick={() => onOpenTaskSession(linkedSession)}
                     type="button"
                   >
-                    Open session
+                    Open Thread
                   </button>
                 ) : entry ? (
                   <button
@@ -4957,7 +5063,7 @@ function NextWorkPanel({
                     onClick={() => onLinkTaskSession(entry.task, entry.taskPath)}
                     type="button"
                   >
-                    Create session
+                    Create Thread
                   </button>
                 ) : null}
               </article>
@@ -5063,7 +5169,7 @@ function PlanVerifyGate({
             onClick={onStartShip}
             type="button"
           >
-            Start ship
+            Start Ship
           </button>
         </div>
       ) : null}
@@ -5174,7 +5280,7 @@ function PlanEvidenceReportCard({ reportText }: { readonly reportText: string })
           onClick={copyReport}
           type="button"
         >
-          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy report"}
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy Failed" : "Copy Report"}
         </button>
       </div>
       <textarea
@@ -6601,7 +6707,7 @@ function formatAutopilotButtonLabel(
   blockingWarnings: readonly GuardrailWarning[],
 ): string {
   if (blockingWarnings.length > 0) {
-    return "Autopilot blocked";
+    return "Run blocked";
   }
   if (!firstReadyItem) {
     return "No ready work";
@@ -6624,7 +6730,7 @@ function formatEvidenceLedgerSources(evidence: readonly TaskEvidenceRecord[]): s
   const sources = [
     ...new Set(evidence.map((entry) => entry.sourceSessionTitle ?? entry.sourceSessionId ?? "").filter(Boolean)),
   ];
-  return sources.length > 0 ? sources.join(", ") : "No source session";
+  return sources.length > 0 ? sources.join(", ") : "No source thread";
 }
 
 function formatNextWorkReason(item: NextWorkQueueItem): string {

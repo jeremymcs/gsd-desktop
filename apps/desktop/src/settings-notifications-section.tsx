@@ -28,12 +28,12 @@ export function SettingsNotificationsSection({
   return (
     <>
       <SettingsGroup title="System" description="macOS decides whether GSD can show desktop notifications at all.">
-        <SettingsRow title="macOS notification access" description={statusDescription}>
+        <SettingsRow title="macOS Notification Access" description={statusDescription}>
           <span className="settings-row__value">{statusLabel}</span>
         </SettingsRow>
         {showRecoveryActions ? (
           <SettingsRow
-            title="Turn on notifications"
+            title="Turn On Notifications"
             description={
               showAskMacOs
                 ? "GSD asks macOS when active work first moves into the background. You can also ask now."
@@ -66,26 +66,26 @@ export function SettingsNotificationsSection({
         ) : null}
       </SettingsGroup>
 
-      <SettingsGroup title="In-app alerts" description="Choose which background events should try to notify once macOS access is enabled.">
-        <SettingsRow title="Background completion" description="Notify when a background session finishes.">
+      <SettingsGroup title="In-App Alerts" description="Choose which background events should notify once macOS access is enabled.">
+        <SettingsRow title="Background Completion" description="Notify when a background thread finishes.">
           <input
-            aria-label="Background completion"
+            aria-label="Background Completion"
             checked={notificationPreferences.backgroundCompletion}
             type="checkbox"
             onChange={(event) => onSetNotificationPreferences({ backgroundCompletion: event.target.checked })}
           />
         </SettingsRow>
-        <SettingsRow title="Background failures" description="Notify when a background session fails.">
+        <SettingsRow title="Background Failures" description="Notify when a background thread fails.">
           <input
-            aria-label="Background failures"
+            aria-label="Background Failures"
             checked={notificationPreferences.backgroundFailure}
             type="checkbox"
             onChange={(event) => onSetNotificationPreferences({ backgroundFailure: event.target.checked })}
           />
         </SettingsRow>
-        <SettingsRow title="Needs input or approval" description="Notify when input is needed to continue.">
+        <SettingsRow title="Needs Input Or Approval" description="Notify when input is needed to continue.">
           <input
-            aria-label="Needs input or approval"
+            aria-label="Needs Input Or Approval"
             checked={notificationPreferences.attentionNeeded}
             type="checkbox"
             onChange={(event) => onSetNotificationPreferences({ attentionNeeded: event.target.checked })}

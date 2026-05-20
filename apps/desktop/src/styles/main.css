@@ -44,7 +44,7 @@
   grid-row: 1;
   grid-column: 1 / -1;
   min-height: 46px;
-  padding: 0 16px 0 82px;
+  padding: 0 16px 0 132px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -60,6 +60,7 @@
 }
 
 .workspace-tabs {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -275,16 +276,16 @@
 
 .sidebar-toggle {
   -webkit-app-region: no-drag;
-  display: none;
+  display: block;
   position: absolute;
-  top: 16px;
-  left: 16px;
-  transform: none;
+  top: 50%;
+  left: calc(var(--sidebar-toggle-boundary-x) - (var(--sidebar-toggle-size) / 2));
+  transform: translateY(-50%);
   z-index: 80;
 }
 
 .shell--sidebar-collapsed .sidebar-toggle {
-  display: block;
+  left: 16px;
 }
 
 .sidebar-toggle__button {
@@ -1084,7 +1085,7 @@
 }
 
 .diff-panel__status-dot--untracked {
-  background: #8b949e;
+  background: var(--muted-subtle);
 }
 
 .diff-panel__stage-btn {
@@ -2412,6 +2413,7 @@
   --plan-secondary-bg: #f2f5fa;
   --plan-input-bg: #ffffff;
   --plan-input-border: #d9e0ec;
+  --plan-card-bg: #ffffff;
   --plan-card-shadow: 0 10px 28px rgba(31, 38, 56, 0.06);
   --plan-success-text: #166534;
   --plan-success-bg: rgba(22, 101, 52, 0.08);
@@ -2429,40 +2431,109 @@
 }
 
 :root.dark .canvas--plans {
-  --plan-canvas-bg: #101225;
-  --plan-workbench-bg:
-    radial-gradient(circle at 48% 0%, rgba(116, 131, 255, 0.11), transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 22%),
-    #111326;
-  --plan-pane-bg: #141629;
+  --plan-canvas-bg: var(--main);
+  --plan-workbench-bg: var(--main);
+  --plan-pane-bg: var(--surface);
   --plan-pane-subtle-bg: #171a31;
-  --plan-pane-muted-bg: #1b1e37;
+  --plan-pane-muted-bg: var(--surface-muted);
   --plan-pane-raised-bg: #1a1d35;
-  --plan-pane-border: #2a3150;
-  --plan-pane-border-strong: #39436a;
-  --plan-text: #f4f4f5;
-  --plan-header-text: #d9dce3;
-  --plan-muted-text: #a3a8b3;
-  --plan-soft-text: #9aa1ad;
-  --plan-faint-text: #8f96a3;
-  --plan-accent: #8ea2ff;
-  --plan-accent-bg: rgba(116, 131, 255, 0.12);
-  --plan-accent-border: rgba(142, 162, 255, 0.34);
-  --plan-primary-bg: #7c83ff;
-  --plan-primary-text: #f8fbff;
-  --plan-secondary-bg: #1a1d35;
+  --plan-pane-border: var(--line);
+  --plan-pane-border-strong: var(--line-strong);
+  --plan-text: var(--text-strong);
+  --plan-header-text: var(--text);
+  --plan-muted-text: var(--muted);
+  --plan-soft-text: var(--muted-soft);
+  --plan-faint-text: var(--muted-subtle);
+  --plan-accent: #9bacff;
+  --plan-accent-bg: #20264a;
+  --plan-accent-border: #4b5686;
+  --plan-primary-bg: var(--button-primary-bg);
+  --plan-primary-text: var(--button-primary-ink);
+  --plan-secondary-bg: var(--surface-muted);
   --plan-input-bg: #0f1224;
-  --plan-input-border: #39436a;
-  --plan-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
-  --plan-success-text: #a9d8b1;
-  --plan-success-bg: rgba(128, 201, 141, 0.08);
-  --plan-success-border: rgba(128, 201, 141, 0.34);
-  --plan-danger-text: #f1a5a5;
-  --plan-danger-bg: rgba(236, 118, 118, 0.1);
-  --plan-danger-border: rgba(236, 118, 118, 0.42);
-  --plan-info-bg: rgba(132, 188, 255, 0.06);
-  --plan-info-border: rgba(132, 188, 255, 0.28);
+  --plan-input-border: var(--line-strong);
+  --plan-card-bg: var(--surface);
+  --plan-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  --plan-success-text: var(--run);
+  --plan-success-bg: #1c3028;
+  --plan-success-border: #315944;
+  --plan-danger-text: var(--error);
+  --plan-danger-bg: #3b202c;
+  --plan-danger-border: #744056;
+  --plan-info-bg: #182844;
+  --plan-info-border: #36598d;
   --plan-note-text: #b8c4ff;
+}
+
+.canvas--project-preferences {
+  --plan-text: #1f2638;
+  --plan-header-text: #39435b;
+  --plan-muted-text: #5f6b82;
+  --plan-accent: #4f46e5;
+  --plan-primary-bg: #1f2638;
+  --plan-primary-text: #ffffff;
+  --plan-secondary-bg: #f2f5fa;
+  --plan-input-bg: #ffffff;
+  --plan-input-border: #d9e0ec;
+  --plan-card-bg: #ffffff;
+  background: var(--main);
+}
+
+:root.dark .canvas--project-preferences {
+  --plan-text: var(--text-strong);
+  --plan-header-text: var(--text);
+  --plan-muted-text: var(--muted);
+  --plan-accent: #9bacff;
+  --plan-primary-bg: var(--button-primary-bg);
+  --plan-primary-text: var(--button-primary-ink);
+  --plan-secondary-bg: var(--surface-muted);
+  --plan-input-bg: #0f1224;
+  --plan-input-border: var(--line-strong);
+  --plan-card-bg: var(--surface);
+}
+
+.project-preferences-view {
+  width: min(980px, 100%);
+  display: grid;
+  gap: 16px;
+  padding-bottom: 36px;
+}
+
+.canvas--project-preferences .plan-projection-card--workflow {
+  width: 100%;
+}
+
+.canvas--project-preferences .plan-projection-card {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: 0 18px 46px rgba(20, 27, 45, 0.06);
+}
+
+.canvas--project-preferences .plan-projection-card strong {
+  color: var(--text-strong);
+}
+
+.canvas--project-preferences .plan-projection-card span,
+.canvas--project-preferences .plan-workflow-preferences__help,
+.canvas--project-preferences .plan-projection-card .plan-phase-model-row small {
+  color: var(--muted-soft);
+}
+
+.canvas--project-preferences .plan-workflow-preferences__header > div > span {
+  color: var(--muted-strong);
+}
+
+.canvas--project-preferences .plan-phase-model-row__missing {
+  color: var(--error);
+}
+
+.canvas--project-preferences .plan-phase-model-row__select {
+  background-color: var(--plan-input-bg);
+  color: var(--plan-text);
+}
+
+:root.dark .canvas--project-preferences .plan-projection-card {
+  box-shadow: var(--workbench-shadow);
 }
 
 .plan-workbench {
@@ -4395,6 +4466,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: var(--plan-primary-bg);
   color: var(--plan-primary-text);
@@ -4421,7 +4493,114 @@
 .plan-composer__send:disabled,
 .plan-composer__park:disabled {
   cursor: default;
-  opacity: 0.52;
+  opacity: 1;
+}
+
+.plan-composer--question-header {
+  display: block;
+}
+
+.plan-composer__field--question-header {
+  align-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.plan-composer__field--question-header .plan-composer__question-frame {
+  gap: 8px;
+  border-color: var(--plan-accent-border);
+  border-radius: 10px 10px 6px 6px;
+  padding: 14px 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--plan-accent-bg) 88%, transparent), transparent 82%),
+    var(--plan-pane-raised-bg);
+}
+
+.plan-composer__answer-frame--sheet {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--plan-pane-border);
+  border-radius: 6px;
+  padding: 13px 14px;
+  background: var(--plan-pane-raised-bg);
+}
+
+.plan-composer__field--question-header textarea {
+  min-height: 78px;
+  max-height: 180px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--plan-text);
+  line-height: 1.38;
+}
+
+.plan-composer__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.plan-composer__footer > span {
+  overflow: visible;
+  color: var(--plan-soft-text);
+  font-size: var(--plan-font-sm);
+  font-weight: 560;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.plan-composer__footer .plan-composer__actions {
+  grid-auto-flow: column;
+  align-items: center;
+}
+
+.canvas--plans .plan-composer__send {
+  border-color: color-mix(in srgb, var(--plan-primary-bg) 78%, #ffffff);
+}
+
+.canvas--plans .plan-composer__park {
+  border-color: var(--plan-input-border);
+}
+
+.canvas--plans .plan-composer__send:disabled {
+  border-color: #cbd5e4;
+  background: #cbd5e4;
+  color: #1f2638;
+}
+
+.canvas--plans .plan-composer__park:disabled {
+  border-color: #cbd5e4;
+  background: #eef2f7;
+  color: #5f6b82;
+}
+
+:root.dark .canvas--plans .plan-composer__send {
+  border-color: #eef2ff;
+  background: #dbe3ff;
+  color: #101225;
+}
+
+:root.dark .canvas--plans .plan-composer__park {
+  border-color: #4b5686;
+  background: #101225;
+  color: #dbe3ff;
+}
+
+:root.dark .canvas--plans .plan-composer__send:disabled {
+  border-color: #5d668d;
+  background: #303956;
+  color: #d9dff7;
+}
+
+:root.dark .canvas--plans .plan-composer__park:disabled {
+  border-color: #303858;
+  background: #101225;
+  color: #aeb8e8;
 }
 
 @media (max-width: 900px) {
@@ -4430,6 +4609,10 @@
   }
 
   .plan-composer__field--active {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-composer__footer {
     grid-template-columns: 1fr;
   }
 
@@ -6871,11 +7054,15 @@
 }
 
 @media (max-width: 980px) {
-  .topbar,
   .composer,
   .canvas {
     padding-left: 18px;
     padding-right: 18px;
+  }
+
+  .topbar {
+    padding-left: 124px;
+    padding-right: 14px;
   }
 
   .topbar__flow {
@@ -6890,7 +7077,6 @@
     align-items: flex-start;
   }
 
-  .topbar,
   .composer__bar,
   .chat-header__row,
   .view-header,
@@ -7021,7 +7207,7 @@ mark.thread-find-active {
 
 :root.dark .timeline-jump {
   border-color: var(--line);
-  background: rgba(43, 45, 49, 0.96);
+  background: var(--surface);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -7031,12 +7217,12 @@ mark.thread-find-active {
 }
 
 :root.dark .timeline-item--summary-card {
-  border-color: rgba(142, 162, 255, 0.24);
-  background: linear-gradient(180deg, rgba(45, 48, 106, 0.58) 0%, rgba(28, 31, 70, 0.78) 100%);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line) 72%);
+  background: #1b1e37;
 }
 
 :root.dark .timeline-item__summary-eyebrow {
-  color: #c8d2ff;
+  color: var(--accent-ink);
 }
 
 :root.dark .timeline-item__attachment {
@@ -7045,7 +7231,7 @@ mark.thread-find-active {
 }
 
 :root.dark .timeline-item__attachment--file {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-muted);
 }
 
 :root.dark .timeline-summary::before,
@@ -7054,13 +7240,13 @@ mark.thread-find-active {
 }
 
 :root.dark .message__content :not(pre) > code {
-  background: rgba(255, 255, 255, 0.08);
-  color: #e4e4e7;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 :root.dark .message__content pre {
-  background: rgba(0, 0, 0, 0.25);
-  color: #e4e4e7;
+  background: #0f1224;
+  color: var(--text-strong);
   border-color: var(--line);
 }
 
@@ -7069,7 +7255,7 @@ mark.thread-find-active {
 }
 
 :root.dark .message__content a {
-  color: #7c9dfa;
+  color: var(--proof);
 }
 
 :root.dark .composer {
@@ -7078,19 +7264,19 @@ mark.thread-find-active {
 
 :root.dark .composer__surface {
   border-color: var(--line-strong);
-  background: #0d1117;
+  background: #0f1224;
   box-shadow: none;
 }
 
 :root.dark .composer__surface--drag-active {
-  border-color: #8fa0ff;
-  background: rgba(78, 90, 140, 0.18);
-  box-shadow: 0 0 0 3px rgba(143, 160, 255, 0.18), 0 12px 28px rgba(0, 0, 0, 0.36);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), 0 12px 28px rgba(0, 0, 0, 0.36);
 }
 
 :root.dark .composer__drop-indicator {
-  background: rgba(143, 160, 255, 0.16);
-  color: #c6d0ff;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 :root.dark .composer__slash-intent {
@@ -7114,13 +7300,13 @@ mark.thread-find-active {
 }
 
 :root.dark .queued-composer-message--editing {
-  border-color: #8fa0ff;
-  box-shadow: 0 0 0 3px rgba(143, 160, 255, 0.14);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 :root.dark .queued-composer-attachment {
   border-color: var(--line);
-  background: rgba(29, 31, 36, 0.58);
+  background: var(--surface-muted);
 }
 
 :root.dark .queued-composer-attachment__icon,
@@ -7135,7 +7321,7 @@ mark.thread-find-active {
 
 :root.dark .slash-menu {
   border-color: var(--line);
-  background: rgba(43, 45, 49, 0.98);
+  background: var(--surface);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
 }
 
@@ -7145,12 +7331,12 @@ mark.thread-find-active {
 
 :root.dark .slash-menu__item--active,
 :root.dark .slash-menu__item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
 }
 
 :root.dark .slash-menu__option--active,
 :root.dark .slash-menu__option:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
 }
 
 :root.dark .mention-menu {
@@ -7158,7 +7344,7 @@ mark.thread-find-active {
 }
 
 :root.dark .mention-menu__item--active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-muted);
 }
 
 :root.dark .secondary-surface {
@@ -7172,7 +7358,7 @@ mark.thread-find-active {
 
 :root.dark .secondary-surface__nav-item--active,
 :root.dark .secondary-surface__nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
 }
 
 :root.dark .surface-toolbar__field select {
@@ -7181,15 +7367,15 @@ mark.thread-find-active {
 }
 
 :root.dark .settings-page-nav {
-  border-color: rgba(142, 162, 255, 0.2);
-  background: rgba(20, 23, 43, 0.82);
+  border-color: var(--line);
+  background: var(--surface);
   box-shadow: var(--workbench-shadow);
 }
 
 :root.dark .settings-page-nav__item:hover,
 :root.dark .settings-page-nav__item--active {
-  border-color: rgba(142, 162, 255, 0.38);
-  background: rgba(116, 131, 255, 0.12);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .settings-list__row {
@@ -7204,8 +7390,8 @@ mark.thread-find-active {
 
 :root.dark .settings-option--active,
 :root.dark .settings-option:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .settings-pill {
@@ -7214,8 +7400,8 @@ mark.thread-find-active {
 }
 
 :root.dark .settings-pill--active {
-  border-color: rgba(124, 107, 245, 0.3);
-  background: rgba(124, 107, 245, 0.12);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .settings-toggle--row {
@@ -7227,8 +7413,8 @@ mark.thread-find-active {
 :root.dark .settings-phase-select,
 :root.dark .settings-search,
 :root.dark .settings-text-input {
-  border-color: rgba(142, 162, 255, 0.22);
-  background: rgba(18, 21, 39, 0.92);
+  border-color: var(--line);
+  background: #0f1224;
 }
 
 :root.dark .settings-disclosure {
@@ -7236,8 +7422,8 @@ mark.thread-find-active {
 }
 
 :root.dark .settings-group {
-  border-color: rgba(142, 162, 255, 0.2);
-  background: rgba(20, 23, 43, 0.82);
+  border-color: var(--line);
+  background: var(--surface);
   box-shadow: var(--workbench-shadow);
 }
 
@@ -7250,13 +7436,13 @@ mark.thread-find-active {
 }
 
 :root.dark .new-thread__quick-action {
-  border-color: rgba(142, 162, 255, 0.24);
-  background: rgba(116, 131, 255, 0.08);
+  border-color: var(--line);
+  background: var(--surface);
 }
 
 :root.dark .new-thread__quick-action:hover {
-  border-color: rgba(142, 162, 255, 0.36);
-  background: rgba(116, 131, 255, 0.14);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .new-thread__composer {
@@ -7281,7 +7467,7 @@ mark.thread-find-active {
 
 :root.dark .skill-card--active,
 :root.dark .skill-card:hover {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--line-strong);
   background: var(--surface-muted);
 }
 
@@ -7321,7 +7507,7 @@ mark.thread-find-active {
 }
 
 :root.dark .tree-modal__close:hover:enabled {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-muted);
 }
 
 :root.dark .tree-modal__search {
@@ -7331,11 +7517,11 @@ mark.thread-find-active {
 
 :root.dark .tree-modal__list {
   border-color: var(--line);
-  background: linear-gradient(180deg, rgba(37, 38, 41, 0.98) 0%, rgba(31, 32, 35, 1) 100%);
+  background: #0f1224;
 }
 
 :root.dark .tree-row__toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-muted);
 }
 
 :root.dark .tree-row__line {
@@ -7343,19 +7529,19 @@ mark.thread-find-active {
 }
 
 :root.dark .tree-row__content:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--surface-muted);
+  border-color: var(--line-strong);
 }
 
 :root.dark .tree-row--selected .tree-row__content {
-  background: rgba(124, 157, 250, 0.16);
-  border-color: rgba(124, 157, 250, 0.32);
-  box-shadow: inset 3px 0 0 rgba(124, 157, 250, 0.95);
+  background: var(--accent-soft);
+  border-color: var(--line-strong);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 :root.dark .tree-row__content:focus-visible {
-  border-color: rgba(124, 157, 250, 0.4);
-  box-shadow: 0 0 0 3px rgba(124, 157, 250, 0.16);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 :root.dark .tree-summary-option {
@@ -7364,13 +7550,13 @@ mark.thread-find-active {
 }
 
 :root.dark .tree-summary-option:hover {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .tree-summary-option--selected {
-  border-color: rgba(124, 157, 250, 0.32);
-  background: rgba(124, 157, 250, 0.12);
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 :root.dark .tree-modal__custom-instructions {
@@ -7402,15 +7588,15 @@ mark.thread-find-active {
 
 :root.dark .workspace-menu {
   border-color: var(--line);
-  background: rgba(43, 45, 49, 0.96);
+  background: var(--surface);
   box-shadow: 0 22px 56px rgba(0, 0, 0, 0.4);
 }
 
 :root.dark .workspace-menu__item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-muted);
 }
 
 :root.dark .error-banner {
-  background: rgba(224, 84, 103, 0.12);
-  border-color: rgba(224, 84, 103, 0.2);
+  background: #3b202c;
+  border-color: #744056;
 }

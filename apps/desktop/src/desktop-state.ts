@@ -18,7 +18,14 @@ export type SessionStatus = "idle" | "running" | "failed";
 export type { SessionRole, TranscriptMessage } from "./timeline-types";
 import type { TranscriptMessage } from "./timeline-types";
 
-export type AppView = "threads" | "new-thread" | "plans" | "skills" | "extensions" | "settings";
+export type AppView =
+  | "threads"
+  | "new-thread"
+  | "plans"
+  | "project-preferences"
+  | "skills"
+  | "extensions"
+  | "settings";
 export type WorkspaceKind = "primary" | "worktree";
 export type WorktreeStatus = "ready" | "missing" | "error";
 export type NewThreadEnvironment = "local" | "worktree";

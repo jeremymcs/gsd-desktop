@@ -27,7 +27,7 @@ export function ThreadSearchBar({
         ref={inputRef}
         className="thread-search-bar__input"
         type="text"
-        placeholder="Search thread..."
+        placeholder="Search thread"
         value={query}
         onChange={(e) => onSearch(e.target.value)}
         onKeyDown={(e) => {
@@ -49,7 +49,7 @@ export function ThreadSearchBar({
       </span>
       <div className="thread-search-bar__actions">
         <button
-          aria-label="Previous match"
+          aria-label="Previous Match"
           className="icon-button"
           type="button"
           disabled={matchCount === 0}
@@ -58,7 +58,7 @@ export function ThreadSearchBar({
           &#x25B2;
         </button>
         <button
-          aria-label="Next match"
+          aria-label="Next Match"
           className="icon-button"
           type="button"
           disabled={matchCount === 0}
@@ -67,7 +67,7 @@ export function ThreadSearchBar({
           &#x25BC;
         </button>
         <button
-          aria-label="Close search"
+          aria-label="Close Search"
           className="icon-button"
           type="button"
           onClick={onClose}

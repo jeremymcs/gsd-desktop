@@ -45,23 +45,23 @@ export function deriveModelOnboardingState(
     return {
       hasSelectableModels: false,
       requiresModelSelection: true,
-      unselectedModelLabel: "No models available",
-      emptyModelTitle: "No models available",
+      unselectedModelLabel: "No Models Available",
+      emptyModelTitle: "No Models Available",
       emptyModelDescription:
         connectedProviderCount > 0
-          ? "Open Settings > Models to enable models."
-          : "Open Settings > Providers to connect a provider and make models available.",
+          ? "Open Model Settings to enable models."
+          : "Open Provider Settings to connect a provider and make models available.",
       notice: connectedProviderCount > 0
         ? {
-            title: "No models available",
-            description: "All available models are currently disabled. Open Settings > Models to enable models.",
-            actionLabel: "Open Settings > Models",
+            title: "No Models Available",
+            description: "All available models are currently disabled. Open Model Settings to enable models.",
+            actionLabel: "Open Model Settings",
             actionSection: "models",
           }
         : {
-            title: "No models available",
-            description: "Connect a provider in Settings > Providers before choosing a model or setting a default.",
-            actionLabel: "Open Settings > Providers",
+            title: "No Models Available",
+            description: "Connect a provider in Provider Settings before choosing a model or setting a default.",
+            actionLabel: "Open Provider Settings",
             actionSection: "providers",
           },
     };
@@ -71,15 +71,15 @@ export function deriveModelOnboardingState(
     return {
       hasSelectableModels: true,
       requiresModelSelection: true,
-      unselectedModelLabel: "Pick a model",
-      emptyModelTitle: "No models available",
-      emptyModelDescription: "Pick a model.",
+      unselectedModelLabel: "Choose Model",
+      emptyModelTitle: "No Models Available",
+      emptyModelDescription: "Choose a model.",
       notice: {
-        title: "Selected model unavailable",
+        title: "Selected Model Unavailable",
         description: hasDefaultModel
-          ? "The model selected for this thread is no longer available. Choose another model, then open Settings > Models to update the default."
-          : "The model selected for this thread is no longer available. Choose another model, then open Settings > Models to choose the app default.",
-        actionLabel: "Open Settings > Models",
+          ? "The model selected for this thread is no longer available. Choose another model, then open Model Settings to update the default."
+          : "The model selected for this thread is no longer available. Choose another model, then open Model Settings to choose the app default.",
+        actionLabel: "Open Model Settings",
         actionSection: "models",
       },
     };
@@ -89,15 +89,15 @@ export function deriveModelOnboardingState(
     return {
       hasSelectableModels: true,
       requiresModelSelection: !currentSelectionUsable,
-      unselectedModelLabel: "Pick a model",
-      emptyModelTitle: "No default model set",
-      emptyModelDescription: "Pick a model.",
+      unselectedModelLabel: "Choose Model",
+      emptyModelTitle: "No Default Model Set",
+      emptyModelDescription: "Choose a model.",
       notice: currentSelectionUsable
         ? undefined
         : {
-            title: "No default model set",
-            description: "Set a default model in Settings > Models.",
-            actionLabel: "Open Settings > Models",
+            title: "No Default Model Set",
+            description: "Set a default model in Model Settings.",
+            actionLabel: "Open Model Settings",
             actionSection: "models",
           },
     };
@@ -108,15 +108,15 @@ export function deriveModelOnboardingState(
     return {
       hasSelectableModels: true,
       requiresModelSelection: !currentSelectionUsable,
-      unselectedModelLabel: "Pick a model",
-      emptyModelTitle: "Default model unavailable",
-      emptyModelDescription: "Pick a model.",
+      unselectedModelLabel: "Choose Model",
+      emptyModelTitle: "Default Model Unavailable",
+      emptyModelDescription: "Choose a model.",
       notice: {
-        title: "Default model unavailable",
+        title: "Default Model Unavailable",
         description: currentSelectionUsable
-          ? `Your saved default (${defaultLabel}) is no longer available. Open Settings > Models to update it.`
-          : `Your saved default (${defaultLabel}) is no longer available. Choose a model for this thread, then open Settings > Models to update it.`,
-        actionLabel: "Open Settings > Models",
+          ? `Your saved default (${defaultLabel}) is no longer available. Open Model Settings to update it.`
+          : `Your saved default (${defaultLabel}) is no longer available. Choose a model for this thread, then open Model Settings to update it.`,
+        actionLabel: "Open Model Settings",
         actionSection: "models",
       },
     };
@@ -125,9 +125,9 @@ export function deriveModelOnboardingState(
   return {
     hasSelectableModels: true,
     requiresModelSelection: false,
-    unselectedModelLabel: "Pick a model",
-    emptyModelTitle: "No models available",
-    emptyModelDescription: "Pick a model.",
+    unselectedModelLabel: "Choose Model",
+    emptyModelTitle: "No Models Available",
+    emptyModelDescription: "Choose a model.",
   };
 }
 

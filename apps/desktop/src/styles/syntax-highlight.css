@@ -24,16 +24,16 @@
   --hljs-string: #a5d6ff;
   --hljs-number: #79c0ff;
   --hljs-literal: #79c0ff;
-  --hljs-comment: #8b949e;
+  --hljs-comment: var(--muted-subtle);
   --hljs-regexp: #7ee787;
   --hljs-meta: #d2a8ff;
   --hljs-title: #d2a8ff;
   --hljs-class: #d2a8ff;
   --hljs-function: #d2a8ff;
   --hljs-variable: #ffa657;
-  --hljs-params: #c9d1d9;
+  --hljs-params: var(--text);
   --hljs-attr: #79c0ff;
-  --hljs-subst: #c9d1d9;
+  --hljs-subst: var(--text);
 }
 
 .hljs-keyword { color: var(--hljs-keyword); }

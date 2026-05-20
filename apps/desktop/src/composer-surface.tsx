@@ -151,7 +151,7 @@ export function ComposerSurface({
     >
       {isDragActive ? (
         <div className="composer__drop-indicator" data-testid="composer-drop-indicator">
-          Drop images or files to attach
+          Drop files here to attach them
         </div>
       ) : null}
       {activeSlashCommand ? (

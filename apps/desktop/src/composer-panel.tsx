@@ -154,7 +154,7 @@ export function ComposerPanel({
           onSelectMention={onSelectMention}
           textareaLabel="Composer"
           textareaTestId="composer"
-          textareaPlaceholder="Ask GSD to inspect the repo, run a fix, or continue the current thread..."
+          textareaPlaceholder="Ask GSD to inspect the project, make a change, or continue this thread..."
           extensionDock={extensionDock}
           extensionDockExpanded={extensionDockExpanded}
           onToggleExtensionDock={onToggleExtensionDock}
@@ -181,7 +181,7 @@ export function ComposerPanel({
                 </div>
                 <div className="composer__actions">
                   <button
-                    aria-label="Attach files"
+                    aria-label="Attach Files"
                     className="icon-button composer__attach"
                     type="button"
                     onClick={onPickAttachments}
@@ -189,7 +189,7 @@ export function ComposerPanel({
                     <PlusIcon />
                   </button>
                   <button
-                    aria-label={primaryActionIsStop ? "Stop run" : "Send message"}
+                    aria-label={primaryActionIsStop ? "Stop Run" : "Send Message"}
                     className="button button--primary button--cta-icon"
                     data-testid="send"
                     type="button"

@@ -1360,7 +1360,7 @@ export async function openNewThread(window: Page): Promise<void> {
   if (await composer.isVisible().catch(() => false)) {
     return;
   }
-  const button = window.locator(".sidebar").getByRole("button", { name: "New session", exact: true });
+  const button = window.locator(".sidebar").getByRole("button", { name: "New Thread", exact: true });
   await expect(button).toBeVisible({ timeout: 15_000 });
   await expect(button).toBeEnabled({ timeout: 15_000 });
   await button.click();
@@ -1383,7 +1383,7 @@ export async function startThreadFromSurface(
 ): Promise<void> {
   const {
     environment = "local",
-    prompt = "Start thread",
+    prompt = "Start Thread",
     workspaceName,
   } = options;
 
@@ -1396,7 +1396,7 @@ export async function startThreadFromSurface(
   } else {
     await window.getByRole("button", { name: "Local", exact: true }).click();
   }
-  const startButton = window.getByRole("button", { name: "Start thread" });
+  const startButton = window.getByRole("button", { name: "Start Thread" });
   if (prompt) {
     await window.getByLabel("New thread prompt").fill(prompt);
   }
@@ -1416,7 +1416,7 @@ export async function startThreadViaIpc(
 ): Promise<void> {
   const {
     environment = "local",
-    prompt = "Start thread",
+    prompt = "Start Thread",
     workspaceName,
   } = options;
 

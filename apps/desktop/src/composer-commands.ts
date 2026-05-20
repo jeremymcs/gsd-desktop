@@ -63,8 +63,8 @@ export interface ComposerProviderOption extends ComposerSlashOption {
   readonly providerId: string;
 }
 
-export const MODEL_OPTIONS_EMPTY_TITLE = "No models available";
-export const MODEL_OPTIONS_EMPTY_DESCRIPTION = "Open Settings to enable a model or log in to a provider.";
+export const MODEL_OPTIONS_EMPTY_TITLE = "No Models Available";
+export const MODEL_OPTIONS_EMPTY_DESCRIPTION = "Open Model Settings to enable models, or Provider Settings to connect one.";
 
 export type ParsedComposerCommand =
   | { type: "model"; provider: string; modelId: string }
@@ -82,7 +82,7 @@ const INCOMPLETE_COMMAND_MESSAGES: Readonly<Record<string, string>> = {
   "/logout": "Choose a connected provider from the slash menu before sending /logout.",
   "/model": "Choose a provider and model from the slash menu before sending /model.",
   "/name": "Add a thread title after /name.",
-  "/scoped-models": "Open Enabled models from the slash menu or Settings.",
+  "/scoped-models": "Open Enabled Models from the slash menu or Settings.",
   "/settings": "Open Settings from the slash menu or Cmd+,.",
   "/thinking": "Choose a reasoning level from the slash menu before sending /thinking.",
 } as const;
@@ -94,7 +94,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/model",
     template: "/model",
     title: "Model",
-    description: "Choose the model for this session",
+    description: "Choose the model for this thread",
     submitMode: "pick-option",
     section: "host",
   },
@@ -104,7 +104,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/thinking",
     template: "/thinking",
     title: "Reasoning",
-    description: "Set thinking level for this session",
+    description: "Set the reasoning level for this thread",
     submitMode: "pick-option",
     section: "host",
   },
@@ -113,8 +113,8 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     kind: "tree",
     command: "/tree",
     template: "/tree",
-    title: "Tree",
-    description: "Browse and jump between branches in this session",
+    title: "Thread Tree",
+    description: "Browse and jump between branches in this thread",
     submitMode: "immediate",
     section: "host",
   },
@@ -124,7 +124,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/status",
     template: "/status",
     title: "Status",
-    description: "Show current session overrides in the timeline",
+    description: "Show current thread overrides in the timeline",
     submitMode: "immediate",
     section: "host",
   },
@@ -133,8 +133,8 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     kind: "login",
     command: "/login",
     template: "/login",
-    title: "Login",
-    description: "Authenticate a provider for this workspace",
+    title: "Log In",
+    description: "Authenticate a provider for this project",
     submitMode: "pick-option",
     section: "host",
   },
@@ -143,8 +143,8 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     kind: "logout",
     command: "/logout",
     template: "/logout",
-    title: "Logout",
-    description: "Remove a provider login from this workspace",
+    title: "Log Out",
+    description: "Remove a provider login from this project",
     submitMode: "pick-option",
     section: "host",
   },
@@ -163,7 +163,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     kind: "scoped-models",
     command: "/scoped-models",
     template: "/scoped-models",
-    title: "Enabled models",
+    title: "Enabled Models",
     description: "Choose which models appear in pickers",
     submitMode: "immediate",
     section: "host",
@@ -173,8 +173,8 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     kind: "session",
     command: "/session",
     template: "/session",
-    title: "Session",
-    description: "Show current session details in the timeline",
+    title: "Thread",
+    description: "Show current thread details in the timeline",
     submitMode: "immediate",
     section: "host",
   },
@@ -184,7 +184,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/name",
     template: "/name New thread title",
     title: "Rename",
-    description: "Rename the current session",
+    description: "Rename the current thread",
     submitMode: "prefill",
     section: "host",
   },
@@ -194,7 +194,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/compact",
     template: "/compact",
     title: "Compact",
-    description: "Compact session context now",
+    description: "Compact thread context now",
     submitMode: "immediate",
     section: "host",
   },
@@ -204,7 +204,7 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
     command: "/reload",
     template: "/reload",
     title: "Reload",
-    description: "Reload prompts, skills, and session resources",
+    description: "Reload prompts, skills, and thread resources",
     submitMode: "immediate",
     section: "host",
   },
@@ -270,12 +270,12 @@ export function buildSlashCommandSections(
   const sections: ComposerSlashCommandSection[] = [
     {
       id: "runtime",
-      title: runtimeMatches.length > 0 ? "Runtime Commands" : undefined,
+      title: runtimeMatches.length > 0 ? "Project Commands" : undefined,
       items: runtimeMatches,
     },
     {
       id: "host",
-      title: hostMatches.length > 0 ? "Host Actions" : undefined,
+      title: hostMatches.length > 0 ? "GSD Actions" : undefined,
       items: hostMatches,
   },
 ];
@@ -589,10 +589,10 @@ function formatRuntimeSourceLabel(command: RuntimeCommandRecord): string {
 export function formatSessionConfigStatus(config?: SessionConfig): string {
   const parts = [
     config?.provider && config?.modelId ? `Model ${config.provider}:${config.modelId}` : undefined,
-    config?.thinkingLevel ? `Thinking ${config.thinkingLevel}` : undefined,
+    config?.thinkingLevel ? `Reasoning ${config.thinkingLevel}` : undefined,
   ].filter(Boolean);
 
-  return parts.length > 0 ? parts.join(" · ") : "No session overrides set";
+  return parts.length > 0 ? parts.join(" · ") : "No thread overrides set";
 }
 
 export function parseComposerCommand(value: string): ParsedComposerCommand | undefined {

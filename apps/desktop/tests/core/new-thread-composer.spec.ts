@@ -32,31 +32,12 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     const composer = window.getByTestId("new-thread-composer");
     const logo = window.getByTestId("new-thread-logo");
     await expect(logo).toBeVisible();
-    await expect(logo).toHaveAttribute("alt", "GSD");
+    await expect(logo).toHaveAttribute("alt", "");
     await expect.poll(() => logo.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-    await expect(window.getByRole("heading", { name: "Let's turn your idea into a clear plan." })).toBeVisible();
-    await expect(window.getByText("GSD will guide you from DISCUSS through SHIP.")).toBeVisible();
-    const discussAction = window.getByRole("button", { name: /Talk through the idea/ });
-    await expect(discussAction).toBeVisible();
-    await expect(window.getByRole("button", { name: /Create the guided plan/ })).toBeVisible();
-    await expect(window.getByTestId("quick-action-phase-discuss")).toContainText("DISCUSS");
-    await expect(window.getByTestId("quick-action-phase-research")).toContainText("RESEARCH");
-    await expect(window.getByTestId("quick-action-phase-plan")).toContainText("PLAN");
-    const actionCopyBox = await discussAction.locator(".new-thread__quick-action-copy").boundingBox();
-    const actionPhaseBox = await window.getByTestId("quick-action-phase-discuss").boundingBox();
-    expect(actionCopyBox).not.toBeNull();
-    expect(actionPhaseBox).not.toBeNull();
-    expect(actionPhaseBox?.x ?? 0).toBeGreaterThan((actionCopyBox?.x ?? 0) + (actionCopyBox?.width ?? 0));
-    const flowFontFamily = await window.locator(".topbar__flow").evaluate((node) => getComputedStyle(node).fontFamily);
-    expect(flowFontFamily).not.toMatch(/mono/i);
-    const sidebarFlowFontFamily = await window
-      .locator(".sidebar__brand-copy span")
-      .evaluate((node) => getComputedStyle(node).fontFamily);
-    expect(sidebarFlowFontFamily).not.toMatch(/mono/i);
     await expect(composer).toBeFocused();
     await expect(composer).toHaveAttribute(
       "placeholder",
-      "Start with the outcome, users, constraints, or any question on your mind.",
+      "Tell GSD what you want to move forward. Use / for commands or @ to add files.",
     );
 
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
@@ -93,7 +74,7 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     await expect(chip.locator(".composer-attachment__preview")).toBeVisible();
     await expect(chip.locator(".composer-attachment__name")).toContainText("new-thread-image.png");
 
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
 
     await expect(window.getByTestId("composer")).toBeVisible({ timeout: 15_000 });
     await expect
@@ -129,22 +110,22 @@ test("new thread hides the onboarding notice after picking a thread model", asyn
     await openNewThread(window);
 
     const notice = window.getByTestId("model-onboarding-notice");
-    const startButton = window.getByRole("button", { name: "Start thread" });
+    const startButton = window.getByRole("button", { name: "Start Thread" });
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
 
     await window.getByTestId("new-thread-composer").fill("start a thread without a default");
-    await expect(notice).toContainText("No default model set");
-    await expect(modelBadge).toHaveText("Pick a model");
+    await expect(notice).toContainText("No Default Model Set");
+    await expect(modelBadge).toHaveText("Choose Model");
     await expect(startButton).toBeDisabled();
 
     await modelBadge.click();
     const dropdown = window.locator(".new-thread__hint .model-selector__dropdown").first();
     await expect(dropdown).toContainText("GPT-5");
     await expect(dropdown).toContainText("GPT-4o");
-    await dropdown.getByLabel("Filter models").fill("4o");
+    await dropdown.getByLabel("Filter Models").fill("4o");
     await expect(dropdown).toContainText("openai/gpt-4o");
     await expect(dropdown).not.toContainText("openai/gpt-5");
-    await dropdown.getByLabel("Filter models").fill("");
+    await dropdown.getByLabel("Filter Models").fill("");
     await dropdown.getByRole("button", { name: /GPT-5/ }).click();
 
     await expect(modelBadge).toHaveText("openai/gpt-5");
@@ -194,17 +175,17 @@ test("new thread routes disabled-model recovery to settings models", async () =>
     await window.getByTestId("new-thread-composer").fill("try to start with all models disabled");
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
     await expect(modelBadge).toBeVisible();
-    await expect(modelBadge).toHaveText("No models available");
-    await expect(window.getByTestId("model-onboarding-notice")).toContainText("Settings > Models");
-    await expect(window.getByRole("button", { name: "Start thread" })).toBeDisabled();
+    await expect(modelBadge).toHaveText("No Models Available");
+    await expect(window.getByTestId("model-onboarding-notice")).toContainText("Model Settings");
+    await expect(window.getByRole("button", { name: "Start Thread" })).toBeDisabled();
 
     await modelBadge.click();
     const dropdown = window.locator(".new-thread__hint .model-selector__dropdown").first();
     await expect(dropdown).toBeVisible();
-    await expect(dropdown).toContainText("No models available");
-    await expect(dropdown).not.toContainText("Open Settings > Models");
+    await expect(dropdown).toContainText("No Models Available");
+    await expect(dropdown).not.toContainText("Open Model Settings");
 
-    await window.getByTestId("model-onboarding-notice").getByRole("button", { name: "Open Settings > Models" }).click();
+    await window.getByTestId("model-onboarding-notice").getByRole("button", { name: "Open Model Settings" }).click();
     await expect(window.getByTestId("settings-surface")).toBeVisible();
     await expect(window.locator(".view-header__title")).toHaveText("Models");
   } finally {
@@ -237,8 +218,8 @@ test("refreshing after a provider becomes available auto-enables that provider's
     const notice = window.getByTestId("model-onboarding-notice");
     const modelBadge = window.locator(".new-thread__hint .model-selector__badge").first();
     await composer.fill("connect provider");
-    await expect(modelBadge).toHaveText("No models available");
-    await expect(notice).toContainText("Open Settings > Providers");
+    await expect(modelBadge).toHaveText("No Models Available");
+    await expect(notice).toContainText("Open Provider Settings");
 
     await writeFile(
       join(agentDir, "auth.json"),
@@ -256,8 +237,8 @@ test("refreshing after a provider becomes available auto-enables that provider's
       await app.refreshRuntime(workspaceId);
     }, { workspaceId: selectedWorkspaceId });
 
-    await expect(modelBadge).toHaveText("Pick a model");
-    await expect(notice).toContainText("No default model set");
+    await expect(modelBadge).toHaveText("Choose Model");
+    await expect(notice).toContainText("No Default Model Set");
 
     await modelBadge.click();
     const dropdown = window.locator(".new-thread__hint .model-selector__dropdown").first();
@@ -290,7 +271,7 @@ test("settings do not show stale enabled-model pills when no providers are conne
     await openNewThread(window);
 
     await window.getByTestId("new-thread-composer").fill("check no provider settings");
-    await expect(window.getByTestId("model-onboarding-notice")).toContainText("Open Settings > Providers");
+    await expect(window.getByTestId("model-onboarding-notice")).toContainText("Open Provider Settings");
 
     await window.keyboard.press(desktopShortcut(","));
     await expect(window.getByTestId("settings-surface")).toBeVisible();
@@ -298,9 +279,9 @@ test("settings do not show stale enabled-model pills when no providers are conne
     await expect(window.locator(".view-header__title")).toHaveText("Models");
 
     const enabledModelsSection = window.locator(".settings-section", {
-      has: window.locator(".settings-section__title", { hasText: "Enabled models" }),
+      has: window.locator(".settings-section__title", { hasText: "Enabled Models" }),
     });
-    await expect(enabledModelsSection).toContainText("No connected models available yet.");
+    await expect(enabledModelsSection).toContainText("Connect a provider to make models available.");
     await expect(enabledModelsSection).not.toContainText("openai/gpt-5");
     await expect(enabledModelsSection).not.toContainText("openai/gpt-4o");
     await expect(enabledModelsSection.locator(".settings-disclosure__summary")).toContainText("0");

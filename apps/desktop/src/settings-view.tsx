@@ -126,8 +126,8 @@ export function SettingsView({
       <section className="canvas canvas--settings canvas--empty" data-testid="settings-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Settings</div>
-          <h1>Select a workspace</h1>
-          <p>Provider and skill settings need a selected workspace.</p>
+          <h1>Select a Project</h1>
+          <p>Choose a project before changing provider or skill settings.</p>
         </div>
       </section>
     );
@@ -141,7 +141,7 @@ export function SettingsView({
             <div className="chat-header__eyebrow">GSD Settings</div>
             <h1 className="view-header__title">{sectionTitle(section)}</h1>
             <p className="view-header__body">
-              {sectionDescription(section, workspace?.name ?? "this workspace")}
+              {sectionDescription(section, workspace?.name ?? "this project")}
             </p>
           </div>
           {workspaceSwitcher ? <div className="settings-header__actions">{workspaceSwitcher}</div> : null}
@@ -158,7 +158,7 @@ export function SettingsView({
                 onClick={() => onSelectSection(item.id)}
               >
                 <span>{item.label}</span>
-                <small>{sectionDescription(item.id, workspace?.name ?? "this workspace")}</small>
+                <small>{sectionDescription(item.id, workspace?.name ?? "this project")}</small>
               </button>
             ))}
           </nav>

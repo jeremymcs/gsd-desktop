@@ -74,7 +74,7 @@ export function SettingsProvidersSection({
 
   return (
     <>
-      <SettingsGroup title="Connected" description="Connected providers are used first for picking models.">
+      <SettingsGroup title="Connected Providers" description="Connected providers are available for model selection.">
         {connectedProviders.length > 0 ? (
           connectedProviders.map((provider) => (
             <ProviderRow
@@ -87,12 +87,12 @@ export function SettingsProvidersSection({
           ))
         ) : (
           <div className="settings-row">
-            <span className="settings-row__description">No providers connected yet.</span>
+            <span className="settings-row__description">Connect a provider to make models available.</span>
           </div>
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Sign in" description="OAuth-capable providers can sign in directly from the desktop app.">
+      <SettingsGroup title="Sign In" description="OAuth-capable providers can sign in directly from the desktop app.">
         {oauthProviders.map((provider) => (
           <ProviderRow
             key={provider.id}
@@ -104,15 +104,15 @@ export function SettingsProvidersSection({
         ))}
       </SettingsGroup>
 
-      <SettingsGroup title="All providers" description="Browse the full provider inventory.">
+      <SettingsGroup title="All Providers" description="Browse every provider GSD can see.">
         <details className="settings-disclosure">
           <summary className="settings-disclosure__summary">
-            <span>Browse all providers</span>
+            <span>Browse All Providers</span>
             <span>{filteredProviders.length}</span>
           </summary>
           <div className="settings-disclosure__body">
             <input
-              aria-label="Search providers"
+              aria-label="Search Providers"
               className="settings-search"
               placeholder="Search providers"
               value={providerQuery}
@@ -168,7 +168,7 @@ function ProviderApiKeyDialog({
   readonly onRemove?: () => Promise<void>;
   readonly onSave: () => Promise<void>;
 }) {
-  const title = provider.authSource === "auth_file" ? "Manage API key" : "Set API key";
+  const title = provider.authSource === "auth_file" ? "Manage API Key" : "Set API Key";
   const body =
     provider.authSource === "auth_file"
       ? `Replace or remove the saved API key for ${provider.name}.`
@@ -207,7 +207,7 @@ function ProviderApiKeyDialog({
           </button>
           {onRemove ? (
             <button className="button button--secondary" disabled={pending} type="button" onClick={() => void onRemove()}>
-              Remove saved key
+              Remove Saved Key
             </button>
           ) : null}
           <button
@@ -216,7 +216,7 @@ function ProviderApiKeyDialog({
             type="button"
             onClick={() => void onSave()}
           >
-            {provider.authSource === "auth_file" ? "Save key" : "Set API key"}
+            {provider.authSource === "auth_file" ? "Save Key" : "Set API Key"}
           </button>
         </div>
       </div>

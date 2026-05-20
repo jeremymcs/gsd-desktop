@@ -33,8 +33,8 @@ export function ModelSelector({
   disabled,
   dropdownPlacement = "above",
   showEmptyModelControl = false,
-  unselectedModelLabel = "Choose model",
-  emptyModelLabel = "Choose model",
+  unselectedModelLabel = "Choose Model",
+  emptyModelLabel = "Choose Model",
   emptyModelTitle = MODEL_OPTIONS_EMPTY_TITLE,
   onSetModel,
   onSetThinking,
@@ -114,8 +114,8 @@ export function ModelSelector({
               {groupedModels.length > 0 ? (
                 <div className="model-selector__search">
                   <input
-                    aria-label="Filter models"
-                    placeholder="Filter models..."
+                    aria-label="Filter Models"
+                    placeholder="Search models..."
                     type="search"
                     value={modelQuery}
                     onChange={(event) => setModelQuery(event.target.value)}
@@ -142,7 +142,7 @@ export function ModelSelector({
                         >
                           <span className="model-selector__item-label">{formatModelOptionLabel(option)}</span>
                           <span className="model-selector__item-meta">
-                            {isActive ? `${option.label} · active` : option.label}
+                            {isActive ? `${option.label} · Active` : option.label}
                           </span>
                         </button>
                       );

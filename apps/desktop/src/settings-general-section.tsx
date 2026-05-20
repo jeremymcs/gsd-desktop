@@ -37,11 +37,11 @@ export function SettingsGeneralSection({
     <>
       <SettingsGroup title="General">
         <SettingsInfoRow
-          label="Connected providers"
+          label="Connected Providers"
           value={connectedCount > 0 ? String(connectedCount) : "None"}
         />
-        <SettingsInfoRow label="Discovered skills" value={String(runtime?.skills.length ?? 0)} />
-        <SettingsRow title="Model settings scope" description="Choose whether model defaults apply everywhere or per repo.">
+        <SettingsInfoRow label="Discovered Skills" value={String(runtime?.skills.length ?? 0)} />
+        <SettingsRow title="Model Defaults" description="Choose whether model defaults apply across GSD or only this project.">
           <div className="settings-pill-row">
             <button
               className={`settings-pill${modelSettingsScopeMode === "app-global" ? " settings-pill--active" : ""}`}
@@ -49,7 +49,7 @@ export function SettingsGeneralSection({
               aria-pressed={modelSettingsScopeMode === "app-global"}
               onClick={() => onSetModelSettingsScopeMode("app-global")}
             >
-              App global
+              App Default
             </button>
             <button
               className={`settings-pill${modelSettingsScopeMode === "per-repo" ? " settings-pill--active" : ""}`}
@@ -57,21 +57,21 @@ export function SettingsGeneralSection({
               aria-pressed={modelSettingsScopeMode === "per-repo"}
               onClick={() => onSetModelSettingsScopeMode("per-repo")}
             >
-              Per repo
+              Per Project
             </button>
           </div>
         </SettingsRow>
-        <SettingsRow title="Enable skill slash commands" description="Keep skill slash commands available in the composer.">
+        <SettingsRow title="Skill Commands" description="Show enabled skills in the composer command menu.">
           <input
-            aria-label="Enable skill slash commands"
+            aria-label="Enable Skill Commands"
             checked={runtime?.settings.enableSkillCommands ?? true}
             type="checkbox"
             onChange={(event) => onToggleSkillCommands(event.target.checked)}
           />
         </SettingsRow>
-        <SettingsRow title="Shell of integrated terminal" description="Leave blank to use your default login shell.">
+        <SettingsRow title="Terminal Shell" description="Leave blank to use your default login shell.">
           <input
-            aria-label="Shell of integrated terminal"
+            aria-label="Terminal Shell"
             className="settings-text-input"
             placeholder="/bin/zsh"
             spellCheck={false}
@@ -89,12 +89,12 @@ export function SettingsGeneralSection({
       </SettingsGroup>
 
       <SettingsGroup title="Shortcuts">
-        <SettingsInfoRow label="New thread" value="Cmd+Shift+O" />
-        <SettingsInfoRow label="Open settings" value="Cmd+," />
-        <SettingsInfoRow label="Toggle terminal" value="Cmd+J" />
-        <SettingsInfoRow label="New terminal tab" value="Cmd+T" />
-        <SettingsInfoRow label="Send message" value="Enter" />
-        <SettingsInfoRow label="New line" value="Shift+Enter" />
+        <SettingsInfoRow label="New Thread" value="Cmd+Shift+O" />
+        <SettingsInfoRow label="Open Settings" value="Cmd+," />
+        <SettingsInfoRow label="Toggle Terminal" value="Cmd+J" />
+        <SettingsInfoRow label="New Terminal Tab" value="Cmd+T" />
+        <SettingsInfoRow label="Send Message" value="Enter" />
+        <SettingsInfoRow label="New Line" value="Shift+Enter" />
       </SettingsGroup>
     </>
   );

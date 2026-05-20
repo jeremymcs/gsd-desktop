@@ -77,7 +77,7 @@ export function SettingsModelsSection({
   return (
     <>
       <SettingsGroup>
-        <SettingsRow title="Default model" description="Choose the default model for new sessions.">
+        <SettingsRow title="Default Model" description="Choose the model new threads use first.">
           <select
             className="settings-select"
             value={
@@ -93,7 +93,7 @@ export function SettingsModelsSection({
               }
             }}
           >
-            <option value="">Choose a model</option>
+            <option value="">Choose a Model</option>
             {enabledAvailableModels.map((model) => (
               <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
                 {model.providerName} · {model.label}
@@ -101,7 +101,7 @@ export function SettingsModelsSection({
             ))}
           </select>
         </SettingsRow>
-        <SettingsRow title="Reasoning" description="Set the default reasoning level for new sessions.">
+        <SettingsRow title="Reasoning Level" description="Set the default reasoning level for new threads.">
           <div className="settings-pill-row">
             {THINKING_LEVELS.map((level) => (
               <button
@@ -117,12 +117,12 @@ export function SettingsModelsSection({
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Planning phase defaults" description="Choose app-wide model defaults for each planning phase.">
+      <SettingsGroup title="Planning Phase Defaults" description="Choose team defaults for each planning phase.">
         {planningPhaseModelOptions.map((phase) => (
           <SettingsRow
             key={phase.id}
             title={phase.label}
-            description="Used by new project plans unless that project overrides the phase."
+            description="Used by new plans unless the project overrides this phase."
           >
             <select
               className="settings-phase-select"
@@ -136,7 +136,7 @@ export function SettingsModelsSection({
                 });
               }}
             >
-              <option value="">Use default model</option>
+              <option value="">Use Default Model</option>
               {modelOptions.map((model) => (
                 <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
                   {model.label}
@@ -147,7 +147,7 @@ export function SettingsModelsSection({
         ))}
       </SettingsGroup>
 
-      <SettingsGroup title="Enabled models" description="Choose which models appear in pickers throughout the app.">
+      <SettingsGroup title="Enabled Models" description="Choose which models appear in GSD pickers.">
         <div className="settings-row">
           {enabledAvailablePatterns.length > 0 ? (
             <div className="settings-pill-row">
@@ -160,14 +160,14 @@ export function SettingsModelsSection({
           ) : (
             <span className="settings-hint">
               {availableModels.length === 0
-                ? "No connected models available yet."
-                : "No available models are currently enabled."}
+                ? "Connect a provider to make models available."
+                : "Enable at least one available model."}
             </span>
           )}
         </div>
         {allImplicitlyEnabled && availableModels.length > 0 ? (
           <div className="settings-row">
-            <span className="settings-hint">All available models enabled by default.</span>
+            <span className="settings-hint">All available models are enabled by default.</span>
           </div>
         ) : null}
         {!defaultIsEnabled && defaultProvider && defaultModelId ? (
@@ -179,12 +179,12 @@ export function SettingsModelsSection({
         ) : null}
         <details className="settings-disclosure">
           <summary className="settings-disclosure__summary">
-            <span>Edit enabled models</span>
+            <span>Edit Enabled Models</span>
             <span>{filteredScopedModels.length}</span>
           </summary>
           <div className="settings-disclosure__body">
             <input
-              aria-label="Search enabled models"
+              aria-label="Search Enabled Models"
               className="settings-search"
               placeholder="Search enabled models"
               value={scopedQuery}
@@ -200,7 +200,7 @@ export function SettingsModelsSection({
                     <input
                       checked={enabled}
                       disabled={isLast}
-                      title={isLast ? "At least one model must be enabled" : undefined}
+                      title={isLast ? "Keep at least one model enabled" : undefined}
                       type="checkbox"
                       onChange={(event) => togglePattern(pattern, event.target.checked)}
                     />
@@ -216,15 +216,15 @@ export function SettingsModelsSection({
         </details>
       </SettingsGroup>
 
-      <SettingsGroup title="All models" description="Browse the full model catalog. Enable models above to use them.">
+      <SettingsGroup title="All Models" description="Browse every model GSD can see. Enable models above to use them.">
         <details className="settings-disclosure">
           <summary className="settings-disclosure__summary">
-            <span>Browse full model inventory</span>
+            <span>Browse Full Model Inventory</span>
             <span>{filteredModels.length}</span>
           </summary>
           <div className="settings-disclosure__body">
             <input
-              aria-label="Search models"
+              aria-label="Search Models"
               className="settings-search"
               placeholder="Search models"
               value={modelQuery}
@@ -252,7 +252,7 @@ export function SettingsModelsSection({
                         <input
                           checked={enabled}
                           disabled={isLast}
-                          title={isLast ? "At least one model must be enabled" : undefined}
+                          title={isLast ? "Keep at least one model enabled" : undefined}
                           type="checkbox"
                           onChange={(event) => togglePattern(pattern, event.target.checked)}
                         />

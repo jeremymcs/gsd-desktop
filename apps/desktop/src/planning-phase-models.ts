@@ -94,7 +94,7 @@ export function workflowPhaseModelSourceLabel(source: TaskSessionLinkExecutionMo
     case "global-default":
       return "global default";
     case "session-default":
-      return "session default";
+      return "thread default";
     case "not-configured":
       return "not configured";
   }

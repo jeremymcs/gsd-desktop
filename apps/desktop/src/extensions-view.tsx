@@ -66,8 +66,8 @@ export function ExtensionsView({
       <section className="canvas canvas--empty" data-testid="extensions-surface">
         <div className="empty-panel">
           <div className="session-header__eyebrow">Extensions</div>
-          <h1>Select a workspace</h1>
-          <p>Extensions are discovered from the selected workspace plus your user-level extension directories.</p>
+          <h1>Select a Project</h1>
+          <p>Choose a project to inspect project and user-level extensions.</p>
         </div>
       </section>
     );
@@ -84,9 +84,9 @@ export function ExtensionsView({
             </span>
             <div>
               <div className="chat-header__eyebrow">Extensions</div>
-              <h1 className="view-header__title">Runtime extensions</h1>
+              <h1 className="view-header__title">Project Extensions</h1>
               <p className="view-header__body">
-                Review the commands, tools, and workflow hooks available to this workspace.
+                Review the commands, tools, and hooks this project can use.
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function ExtensionsView({
 
         <div className="skills-toolbar">
           <input
-            aria-label="Search extensions"
+            aria-label="Search Extensions"
             className="skills-search"
             placeholder="Search extensions"
             value={query}
@@ -123,7 +123,7 @@ export function ExtensionsView({
         <div className="skills-layout">
           <div className="skills-grid" data-testid="extensions-list">
             {filteredExtensions.length === 0 ? (
-              <ExtensionsEmptyState message="Refresh runtime discovery to load workspace and user-level extensions." />
+              <ExtensionsEmptyState message="Refresh discovery to load project and user-level extensions." />
             ) : (
               filteredExtensions.map((extension) => (
                 <button
@@ -189,7 +189,7 @@ export function ExtensionsView({
                 </div>
                 <div className="skill-detail__actions">
                   <button className="button button--secondary" type="button" onClick={() => onOpenExtensionFolder(selectedExtension.path)}>
-                    Open folder
+                    Open Folder
                   </button>
                   <button
                     className="button button--secondary"
@@ -211,7 +211,7 @@ export function ExtensionsView({
                 <ExtensionDiagnostics diagnostics={selectedExtension.diagnostics} />
               </>
             ) : (
-              <ExtensionsEmptyState message="Refresh runtime discovery to inspect extension metadata and diagnostics." />
+              <ExtensionsEmptyState message="Refresh discovery to inspect extension metadata and diagnostics." />
             )}
           </div>
         </div>
@@ -323,9 +323,9 @@ function ExtensionCompatibilitySection({
 
   return (
     <div className="skill-detail__section">
-      <div className="skill-detail__meta-label">Command compatibility</div>
+      <div className="skill-detail__meta-label">Command Compatibility</div>
       <div className="skill-detail__description">
-        Learned from real GUI execution. Unlisted commands remain unknown until exercised.
+        Learned from real desktop runs. Commands not listed yet are still untested.
       </div>
       <div className="extension-detail__tokens">
         {supported.map((record) => (
@@ -351,7 +351,7 @@ function ExtensionCompatibilitySection({
 function ExtensionsEmptyState({ message }: { readonly message: string }) {
   return (
     <div className="empty-state">
-      <h2>No extensions found</h2>
+      <h2>No Extensions Found</h2>
       <p>{message}</p>
     </div>
   );

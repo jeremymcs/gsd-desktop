@@ -25,7 +25,7 @@ test("attached files reach the real runtime as usable context", async () => {
     await window
       .getByLabel("New thread prompt")
       .fill("Read the attached file from disk and reply with only the exact sentinel string it contains.");
-    await window.getByRole("button", { name: "Start thread" }).click();
+    await window.getByRole("button", { name: "Start Thread" }).click();
 
     await expect(window.locator(".timeline-item__attachment--file")).toContainText("attached-context.txt", { timeout: 15_000 });
     await expect(window.getByTestId("transcript")).toContainText(sentinel, { timeout: 150_000 });

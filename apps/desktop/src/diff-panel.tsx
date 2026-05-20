@@ -134,7 +134,7 @@ export function DiffPanel({
           className="icon-button"
           type="button"
           onClick={refresh}
-          aria-label="Refresh"
+          aria-label="Refresh Changes"
           disabled={loading}
         >
           <RefreshIcon />
@@ -142,7 +142,7 @@ export function DiffPanel({
       </div>
 
       {files.length === 0 ? (
-        <div className="diff-panel__empty">No changes</div>
+        <div className="diff-panel__empty">No Changes</div>
       ) : (
         <>
           <div className="diff-panel__file-list" ref={fileListRef}>

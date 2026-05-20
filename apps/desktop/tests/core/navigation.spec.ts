@@ -159,10 +159,10 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await window.getByRole("button", { name: "Home", exact: true }).click();
     await expect(window.getByTestId("new-thread-composer")).toBeVisible();
 
-    await window.getByRole("button", { name: "Plan", exact: true }).click();
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();
 
-    await window.getByRole("button", { name: "Sessions", exact: true }).click();
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
     await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
 
     await window.getByRole("button", { name: "Skills", exact: true }).click();
@@ -171,8 +171,8 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await window.getByRole("button", { name: "Extensions", exact: true }).click();
     await expect(window.getByTestId("extensions-surface")).toBeVisible();
 
-    await window.getByRole("button", { name: "Project settings", exact: true }).click();
-    await expect(window.getByTestId("plan-builder-view")).toBeVisible();
+    await window.getByRole("button", { name: "Project Preferences", exact: true }).click();
+    await expect(window.getByTestId("project-preferences-view")).toBeVisible();
 
     await window.locator(".sidebar__footer").getByRole("button", { name: "Settings", exact: true }).click();
     await expect(window.locator(".settings-view")).toBeVisible();
@@ -215,12 +215,12 @@ test("switching sessions republishes the selected transcript", async () => {
     await selectSession(window, "Thread one");
     await expect(window.locator(".topbar__session")).toHaveText("Thread one");
     await expect(window.getByTestId("transcript")).toContainText("alpha response");
-    await expect(window.getByTestId("transcript")).not.toContainText("Loading transcript");
+    await expect(window.getByTestId("transcript")).not.toContainText("Loading thread...");
 
     await selectSession(window, "Thread two");
     await expect(window.locator(".topbar__session")).toHaveText("Thread two");
     await expect(window.getByTestId("transcript")).toContainText("beta response");
-    await expect(window.getByTestId("transcript")).not.toContainText("Loading transcript");
+    await expect(window.getByTestId("transcript")).not.toContainText("Loading thread...");
   } finally {
     await harness.close();
   }

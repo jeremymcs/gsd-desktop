@@ -27,11 +27,11 @@ test("opens the native folder picker from the empty state button and adds the se
 
   try {
     const window = await harness.firstWindow();
-    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
+    await expect(window.getByRole("button", { name: "Open Project" })).toBeVisible();
     await harness.focusWindow();
 
     await stubNextOpenDialog(harness, [workspacePath]);
-    await window.getByRole("button", { name: "Open first folder" }).click();
+    await window.getByRole("button", { name: "Open Project" }).click();
 
     await expect
       .poll(async () => {
@@ -99,7 +99,7 @@ test("exposes File > Open Folder… with Command+O and reuses the same open-fold
 
   try {
     const window = await harness.firstWindow();
-    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
+    await expect(window.getByRole("button", { name: "Open Project" })).toBeVisible();
     await harness.focusWindow();
 
     const menuItem = await getApplicationMenuItemInfo(harness, OPEN_FOLDER_MENU_ITEM_ID);
@@ -171,11 +171,11 @@ test("opens multiple workspace folders from one picker selection", async () => {
 
   try {
     const window = await harness.firstWindow();
-    await expect(window.getByRole("button", { name: "Open first folder" })).toBeVisible();
+    await expect(window.getByRole("button", { name: "Open Project" })).toBeVisible();
     await harness.focusWindow();
 
     await stubNextOpenDialog(harness, [firstWorkspacePath, secondWorkspacePath]);
-    await window.getByRole("button", { name: "Open first folder" }).click();
+    await window.getByRole("button", { name: "Open Project" }).click();
 
     await expect
       .poll(async () => {

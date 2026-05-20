@@ -30,7 +30,7 @@ test("supports workspace rename and remove from the sidebar menu", async () => {
 
     await window.getByRole("button", { name: `Workspace actions for ${basename(workspaceA)}` }).click();
     const workspaceMenu = window.locator(".workspace-menu").last();
-    await expect(workspaceMenu.getByRole("button", { name: "Open folder" })).toBeVisible();
+    await expect(workspaceMenu.getByRole("button", { name: "Open Folder" })).toBeVisible();
     await expect(workspaceMenu.getByRole("button", { name: "Edit name" })).toBeVisible();
     await expect(workspaceMenu.getByRole("button", { name: "Remove" })).toBeVisible();
 

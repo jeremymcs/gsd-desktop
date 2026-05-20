@@ -78,13 +78,13 @@ export function Sidebar(props: SidebarProps) {
               <FolderIcon />
             </span>
             <div className="project-header__copy">
-              <strong>No workspace</strong>
-              <span>Open a folder to begin.</span>
+              <strong>No Project</strong>
+              <span>Open a project folder to begin.</span>
             </div>
           </div>
         )}
 
-        <nav className="sidebar__nav" aria-label="Workspace pages">
+        <nav className="sidebar__nav" aria-label="Project pages">
           <WorkspacePageButton
             active={activeView === "new-thread"}
             icon={<HomeIcon />}
@@ -95,14 +95,14 @@ export function Sidebar(props: SidebarProps) {
           <WorkspacePageButton
             active={activeView === "plans"}
             icon={<PlanIcon />}
-            label="Plan"
+            label="Plans"
             disabled={!activeWorkspace}
             onClick={() => onOpenPlans(activeWorkspace?.id)}
           />
           <WorkspacePageButton
             active={activeView === "threads"}
             icon={<InboxIcon />}
-            label="Sessions"
+            label="Threads"
             disabled={!activeWorkspace}
             onClick={() => onOpenSessions(activeWorkspace?.id)}
           />
@@ -121,9 +121,9 @@ export function Sidebar(props: SidebarProps) {
             onClick={() => onOpenExtensions(activeWorkspace?.id)}
           />
           <WorkspacePageButton
-            active={false}
+            active={activeView === "project-preferences"}
             icon={<SettingsIcon />}
-            label="Project settings"
+            label="Project Preferences"
             disabled={!activeWorkspace}
             onClick={() => onOpenProjectPreferences(activeWorkspace?.id)}
           />
@@ -132,10 +132,10 @@ export function Sidebar(props: SidebarProps) {
 
       <div className="sidebar__section">
         <div className="section__head">
-          <span>Recent sessions</span>
+          <span>Recent Threads</span>
           <div className="section__tools">
             <button
-              aria-label="New session"
+              aria-label="Create Thread"
               className="icon-button"
               type="button"
               disabled={!activeWorkspace}
@@ -152,7 +152,7 @@ export function Sidebar(props: SidebarProps) {
           disabled={!activeWorkspace}
         >
           <ChatIcon />
-          <span>New session</span>
+          <span>New Thread</span>
         </button>
 
         {activeGroup ? (
@@ -177,7 +177,7 @@ export function Sidebar(props: SidebarProps) {
                   );
                 })
               ) : (
-                <p className="sidebar-empty-copy">No sessions yet for this workspace.</p>
+                <p className="sidebar-empty-copy">Start a thread to capture the next project decision.</p>
               )}
             </div>
             {activeGroup.archivedThreads.length > 0 ? (
@@ -224,9 +224,9 @@ export function Sidebar(props: SidebarProps) {
             ) : null}
           </>
         ) : activeWorkspace ? (
-          <p className="sidebar-empty-copy">No sessions yet for this workspace.</p>
+          <p className="sidebar-empty-copy">Start a thread to capture the next project decision.</p>
         ) : (
-          <p className="sidebar-empty-copy">Open a workspace to see its pages and sessions.</p>
+          <p className="sidebar-empty-copy">Open a project to see its pages and threads.</p>
         )}
       </div>
 
@@ -262,14 +262,14 @@ function ProjectHeader({
       </span>
       <div className="project-header__copy">
         <strong>{workspace.name}</strong>
-        <span>Workspace</span>
+        <span>Project</span>
       </div>
       <span
         className="workspace-row__menu-wrap"
         ref={wsMenu.workspaceMenuId === workspace.id ? wsMenu.workspaceMenuWrapRef : undefined}
       >
         <button
-          aria-label={`Workspace actions for ${workspace.name}`}
+          aria-label={`Project actions for ${workspace.name}`}
           aria-haspopup="menu"
           className="icon-button workspace-row__menu-button"
           aria-expanded={wsMenu.workspaceMenuId === workspace.id}
@@ -293,21 +293,21 @@ function ProjectHeader({
                 })
               }
             >
-              Open folder
+              Open Folder
             </button>
             <button
               className="workspace-menu__item"
               type="button"
               onClick={(event) => wsMenu.runWorkspaceMenuAction(event, () => wsMenu.startRename(workspace))}
             >
-              Edit name
+              Rename Project
             </button>
             <button
               className="workspace-menu__item workspace-menu__item--danger"
               type="button"
               onClick={(event) => wsMenu.runWorkspaceMenuAction(event, () => wsMenu.removeWorkspace(workspace))}
             >
-              Remove
+              Remove Project
             </button>
           </div>
         ) : null}

@@ -26,7 +26,7 @@ export function QueuedComposerMessages({
     <div className="queued-composer-messages" data-testid="queued-composer-messages">
       {editingQueuedMessageId ? (
         <div className="queued-composer-messages__editing" data-testid="queued-composer-editing">
-          <span>Editing queued message</span>
+          <span>Editing Queued Message</span>
           <button type="button" onClick={onCancelEdit}>
             Cancel
           </button>
@@ -49,7 +49,7 @@ export function QueuedComposerMessages({
               <button type="button" onClick={() => onEditMessage(message.id)}>
                 Edit
               </button>
-              <button aria-label={`Delete queued message ${message.text || message.id}`} type="button" onClick={() => onRemoveMessage(message.id)}>
+              <button aria-label={`Delete Queued Message ${message.text || message.id}`} type="button" onClick={() => onRemoveMessage(message.id)}>
                 Delete
               </button>
             </div>

@@ -31,7 +31,7 @@ import { SkillsView } from "./skills-view";
 import { ExtensionsView } from "./extensions-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
 import { NewThreadView } from "./new-thread-view";
-import { PlanBuilderView } from "./plan-builder-view";
+import { PlanBuilderView, ProjectPreferencesView } from "./plan-builder-view";
 import { buildThreadGroups } from "./thread-groups";
 import { Sidebar } from "./sidebar";
 import { SidebarToggleButton } from "./sidebar-toggle-button";
@@ -113,6 +113,7 @@ function canTogglePrimarySidebar(view: AppView | undefined): boolean {
     view === "threads" ||
     view === "new-thread" ||
     view === "plans" ||
+    view === "project-preferences" ||
     view === "skills" ||
     view === "extensions" ||
     view === "settings"
@@ -164,7 +165,7 @@ export default function App() {
   const [skillsWorkspaceId, setSkillsWorkspaceId] = useState("");
   const [extensionsWorkspaceId, setExtensionsWorkspaceId] = useState("");
   const [plansWorkspaceId, setPlansWorkspaceId] = useState("");
-  const [workflowPreferencesFocusToken, setWorkflowPreferencesFocusToken] = useState(0);
+  const [projectPreferencesWorkspaceId, setProjectPreferencesWorkspaceId] = useState("");
   const [pendingNewThreadWorkspaceId, setPendingNewThreadWorkspaceId] = useState("");
   const [newThreadRootWorkspaceId, setNewThreadRootWorkspaceId] = useState("");
   const [newThreadEnvironment, setNewThreadEnvironment] = useState<NewThreadEnvironment>("local");
@@ -340,7 +341,13 @@ export default function App() {
   const plansWorkspace = plansWorkspaceId
     ? rootWorkspaceOptions.find((workspace) => workspace.id === plansWorkspaceId)
     : undefined;
+  const projectPreferencesWorkspace = projectPreferencesWorkspaceId
+    ? rootWorkspaceOptions.find((workspace) => workspace.id === projectPreferencesWorkspaceId)
+    : undefined;
   const plansModelRuntime = snapshot ? getEffectiveModelRuntime(snapshot, plansWorkspace ?? rootWorkspaceOptions[0]) : undefined;
+  const projectPreferencesModelRuntime = snapshot
+    ? getEffectiveModelRuntime(snapshot, projectPreferencesWorkspace ?? rootWorkspaceOptions[0])
+    : undefined;
   const settingsRuntime = settingsWorkspace ? snapshot?.runtimeByWorkspace[settingsWorkspace.id] : undefined;
   const settingsModelRuntime = snapshot ? getEffectiveModelRuntime(snapshot, settingsWorkspace) : undefined;
   const skillsRuntime = skillsWorkspace ? snapshot?.runtimeByWorkspace[skillsWorkspace.id] : undefined;
@@ -353,6 +360,8 @@ export default function App() {
   const activeWorkspaceForView =
     snapshot?.activeView === "plans"
       ? plansWorkspace ?? rootWorkspaceOptions[0]
+      : snapshot?.activeView === "project-preferences"
+        ? projectPreferencesWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "skills"
         ? skillsWorkspace ?? rootWorkspaceOptions[0]
         : snapshot?.activeView === "extensions"
@@ -924,6 +933,7 @@ export default function App() {
       setSkillsWorkspaceId("");
       setExtensionsWorkspaceId("");
       setPlansWorkspaceId("");
+      setProjectPreferencesWorkspaceId("");
       setPendingNewThreadWorkspaceId("");
       setNewThreadRootWorkspaceId("");
       setNewThreadEnvironment("local");
@@ -940,6 +950,9 @@ export default function App() {
       rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
     );
     setPlansWorkspaceId((current) =>
+      rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
+    );
+    setProjectPreferencesWorkspaceId((current) =>
       rootWorkspaceOptions.some((workspace) => workspace.id === current) ? current : (current || rootWorkspaceOptions[0]?.id || ""),
     );
     setNewThreadRootWorkspaceId((current) =>
@@ -1176,6 +1189,19 @@ export default function App() {
   }, [api, plansWorkspace?.id, snapshot?.activeView, snapshot?.planningByWorkspace]);
 
   useEffect(() => {
+    if (!api || snapshot?.activeView !== "project-preferences" || !projectPreferencesWorkspace?.id) {
+      return;
+    }
+    if (snapshot.planningByWorkspace[projectPreferencesWorkspace.id]) {
+      return;
+    }
+    void updateSnapshot(api, setSnapshot, async () => {
+      await api.loadPlanningWorkspace(projectPreferencesWorkspace.id);
+      return api.setActiveView("project-preferences");
+    });
+  }, [api, projectPreferencesWorkspace?.id, snapshot?.activeView, snapshot?.planningByWorkspace]);
+
+  useEffect(() => {
     if (!api || composerDraft === persistedComposerDraft) {
       return undefined;
     }
@@ -1323,7 +1349,7 @@ export default function App() {
       <div className="shell shell--loading">
         <main className="loading-card">
           <div className="loading-card__eyebrow">GSD</div>
-          <h1>Loading sessions</h1>
+          <h1>Loading Threads</h1>
           <p>The desktop shell is restoring folder and thread state from the main process.</p>
         </main>
       </div>
@@ -1379,18 +1405,20 @@ export default function App() {
   ) : null;
   const activeSurfaceTitle =
     snapshot.activeView === "new-thread"
-      ? "New session"
+      ? "New Thread"
       : snapshot.activeView === "plans"
         ? "Plans"
-        : snapshot.activeView === "skills"
-          ? "Skills"
-          : snapshot.activeView === "extensions"
-            ? "Extensions"
-            : snapshot.activeView === "settings"
-              ? "Settings"
-              : selectedSession
-                ? displayedSessionTitle || selectedSession.title
-                : activeWorkspaceForView?.name ?? "Open a folder";
+        : snapshot.activeView === "project-preferences"
+          ? "Project Preferences"
+          : snapshot.activeView === "skills"
+            ? "Skills"
+            : snapshot.activeView === "extensions"
+              ? "Extensions"
+              : snapshot.activeView === "settings"
+                ? "Settings"
+                : selectedSession
+                  ? displayedSessionTitle || selectedSession.title
+                  : activeWorkspaceForView?.name ?? "Open Project";
 
   const setActiveView = (view: AppView) => {
     void updateSnapshot(api, setSnapshot, () => api.setActiveView(view));
@@ -1448,8 +1476,19 @@ export default function App() {
   };
 
   const openProjectPreferences = (workspaceId?: string) => {
-    setWorkflowPreferencesFocusToken((token) => token + 1);
-    openPlans(workspaceId);
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : projectPreferencesWorkspace?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId) {
+      setProjectPreferencesWorkspaceId(nextWorkspaceId);
+      void updateSnapshot(api, setSnapshot, async () => {
+        await api.loadPlanningWorkspace(nextWorkspaceId);
+        return api.setActiveView("project-preferences");
+      });
+      return;
+    }
+    setActiveView("project-preferences");
   };
 
   const handleSelectPlansWorkspace = (workspaceId: string) => {
@@ -1476,6 +1515,8 @@ export default function App() {
   const handleSelectWorkspaceTab = (workspaceId: string) => {
     if (snapshot.activeView === "plans") {
       openPlans(workspaceId);
+    } else if (snapshot.activeView === "project-preferences") {
+      openProjectPreferences(workspaceId);
     } else if (snapshot.activeView === "skills") {
       openSkills(workspaceId);
     } else if (snapshot.activeView === "extensions") {
@@ -1736,7 +1777,7 @@ export default function App() {
 
   const handleSetProviderApiKey = async (providerId: string, apiKey: string): Promise<string | undefined> => {
     if (!api || !settingsWorkspace) {
-      return "Select a workspace first.";
+      return "Select a project first.";
     }
     const state = await updateSnapshot(api, setSnapshot, () =>
       api.setProviderApiKey(settingsWorkspace.id, providerId, apiKey),
@@ -1746,7 +1787,7 @@ export default function App() {
 
   const handleRemoveProviderApiKey = async (providerId: string): Promise<string | undefined> => {
     if (!api || !settingsWorkspace) {
-      return "Select a workspace first.";
+      return "Select a project first.";
     }
     const state = await updateSnapshot(api, setSnapshot, () =>
       api.logoutProvider(settingsWorkspace.id, providerId),
@@ -1889,7 +1930,7 @@ export default function App() {
       return;
     }
     if (treeCommand?.type === "tree") {
-      setNewThreadComposerError("/tree is only available inside an existing session.");
+      setNewThreadComposerError("/tree is only available inside an existing thread.");
       return;
     }
     const modelConfig = {
@@ -2078,7 +2119,7 @@ export default function App() {
                   (settingsSection === "models" && snapshot.modelSettingsScopeMode === "per-repo") ? (
                     <div className="surface-toolbar">
                       <label className="surface-toolbar__field">
-                        <span>Workspace</span>
+                        <span>Project</span>
                         <select
                           value={settingsWorkspace?.id ?? ""}
                           onChange={(event) => setSettingsWorkspaceId(event.target.value)}
@@ -2117,6 +2158,36 @@ export default function App() {
                 onSetThinkingLevel={handleSetThinkingLevel}
                 onToggleSkillCommands={handleToggleSkillCommands}
               />
+            ) : snapshot.activeView === "project-preferences" ? (
+              rootWorkspaceOptions.length > 0 ? (
+                <ProjectPreferencesView
+                  workspaces={rootWorkspaceOptions}
+                  selectedWorkspaceId={projectPreferencesWorkspace?.id ?? rootWorkspaceOptions[0]?.id ?? ""}
+                  runtime={projectPreferencesModelRuntime}
+                  globalPlanningPreferences={snapshot.globalPlanningPreferences}
+                  planningState={
+                    projectPreferencesWorkspace
+                      ? snapshot.planningByWorkspace[projectPreferencesWorkspace.id]
+                      : undefined
+                  }
+                  lastError={snapshot.lastError}
+                  onSelectWorkspace={openProjectPreferences}
+                  onApplyWorkflowPreferences={(input) =>
+                    updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
+                  }
+                  onUpdateWorkflowPreferences={(input) =>
+                    updateSnapshot(api, setSnapshot, () => api.updatePlanningWorkflowPreferences(input))
+                  }
+                />
+              ) : (
+                <section className="canvas canvas--empty">
+                  <div className="empty-panel">
+                    <div className="session-header__eyebrow">Project Preferences</div>
+                    <h1>Open a Project First</h1>
+                    <p>Add a project folder before setting workflow defaults.</p>
+                  </div>
+                </section>
+              )
             ) : snapshot.activeView === "plans" ? (
           rootWorkspaceOptions.length > 0 ? (
             <PlanBuilderView
@@ -2126,18 +2197,11 @@ export default function App() {
               globalPlanningPreferences={snapshot.globalPlanningPreferences}
               planningState={plansWorkspace ? snapshot.planningByWorkspace[plansWorkspace.id] : undefined}
               lastError={snapshot.lastError}
-              workflowPreferencesFocusToken={workflowPreferencesFocusToken}
               onSelectWorkspace={handleSelectPlansWorkspace}
               onCreatePlan={(input) => updateSnapshot(api, setSnapshot, () => api.createPlanningPlan(input))}
               onSelectPlan={(input) => updateSnapshot(api, setSnapshot, () => api.selectPlanningPlan(input))}
               onUpdatePlanStatus={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.updatePlanningPlanStatus(input))
-              }
-              onApplyWorkflowPreferences={(input) =>
-                updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
-              }
-              onUpdateWorkflowPreferences={(input) =>
-                updateSnapshot(api, setSnapshot, () => api.updatePlanningWorkflowPreferences(input))
               }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onParkIdea={(input) => updateSnapshot(api, setSnapshot, () => api.parkPlanningIdea(input))}
@@ -2197,7 +2261,7 @@ export default function App() {
             <section className="canvas canvas--empty">
               <div className="empty-panel">
                 <div className="session-header__eyebrow">Plans</div>
-                <h1>Open a folder to plan</h1>
+                <h1>Open a Project to Plan</h1>
                 <p>Add a project folder before starting the planning workflow.</p>
               </div>
             </section>
@@ -2254,8 +2318,8 @@ export default function App() {
           ) : (
             <section className="canvas canvas--empty" data-testid="empty-state">
               <div className="empty-panel">
-                <div className="session-header__eyebrow">Workspace</div>
-                <h1>Open a folder to start</h1>
+                <div className="session-header__eyebrow">Project</div>
+                <h1>Open a Project to Start</h1>
                 <p>Add a project folder before creating a new thread.</p>
                 <div className="empty-panel__actions">
                   <button
@@ -2265,7 +2329,7 @@ export default function App() {
                       void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
                     }}
                   >
-                    Open first folder
+                    Open Project
                   </button>
                 </div>
               </div>
@@ -2279,7 +2343,7 @@ export default function App() {
 	              rootWorkspaceOptions.length > 0 ? (
 	                <div className="surface-toolbar">
 	                  <label className="surface-toolbar__field">
-	                    <span>Workspace</span>
+	                    <span>Project</span>
 	                    <select
 	                      value={skillsWorkspace?.id ?? ""}
 	                      onChange={(event) => setSkillsWorkspaceId(event.target.value)}
@@ -2306,7 +2370,7 @@ export default function App() {
 	              handleTrySkill(
 	                skill.filePath
 	                  ? `${skill.slashCommand} `
-	                  : "Create a new skill for this workspace and explain which files you will add.",
+	                  : "Create a new project skill and explain which files you will add.",
 	              )
 	            }
 	          />
@@ -2319,7 +2383,7 @@ export default function App() {
 	              rootWorkspaceOptions.length > 0 ? (
 	                <div className="surface-toolbar">
 	                  <label className="surface-toolbar__field">
-	                    <span>Workspace</span>
+	                    <span>Project</span>
 	                    <select
 	                      value={extensionsWorkspace?.id ?? ""}
 	                      onChange={(event) => setExtensionsWorkspaceId(event.target.value)}
@@ -2449,26 +2513,26 @@ export default function App() {
         ) : selectedWorkspace ? (
           <section className="canvas canvas--empty" data-testid="empty-state">
             <div className="empty-panel">
-              <div className="session-header__eyebrow">Workspace</div>
+              <div className="session-header__eyebrow">Project</div>
               <h1>{selectedWorkspace.name}</h1>
-              <p>Create a thread for this folder, then jump between sessions from the sidebar.</p>
+              <p>Start a thread for this project, then return to it from the sidebar.</p>
               <div className="empty-panel__actions">
                 <button
                   className="button button--primary"
                   type="button"
                   onClick={() => openNewThreadSurface(selectedWorkspace?.rootWorkspaceId ?? selectedWorkspace?.id)}
                 >
-                  New thread
+                  New Thread
                 </button>
               </div>
             </div>
           </section>
         ) : (
-          <section className="canvas canvas--empty">
+          <section className="canvas canvas--empty" data-testid="empty-state">
             <div className="empty-panel">
-              <div className="session-header__eyebrow">Workspace</div>
-              <h1>Open a folder to start</h1>
-              <p>Add project folders, group sessions under them, and jump between threads from the sidebar.</p>
+              <div className="session-header__eyebrow">Project</div>
+              <h1>Open a Project to Start</h1>
+              <p>Open a project folder, then start threads from the sidebar.</p>
               <div className="empty-panel__actions">
                 <button
                   className="button button--primary"
@@ -2477,7 +2541,7 @@ export default function App() {
                     void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
                   }}
                 >
-                  Open first folder
+                  Open Project
                 </button>
               </div>
             </div>

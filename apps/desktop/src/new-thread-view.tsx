@@ -122,9 +122,9 @@ export function NewThreadView({
     return (
       <section className="canvas canvas--empty">
         <div className="empty-panel">
-          <div className="session-header__eyebrow">New thread</div>
-          <h1>Open a folder to begin</h1>
-          <p>Select a repository from the sidebar first, then start a local or worktree-backed thread.</p>
+          <div className="session-header__eyebrow">New Thread</div>
+          <h1>Open a Project to Start</h1>
+          <p>Choose a project folder, then start a thread from local work or an isolated worktree.</p>
         </div>
       </section>
     );
@@ -173,10 +173,10 @@ export function NewThreadView({
               mentionOptions={mentionOptions}
               selectedMentionIndex={selectedMentionIndex}
               onSelectMention={onSelectMention}
-              textareaLabel="New thread prompt"
+              textareaLabel="New Thread Prompt"
               textareaTestId="new-thread-composer"
               textareaClassName="new-thread__textarea"
-              textareaPlaceholder="Ask GSD anything. Type / for commands or @ to add files."
+              textareaPlaceholder="Tell GSD what you want to move forward. Use / for commands or @ to add files."
               footer={(
                 <NewThreadComposerFooter
                   runtime={runtime}
@@ -249,7 +249,7 @@ function NewThreadComposerFooter({
           <div className="composer__hint new-thread__hint">
             <label className="new-thread__workspace-pill">
               <FolderIcon />
-              <span className="sr-only">Workspace</span>
+              <span className="sr-only">Project</span>
               <select
                 className="new-thread__workspace"
                 value={workspace.id}
@@ -313,7 +313,7 @@ function NewThreadComposerFooter({
               }}
             />
             <button
-              aria-label="Attach files"
+              aria-label="Attach Files"
               className="icon-button composer__attach"
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -321,7 +321,7 @@ function NewThreadComposerFooter({
               <PlusIcon />
             </button>
             <button
-              aria-label="Start thread"
+              aria-label="Start Thread"
               className="button button--primary button--cta-icon"
               type="button"
               disabled={!hasContent || modelOnboarding.requiresModelSelection}
