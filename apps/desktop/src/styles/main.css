@@ -4895,7 +4895,8 @@
 
 .plan-composer__send {
   min-width: 126px;
-  min-height: 48px;
+  height: 44px;
+  min-height: 44px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -4914,9 +4915,10 @@
 }
 
 .plan-composer__park {
-  min-height: 38px;
+  height: 44px;
+  min-height: 44px;
   flex: 0 0 auto;
-  padding: 0 12px;
+  padding: 0 16px;
   border-radius: 8px;
   border: 1px solid var(--plan-pane-border-strong);
   background: var(--plan-secondary-bg);
