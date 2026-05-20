@@ -278,19 +278,19 @@
   -webkit-app-region: no-drag;
   display: block;
   position: absolute;
-  top: 60px;
-  left: calc(var(--sidebar-toggle-boundary-x) - var(--sidebar-toggle-size) - 14px);
+  top: 11px;
+  left: calc(var(--sidebar-toggle-boundary-x) - 42px);
   z-index: 80;
 }
 
 .shell--sidebar-collapsed .sidebar-toggle {
-  left: 14px;
+  left: 96px;
 }
 
 .sidebar-toggle__button {
-  width: var(--sidebar-toggle-size);
-  height: var(--sidebar-toggle-size);
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border-color: var(--line);
   color: var(--muted-strong);
   background: color-mix(in srgb, var(--surface) 76%, transparent 24%);

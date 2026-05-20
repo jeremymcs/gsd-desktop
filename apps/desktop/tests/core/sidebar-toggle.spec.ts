@@ -47,7 +47,7 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     expect(toggleBox?.x ?? 0).toBeGreaterThanOrEqual(sidebarBox?.x ?? 0);
     expect(toggleRight).toBeLessThanOrEqual(sidebarRight);
     expect(Math.abs(toggleRight - (sidebarRight - 14))).toBeLessThanOrEqual(2);
-    expect((toggleBox?.y ?? 0) - (sidebarBox?.y ?? 0)).toBeLessThanOrEqual(16);
+    expect(toggleBox?.y ?? 999).toBeLessThan(sidebarBox?.y ?? 0);
     const expandedMainBox = await window.locator(".main").boundingBox();
     expect(expandedMainBox).not.toBeNull();
 
