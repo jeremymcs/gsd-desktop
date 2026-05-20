@@ -278,13 +278,14 @@
   -webkit-app-region: no-drag;
   display: block;
   position: absolute;
-  top: 11px;
+  top: auto;
+  bottom: 11px;
   left: calc(var(--sidebar-toggle-boundary-x) - 42px);
   z-index: 80;
 }
 
 .shell--sidebar-collapsed .sidebar-toggle {
-  left: 96px;
+  left: 14px;
 }
 
 .sidebar-toggle__button {
