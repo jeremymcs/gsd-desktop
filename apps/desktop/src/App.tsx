@@ -9,6 +9,7 @@ import {
   type ComposerImageAttachment,
   type DesktopAppState,
   type NewThreadEnvironment,
+  type ProjectBacklogItem,
   type SelectedTranscriptRecord,
   type StartThreadInput,
   type WorktreeRecord,
@@ -32,13 +33,14 @@ import { ExtensionsView } from "./extensions-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
 import { NewThreadView } from "./new-thread-view";
 import { ProjectHomeView } from "./project-home-view";
+import { ProjectBacklogView } from "./project-backlog-view";
 import { PlanBuilderView, ProjectPreferencesView } from "./plan-builder-view";
 import { buildThreadGroups } from "./thread-groups";
 import { Sidebar } from "./sidebar";
 import { SidebarToggleButton } from "./sidebar-toggle-button";
 import { Topbar } from "./topbar";
 import { TerminalPanel } from "./terminal-panel";
-import { ConversationTimeline, VIRTUALIZATION_THRESHOLD } from "./conversation-timeline";
+import { ConversationTimeline, VIRTUALIZATION_THRESHOLD, type TimelineTextSelection } from "./conversation-timeline";
 import { useSlashMenu } from "./hooks/use-slash-menu";
 import { useMentionMenu } from "./hooks/use-mention-menu";
 import { useThreadSearch } from "./hooks/use-thread-search";
@@ -114,6 +116,7 @@ function canTogglePrimarySidebar(view: AppView | undefined): boolean {
     view === "home" ||
     view === "threads" ||
     view === "new-thread" ||
+    view === "backlog" ||
     view === "plans" ||
     view === "project-preferences" ||
     view === "skills" ||
@@ -177,6 +180,7 @@ export default function App() {
   const [newThreadModelId, setNewThreadModelId] = useState<string | undefined>();
   const [newThreadThinkingLevel, setNewThreadThinkingLevel] = useState<string | undefined>();
   const [newThreadComposerError, setNewThreadComposerError] = useState<string | undefined>();
+  const [backlogNotice, setBacklogNotice] = useState<{ readonly workspaceId: string; readonly itemId: string } | null>(null);
   const [themeMode, setThemeMode] = useState<"system" | "light" | "dark">("system");
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<DesktopNotificationPermissionStatus>("unknown");
@@ -370,6 +374,8 @@ export default function App() {
   const activeWorkspaceForView =
     snapshot?.activeView === "home"
       ? rootWorkspace ?? rootWorkspaceOptions[0]
+      : snapshot?.activeView === "backlog"
+        ? rootWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "plans"
       ? plansWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "project-preferences"
@@ -384,6 +390,7 @@ export default function App() {
               ? newThreadWorkspace
               : rootWorkspace ?? rootWorkspaceOptions[0];
   const newThreadRuntime = snapshot ? getEffectiveModelRuntime(snapshot, newThreadWorkspace) : undefined;
+  const backlogItems = activeWorkspaceForView ? snapshot?.backlogByWorkspace[activeWorkspaceForView.id] ?? [] : [];
   const newThreadDefaultEnabled = buildModelOptions(newThreadRuntime).some(
     (m) => m.providerId === newThreadRuntime?.settings.defaultProvider && m.modelId === newThreadRuntime?.settings.defaultModelId,
   );
@@ -1419,6 +1426,8 @@ export default function App() {
   const activeSurfaceTitle =
     snapshot.activeView === "home"
       ? "Home"
+      : snapshot.activeView === "backlog"
+        ? "Backlog"
       : snapshot.activeView === "new-thread"
       ? "New Thread"
       : snapshot.activeView === "plans"
@@ -1465,6 +1474,20 @@ export default function App() {
       return;
     }
     setActiveView("home");
+  };
+
+  const openBacklog = (workspaceId?: string) => {
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : activeWorkspaceForView?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId && snapshot.selectedWorkspaceId !== nextWorkspaceId) {
+      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId)).then(() => {
+        setActiveView("backlog");
+      });
+      return;
+    }
+    setActiveView("backlog");
   };
 
   const openSkills = (workspaceId?: string) => {
@@ -1970,6 +1993,68 @@ export default function App() {
     });
   };
 
+  const handleSaveTimelineSelection = (selection: TimelineTextSelection) => {
+    if (!selectedWorkspace || !selectedSession || !rootWorkspace) {
+      return;
+    }
+    void updateSnapshot(api, setSnapshot, () =>
+      api.captureBacklogItem({
+        workspaceId: rootWorkspace.id,
+        text: selection.text,
+        source: {
+          workspaceId: selectedWorkspace.id,
+          sessionId: selectedSession.id,
+          messageId: selection.messageId,
+          role: selection.role,
+          createdAt: selection.createdAt,
+          label: `${selectedSession.title || "Thread"} · ${selection.role}`,
+          range: selection.range,
+        },
+      }),
+    ).then((nextState) => {
+      const item = nextState.backlogByWorkspace[rootWorkspace.id]?.find(
+        (entry) => entry.text === selection.text && entry.source.messageId === selection.messageId && entry.status === "open",
+      );
+      if (item) {
+        setBacklogNotice({ workspaceId: rootWorkspace.id, itemId: item.id });
+      }
+    });
+  };
+
+  const handleDismissBacklogItem = (item: ProjectBacklogItem) => {
+    void updateSnapshot(api, setSnapshot, () =>
+      api.updateBacklogItem({ workspaceId: item.workspaceId, itemId: item.id, status: "dismissed" }),
+    );
+  };
+
+  const handlePromoteBacklogItem = (item: ProjectBacklogItem) => {
+    void updateSnapshot(api, setSnapshot, () =>
+      api.updateBacklogItem({ workspaceId: item.workspaceId, itemId: item.id, status: "promoted" }),
+    ).then(() => {
+      openPlans(item.workspaceId);
+    });
+  };
+
+  const handleStartBacklogThread = (item: ProjectBacklogItem) => {
+    resetNewThreadSurface(item.workspaceId);
+    setNewThreadPrompt(`Follow up on this saved backlog item:\n\n${item.text}`);
+    setActiveView("new-thread");
+    void updateSnapshot(api, setSnapshot, () =>
+      api.updateBacklogItem({ workspaceId: item.workspaceId, itemId: item.id, status: "started" }),
+    );
+  };
+
+  const handleUndoBacklogCapture = () => {
+    if (!backlogNotice) {
+      return;
+    }
+    const notice = backlogNotice;
+    setBacklogNotice(null);
+    void updateSnapshot(api, setSnapshot, () =>
+      api.updateBacklogItem({ workspaceId: notice.workspaceId, itemId: notice.itemId, status: "removed" }),
+    );
+  };
+
   const handleTimelineScroll = () => {
     const pane = timelinePaneRef.current;
     if (!pane) {
@@ -2103,6 +2188,7 @@ export default function App() {
           wsMenu={wsMenu}
           api={api}
           onOpenHome={openHome}
+          onOpenBacklog={openBacklog}
           onNewThread={openNewThreadSurface}
           onOpenSessions={openWorkspaceSessions}
           onOpenPlans={openPlans}
@@ -2138,6 +2224,15 @@ export default function App() {
                 onOpenProject={() => {
                   void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
                 }}
+              />
+            ) : snapshot.activeView === "backlog" ? (
+              <ProjectBacklogView
+                workspace={activeWorkspaceForView}
+                items={backlogItems}
+                onStartThread={handleStartBacklogThread}
+                onPromoteToPlan={handlePromoteBacklogItem}
+                onDismiss={handleDismissBacklogItem}
+                onOpenPlans={openPlans}
               />
             ) : snapshot.activeView === "settings" ? (
               <SettingsView
@@ -2469,6 +2564,7 @@ export default function App() {
                   onJumpToLatest={jumpToLatest}
                   onContentHeightChange={handleTimelineContentHeightChange}
                   onViewFileInDiff={handleViewFileInDiff}
+                  onSaveSelection={handleSaveTimelineSelection}
                 />
               </div>
             </section>
@@ -2592,6 +2688,17 @@ export default function App() {
           />
         ) : null}
       </main>
+      {backlogNotice ? (
+        <div className="backlog-toast" data-testid="backlog-capture-toast">
+          <span>Saved to backlog.</span>
+          <button type="button" onClick={() => openBacklog(backlogNotice.workspaceId)}>
+            Open backlog
+          </button>
+          <button type="button" onClick={handleUndoBacklogCapture}>
+            Undo
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

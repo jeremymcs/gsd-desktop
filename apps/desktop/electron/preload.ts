@@ -27,6 +27,7 @@ import type {
   ComposerAttachment,
   ComposerImageAttachment,
   ConfirmPlanningStageInput,
+  CaptureBacklogItemInput,
   CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
@@ -57,6 +58,7 @@ import type {
   StartPlanningVerifyInput,
   StartThreadInput,
   SetGlobalPlanningPhaseModelsInput,
+  UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
   UpdatePlanningPlanStatusInput,
@@ -157,6 +159,10 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.removeWorkspace, workspaceId) as Promise<DesktopAppState>,
   reorderWorkspaces: (workspaceOrder: readonly string[]) =>
     ipcRenderer.invoke(desktopIpc.reorderWorkspaces, workspaceOrder) as Promise<DesktopAppState>,
+  captureBacklogItem: (input: CaptureBacklogItemInput) =>
+    ipcRenderer.invoke(desktopIpc.captureBacklogItem, input) as Promise<DesktopAppState>,
+  updateBacklogItem: (input: UpdateBacklogItemInput) =>
+    ipcRenderer.invoke(desktopIpc.updateBacklogItem, input) as Promise<DesktopAppState>,
   openWorkspaceInFinder: (workspaceId: string) =>
     ipcRenderer.invoke(desktopIpc.openWorkspaceInFinder, workspaceId) as Promise<void>,
   createWorktree: (input: CreateWorktreeInput) =>

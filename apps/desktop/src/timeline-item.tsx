@@ -40,7 +40,12 @@ export function TimelineItem({
 function TimelineMessage({ item }: { readonly item: SessionTranscriptMessage }) {
   if (item.role === "user") {
     return (
-      <article className="timeline-item timeline-item--user">
+      <article
+        className="timeline-item timeline-item--user"
+        data-backlog-created-at={item.createdAt}
+        data-backlog-message-id={item.id}
+        data-backlog-role={item.role}
+      >
         <div className="timeline-item__bubble">
           {item.attachments?.length ? (
             <div className="timeline-item__attachments">
@@ -75,7 +80,12 @@ function TimelineMessage({ item }: { readonly item: SessionTranscriptMessage }) 
 
   if (item.role === "branchSummary" || item.role === "compactionSummary") {
     return (
-      <article className="timeline-item timeline-item--summary-card">
+      <article
+        className="timeline-item timeline-item--summary-card"
+        data-backlog-created-at={item.createdAt}
+        data-backlog-message-id={item.id}
+        data-backlog-role={item.role}
+      >
         <div className="timeline-item__summary-eyebrow">
           {item.role === "branchSummary" ? "Branch summary" : "Compaction summary"}
         </div>
@@ -85,7 +95,12 @@ function TimelineMessage({ item }: { readonly item: SessionTranscriptMessage }) 
   }
 
   return (
-    <article className="timeline-item timeline-item--assistant">
+    <article
+      className="timeline-item timeline-item--assistant"
+      data-backlog-created-at={item.createdAt}
+      data-backlog-message-id={item.id}
+      data-backlog-role={item.role}
+    >
       <MessageMarkdown text={item.text} />
     </article>
   );

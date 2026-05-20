@@ -1,4 +1,5 @@
 import type { BrowserWindow } from "electron";
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -47,6 +48,7 @@ import {
   createEmptyDesktopAppState,
   type CreateSessionInput,
   type CreateWorktreeInput,
+  type CaptureBacklogItemInput,
   type DesktopAppState,
   type DraftPlanningChangeProposalInput,
   type HidePlanningTaskInput,
@@ -81,6 +83,7 @@ import {
   type UpdatePlanningPlanStatusInput,
   type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
+  type UpdateBacklogItemInput,
   type UpsertPlanningRequirementsInput,
   type WithdrawPlanningChangeProposalInput,
   type WorkspaceSessionTarget,
@@ -362,6 +365,67 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async syncCurrentWorkspace(): Promise<DesktopAppState> {
     return workspace.syncCurrentWorkspace(this);
+  }
+
+  async captureBacklogItem(input: CaptureBacklogItemInput): Promise<DesktopAppState> {
+    await this.initialize();
+    const workspaceId = resolveRepoWorkspaceId(this.state.workspaces, input.workspaceId) ?? input.workspaceId;
+    const workspace = this.state.workspaces.find((entry) => entry.id === workspaceId);
+    if (!workspace) {
+      return this.withError(`Unknown workspace: ${input.workspaceId}`);
+    }
+    const text = input.text.trim();
+    if (!text) {
+      return this.withError("Backlog items need text");
+    }
+    const now = new Date().toISOString();
+    const item = {
+      id: randomUUID(),
+      workspaceId,
+      text,
+      status: "open" as const,
+      source: {
+        ...input.source,
+        workspaceId: input.source.workspaceId || input.workspaceId,
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+    const currentItems = this.state.backlogByWorkspace[workspaceId] ?? [];
+    this.state = {
+      ...this.state,
+      backlogByWorkspace: {
+        ...this.state.backlogByWorkspace,
+        [workspaceId]: [item, ...currentItems],
+      },
+      lastError: undefined,
+      revision: this.state.revision + 1,
+    };
+    await this.persistUiState();
+    return this.emit();
+  }
+
+  async updateBacklogItem(input: UpdateBacklogItemInput): Promise<DesktopAppState> {
+    await this.initialize();
+    const workspaceId = resolveRepoWorkspaceId(this.state.workspaces, input.workspaceId) ?? input.workspaceId;
+    const items = this.state.backlogByWorkspace[workspaceId] ?? [];
+    if (!items.some((item) => item.id === input.itemId)) {
+      return this.withError(`Unknown backlog item: ${input.itemId}`);
+    }
+    const now = new Date().toISOString();
+    this.state = {
+      ...this.state,
+      backlogByWorkspace: {
+        ...this.state.backlogByWorkspace,
+        [workspaceId]: items.map((item) =>
+          item.id === input.itemId ? { ...item, status: input.status, updatedAt: now } : item,
+        ),
+      },
+      lastError: undefined,
+      revision: this.state.revision + 1,
+    };
+    await this.persistUiState();
+    return this.emit();
   }
 
   /* ── Worktree methods (delegated) ──────────────────────── */
@@ -931,6 +995,7 @@ export class DesktopAppStore implements AppStoreInternals {
           ...persisted.notificationPreferences,
         },
         globalPlanningPreferences: persisted.globalPlanningPreferences ?? this.state.globalPlanningPreferences,
+        backlogByWorkspace: persisted.backlogByWorkspace ?? this.state.backlogByWorkspace,
         integratedTerminalShell: persisted.integratedTerminalShell ?? this.state.integratedTerminalShell,
         lastViewedAtBySession: persisted.lastViewedAtBySession ?? {},
         workspaceOrder: persisted.workspaceOrder ?? [],
@@ -1129,6 +1194,7 @@ export class DesktopAppStore implements AppStoreInternals {
         ...this.state,
         workspaces,
         worktreesByWorkspace,
+        backlogByWorkspace: pruneBacklogByWorkspace(this.state.backlogByWorkspace, workspaces),
         selectedWorkspaceId,
         selectedSessionId,
         activeView,
@@ -1877,6 +1943,7 @@ export class DesktopAppStore implements AppStoreInternals {
       globalPlanningPreferences: hasWorkflowPhaseModelPreferences(this.state.globalPlanningPreferences.phaseModels)
         ? this.state.globalPlanningPreferences
         : undefined,
+      backlogByWorkspace: hasBacklogItems(this.state.backlogByWorkspace) ? this.state.backlogByWorkspace : undefined,
       integratedTerminalShell: this.state.integratedTerminalShell || undefined,
       lastViewedAtBySession: mapToRecord(this.sessionState.lastViewedAtBySession),
       workspaceOrder: this.state.workspaceOrder.length > 0 ? this.state.workspaceOrder : undefined,
@@ -2499,6 +2566,20 @@ function reconcileWorkspaceOrder(
     }
   }
   return nextOrder;
+}
+
+function pruneBacklogByWorkspace(
+  backlogByWorkspace: DesktopAppState["backlogByWorkspace"],
+  workspaces: DesktopAppState["workspaces"],
+): DesktopAppState["backlogByWorkspace"] {
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  return Object.fromEntries(
+    Object.entries(backlogByWorkspace).filter(([workspaceId, items]) => workspaceIds.has(workspaceId) && items.length > 0),
+  );
+}
+
+function hasBacklogItems(backlogByWorkspace: DesktopAppState["backlogByWorkspace"]): boolean {
+  return Object.values(backlogByWorkspace).some((items) => items.length > 0);
 }
 
 function applyModelSettingsSnapshot(

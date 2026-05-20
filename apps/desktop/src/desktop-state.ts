@@ -22,6 +22,7 @@ export type AppView =
   | "home"
   | "threads"
   | "new-thread"
+  | "backlog"
   | "plans"
   | "project-preferences"
   | "skills"
@@ -97,6 +98,43 @@ export interface SelectedTranscriptRecord {
   readonly workspaceId: string;
   readonly sessionId: string;
   readonly transcript: readonly TranscriptMessage[];
+}
+
+export type ProjectBacklogItemStatus = "open" | "started" | "promoted" | "dismissed" | "removed";
+
+export interface ProjectBacklogItemSource {
+  readonly workspaceId: string;
+  readonly sessionId: string;
+  readonly messageId: string;
+  readonly role: string;
+  readonly label: string;
+  readonly createdAt?: string;
+  readonly range?: {
+    readonly startOffset?: number;
+    readonly endOffset?: number;
+  };
+}
+
+export interface ProjectBacklogItem {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly text: string;
+  readonly status: ProjectBacklogItemStatus;
+  readonly source: ProjectBacklogItemSource;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CaptureBacklogItemInput {
+  readonly workspaceId: string;
+  readonly text: string;
+  readonly source: ProjectBacklogItemSource;
+}
+
+export interface UpdateBacklogItemInput {
+  readonly workspaceId: string;
+  readonly itemId: string;
+  readonly status: ProjectBacklogItemStatus;
 }
 
 export interface WorktreeRecord {
@@ -535,6 +573,7 @@ export interface DesktopAppState {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly worktreesByWorkspace: Readonly<Record<string, readonly WorktreeRecord[]>>;
   readonly planningByWorkspace: Readonly<Record<string, WorkspacePlanningState>>;
+  readonly backlogByWorkspace: Readonly<Record<string, readonly ProjectBacklogItem[]>>;
   readonly selectedWorkspaceId: string;
   readonly selectedSessionId: string;
   readonly activeView: AppView;
@@ -575,6 +614,7 @@ export function createEmptyDesktopAppState(): DesktopAppState {
     workspaces: [],
     worktreesByWorkspace: {},
     planningByWorkspace: {},
+    backlogByWorkspace: {},
     selectedWorkspaceId: "",
     selectedSessionId: "",
     activeView: "home",

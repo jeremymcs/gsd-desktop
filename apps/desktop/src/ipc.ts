@@ -12,6 +12,7 @@ import type {
   ComposerAttachment,
   ComposerImageAttachment,
   ConfirmPlanningStageInput,
+  CaptureBacklogItemInput,
   CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
@@ -43,6 +44,7 @@ import type {
   StartPlanningVerifyInput,
   StartThreadInput,
   SetGlobalPlanningPhaseModelsInput,
+  UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
   UpdatePlanningPlanStatusInput,
@@ -74,6 +76,8 @@ export const desktopIpc = {
   renameWorkspace: "pi-gui:rename-workspace",
   removeWorkspace: "pi-gui:remove-workspace",
   reorderWorkspaces: "pi-gui:reorder-workspaces",
+  captureBacklogItem: "pi-gui:capture-backlog-item",
+  updateBacklogItem: "pi-gui:update-backlog-item",
   openWorkspaceInFinder: "pi-gui:open-workspace-in-finder",
   createWorktree: "pi-gui:create-worktree",
   removeWorktree: "pi-gui:remove-worktree",
@@ -293,6 +297,8 @@ export interface PiDesktopApi {
   renameWorkspace(workspaceId: string, displayName: string): Promise<DesktopAppState>;
   removeWorkspace(workspaceId: string): Promise<DesktopAppState>;
   reorderWorkspaces(workspaceOrder: readonly string[]): Promise<DesktopAppState>;
+  captureBacklogItem(input: CaptureBacklogItemInput): Promise<DesktopAppState>;
+  updateBacklogItem(input: UpdateBacklogItemInput): Promise<DesktopAppState>;
   openWorkspaceInFinder(workspaceId: string): Promise<void>;
   createWorktree(input: CreateWorktreeInput): Promise<DesktopAppState>;
   removeWorktree(input: RemoveWorktreeInput): Promise<DesktopAppState>;

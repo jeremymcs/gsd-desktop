@@ -4,6 +4,7 @@ import type {
   GlobalPlanningPreferences,
   ModelSettingsScopeMode,
   NotificationPreferences,
+  ProjectBacklogItem,
 } from "../src/desktop-state";
 import { normalizeWorkflowPhaseModelPreferences } from "../src/planning-phase-models";
 import type { ModelSettingsSnapshot } from "@pi-gui/session-driver/runtime-types";
@@ -34,6 +35,7 @@ export interface PersistedUiState {
   readonly extensionCommandCompatibilityByWorkspace?: Record<string, readonly ExtensionCommandCompatibilityRecord[]>;
   readonly notificationPreferences?: NotificationPreferences;
   readonly globalPlanningPreferences?: GlobalPlanningPreferences;
+  readonly backlogByWorkspace?: Record<string, readonly ProjectBacklogItem[]>;
   readonly integratedTerminalShell?: string;
   readonly lastViewedAtBySession?: Record<string, string>;
   readonly workspaceOrder?: readonly string[];
@@ -61,6 +63,7 @@ export async function readPersistedUiState(uiStateFilePath: string): Promise<Leg
       extensionCommandCompatibilityByWorkspace: parsed.extensionCommandCompatibilityByWorkspace,
       notificationPreferences: parsed.notificationPreferences,
       globalPlanningPreferences: toPersistedGlobalPlanningPreferences(parsed.globalPlanningPreferences),
+      backlogByWorkspace: toPersistedBacklogByWorkspace(parsed.backlogByWorkspace),
       integratedTerminalShell:
         typeof parsed.integratedTerminalShell === "string" ? parsed.integratedTerminalShell : undefined,
       lastViewedAtBySession: parsed.lastViewedAtBySession,
@@ -137,6 +140,42 @@ function toPersistedGlobalPlanningPreferences(value: unknown): GlobalPlanningPre
   return {
     phaseModels: normalizeWorkflowPhaseModelPreferences(candidate.phaseModels),
   };
+}
+
+function toPersistedBacklogByWorkspace(value: unknown): Record<string, readonly ProjectBacklogItem[]> | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([workspaceId, items]) => [
+      workspaceId,
+      Array.isArray(items) ? items.filter(isProjectBacklogItem) : [],
+    ] as const)
+    .filter(([, items]) => items.length > 0);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function isProjectBacklogItem(value: unknown): value is ProjectBacklogItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const item = value as ProjectBacklogItem;
+  return (
+    typeof item.id === "string" &&
+    typeof item.workspaceId === "string" &&
+    typeof item.text === "string" &&
+    (item.status === "open" ||
+      item.status === "started" ||
+      item.status === "promoted" ||
+      item.status === "dismissed" ||
+      item.status === "removed") &&
+    typeof item.createdAt === "string" &&
+    typeof item.updatedAt === "string" &&
+    Boolean(item.source) &&
+    typeof item.source.workspaceId === "string" &&
+    typeof item.source.sessionId === "string" &&
+    typeof item.source.messageId === "string"
+  );
 }
 
 function toPersistedModelSettingsSnapshot(value: unknown): ModelSettingsSnapshot | undefined {

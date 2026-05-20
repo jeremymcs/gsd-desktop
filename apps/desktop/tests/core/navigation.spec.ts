@@ -165,6 +165,9 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();
 
+    await window.getByRole("button", { name: "Backlog", exact: true }).click();
+    await expect(window.getByTestId("project-backlog-view")).toBeVisible();
+
     await window.getByRole("button", { name: "Threads", exact: true }).click();
     await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
 
@@ -195,6 +198,38 @@ test("workspace tabs keep multiple projects open and workspace page links route 
         return state.workspaces.map((workspace) => workspace.path).sort();
       })
       .toEqual([alphaPath, betaPath].sort());
+  } finally {
+    await harness.close();
+  }
+});
+
+test("saves highlighted thread text to the project backlog", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("backlog-capture-workspace");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+  try {
+    const window = await harness.firstWindow();
+    const workspace = await waitForWorkspaceByPath(window, workspacePath);
+
+    await createNamedThread(window, "Backlog capture thread");
+    await streamAssistantDeltas(harness, window, ["Build feature one now. Save feature two for later."]);
+    await selectThreadText(window, "Save feature two for later.");
+
+    await expect(window.getByTestId("selection-backlog-popover")).toBeVisible();
+    await window.getByTestId("selection-backlog-popover").getByRole("button", { name: "Save for later" }).click();
+
+    await expect(window.getByTestId("backlog-capture-toast")).toContainText("Saved to backlog.");
+    await expect
+      .poll(async () => (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0]?.text)
+      .toBe("Save feature two for later.");
+
+    await window.getByRole("button", { name: "Open backlog" }).click();
+    await expect(window.getByTestId("project-backlog-view")).toBeVisible();
+    await expect(window.getByTestId("project-backlog-item")).toContainText("Save feature two for later.");
   } finally {
     await harness.close();
   }
@@ -237,4 +272,37 @@ test("switching sessions republishes the selected transcript", async () => {
 
 async function workspaceTabLabels(window: Page) {
   return window.locator(".workspace-tabs__tab:not(.workspace-tabs__tab--empty) span").allTextContents();
+}
+
+async function selectThreadText(window: Page, text: string): Promise<void> {
+  await window.locator("[data-backlog-message-id]", { hasText: text }).first().evaluate((node, selectedText) => {
+    const ownerDocument = node.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) {
+      throw new Error("Window unavailable");
+    }
+
+    const walker = ownerDocument.createTreeWalker(node, ownerWindow.NodeFilter.SHOW_TEXT);
+    let target: Text | null = null;
+    while (walker.nextNode()) {
+      const current = walker.currentNode;
+      if (current.textContent?.includes(selectedText)) {
+        target = current as Text;
+        break;
+      }
+    }
+    if (!target || !target.textContent) {
+      throw new Error(`Text not found: ${selectedText}`);
+    }
+
+    const start = target.textContent.indexOf(selectedText);
+    const range = ownerDocument.createRange();
+    range.setStart(target, start);
+    range.setEnd(target, start + selectedText.length);
+
+    const selection = ownerWindow.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    node.dispatchEvent(new ownerWindow.MouseEvent("mouseup", { bubbles: true }));
+  }, text);
 }

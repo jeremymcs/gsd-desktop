@@ -36,6 +36,7 @@ import type {
   ApprovePlanningChangeProposalInput,
   ApprovePlanningTaskModificationInput,
   ConfirmPlanningStageInput,
+  CaptureBacklogItemInput,
   CreatePlanningPlanInput,
   CreateSessionInput,
   CreateWorktreeInput,
@@ -63,6 +64,7 @@ import type {
   StartPlanningVerifyInput,
   StartThreadInput,
   SetGlobalPlanningPhaseModelsInput,
+  UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
   UpdatePlanningPlanStatusInput,
@@ -538,6 +540,12 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.removeWorkspace, (_event, workspaceId: string) => store.removeWorkspace(workspaceId));
   ipcMain.handle(desktopIpc.reorderWorkspaces, (_event, order: readonly string[]) => store.reorderWorkspaces(order));
+  ipcMain.handle(desktopIpc.captureBacklogItem, (_event, input: CaptureBacklogItemInput) =>
+    store.captureBacklogItem(input),
+  );
+  ipcMain.handle(desktopIpc.updateBacklogItem, (_event, input: UpdateBacklogItemInput) =>
+    store.updateBacklogItem(input),
+  );
   ipcMain.handle(desktopIpc.openWorkspaceInFinder, async (_event, workspaceId: string) => {
     const workspacePath = store.getWorkspacePath(workspaceId);
     if (!workspacePath) {

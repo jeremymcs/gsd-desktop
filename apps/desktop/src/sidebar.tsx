@@ -5,6 +5,7 @@ import {
   ChatIcon,
   ChevronDownIcon,
   ExtensionIcon,
+  FeedbackIcon,
   FolderIcon,
   HomeIcon,
   InboxIcon,
@@ -29,6 +30,7 @@ interface SidebarProps {
   readonly wsMenu: WorkspaceMenuState;
   readonly api: PiDesktopApi;
   readonly onOpenHome: (workspaceId?: string) => void;
+  readonly onOpenBacklog: (workspaceId?: string) => void;
   readonly onNewThread: (workspaceId?: string) => void;
   readonly onOpenSessions: (workspaceId?: string) => void;
   readonly onOpenPlans: (workspaceId?: string) => void;
@@ -51,6 +53,7 @@ export function Sidebar(props: SidebarProps) {
     wsMenu,
     api,
     onOpenHome,
+    onOpenBacklog,
     onNewThread,
     onOpenSessions,
     onOpenPlans,
@@ -107,6 +110,13 @@ export function Sidebar(props: SidebarProps) {
             label="Threads"
             disabled={!activeWorkspace}
             onClick={() => onOpenSessions(activeWorkspace?.id)}
+          />
+          <WorkspacePageButton
+            active={activeView === "backlog"}
+            icon={<FeedbackIcon />}
+            label="Backlog"
+            disabled={!activeWorkspace}
+            onClick={() => onOpenBacklog(activeWorkspace?.id)}
           />
           <WorkspacePageButton
             active={activeView === "skills"}

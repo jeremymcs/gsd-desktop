@@ -31,6 +31,18 @@ interface ConversationTimelineProps {
   readonly onJumpToLatest: () => void;
   readonly onContentHeightChange: () => void;
   readonly onViewFileInDiff?: (path: string) => void;
+  readonly onSaveSelection?: (selection: TimelineTextSelection) => void;
+}
+
+export interface TimelineTextSelection {
+  readonly messageId: string;
+  readonly role: string;
+  readonly createdAt?: string;
+  readonly text: string;
+  readonly range?: {
+    readonly startOffset?: number;
+    readonly endOffset?: number;
+  };
 }
 
 export function ConversationTimeline({
@@ -46,6 +58,7 @@ export function ConversationTimeline({
   onJumpToLatest,
   onContentHeightChange,
   onViewFileInDiff,
+  onSaveSelection,
 }: ConversationTimelineProps) {
   // Giant prose blocks and attachment-heavy rows routinely blow past the estimator,
   // so keep those transcripts on the exact DOM path instead of restoring to a fake bottom.
@@ -60,6 +73,11 @@ export function ConversationTimeline({
   const [expandedToolCallIds, setExpandedToolCallIds] = useState<Set<string>>(() => new Set());
   const measuredHeightsRef = useRef(new Map<string, number>());
   const [measurementVersion, setMeasurementVersion] = useState(0);
+  const [selectionAction, setSelectionAction] = useState<{
+    readonly selection: TimelineTextSelection;
+    readonly x: number;
+    readonly y: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     const availableToolCallIds = new Set(
@@ -135,12 +153,62 @@ export function ConversationTimeline({
     timelinePaneElementRef?.(node);
   }, [timelinePaneElementRef, timelinePaneRef]);
 
+  const handlePointerUp = useCallback(() => {
+    if (!onSaveSelection) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim() ?? "";
+      if (!selection || !selectedText) {
+        setSelectionAction(null);
+        return;
+      }
+      const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : undefined;
+      const container = range?.commonAncestorContainer;
+      const element = container instanceof Element ? container : container?.parentElement;
+      const messageElement = element?.closest<HTMLElement>("[data-backlog-message-id]");
+      const pane = timelinePaneRef.current;
+      if (!range || !messageElement || !pane || !pane.contains(messageElement)) {
+        setSelectionAction(null);
+        return;
+      }
+      const rangeRect = range.getBoundingClientRect();
+      const paneRect = pane.getBoundingClientRect();
+      setSelectionAction({
+        selection: {
+          messageId: messageElement.dataset.backlogMessageId ?? "",
+          role: messageElement.dataset.backlogRole ?? "message",
+          createdAt: messageElement.dataset.backlogCreatedAt,
+          text: selectedText,
+          range: {
+            startOffset: range.startOffset,
+            endOffset: range.endOffset,
+          },
+        },
+        x: Math.max(12, rangeRect.left - paneRect.left),
+        y: Math.max(12, rangeRect.top - paneRect.top - 44 + pane.scrollTop),
+      });
+    });
+  }, [onSaveSelection, timelinePaneRef]);
+
+  const saveSelection = () => {
+    if (!selectionAction) {
+      return;
+    }
+    onSaveSelection?.(selectionAction.selection);
+    setSelectionAction(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
   return (
     <div
       className="timeline-pane timeline-pane--thread"
       data-testid="timeline-pane"
       ref={assignTimelinePaneRef}
       onScroll={onTimelineScroll}
+      onMouseUp={handlePointerUp}
+      onKeyUp={handlePointerUp}
     >
       {threadSearch.isOpen ? (
         <ThreadSearchBar
@@ -192,6 +260,17 @@ export function ConversationTimeline({
         <button className="timeline-jump" data-testid="timeline-jump" type="button" onClick={onJumpToLatest}>
           New activity below
         </button>
+      ) : null}
+      {selectionAction ? (
+        <div
+          className="selection-popover"
+          data-testid="selection-backlog-popover"
+          style={{ left: `${selectionAction.x}px`, top: `${selectionAction.y}px` }}
+        >
+          <button type="button" onClick={saveSelection}>
+            Save for later
+          </button>
+        </div>
       ) : null}
     </div>
   );

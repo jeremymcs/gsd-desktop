@@ -80,6 +80,7 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
       "Home",
       "Plans",
       "Threads",
+      "Backlog",
       "Skills",
       "Extensions",
       "Project Preferences",
