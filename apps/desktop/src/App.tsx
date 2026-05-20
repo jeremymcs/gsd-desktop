@@ -31,6 +31,7 @@ import { SkillsView } from "./skills-view";
 import { ExtensionsView } from "./extensions-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
 import { NewThreadView } from "./new-thread-view";
+import { ProjectHomeView } from "./project-home-view";
 import { PlanBuilderView, ProjectPreferencesView } from "./plan-builder-view";
 import { buildThreadGroups } from "./thread-groups";
 import { Sidebar } from "./sidebar";
@@ -110,6 +111,7 @@ function isEventInsideTerminal(event: globalThis.KeyboardEvent): boolean {
 
 function canTogglePrimarySidebar(view: AppView | undefined): boolean {
   return (
+    view === "home" ||
     view === "threads" ||
     view === "new-thread" ||
     view === "plans" ||
@@ -358,7 +360,9 @@ export default function App() {
   const newThreadWorkspace =
     rootWorkspaceOptions.find((entry) => entry.id === newThreadRootWorkspaceId) ?? rootWorkspaceOptions[0];
   const activeWorkspaceForView =
-    snapshot?.activeView === "plans"
+    snapshot?.activeView === "home"
+      ? rootWorkspace ?? rootWorkspaceOptions[0]
+      : snapshot?.activeView === "plans"
       ? plansWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "project-preferences"
         ? projectPreferencesWorkspace ?? rootWorkspaceOptions[0]
@@ -403,7 +407,8 @@ export default function App() {
   const editingQueuedMessageId = snapshot?.editingQueuedMessageId;
   const runningLabel = useRunningLabel(selectedSession?.status === "running" ? selectedSession.runningSince : undefined);
   const selectedSessionKey = selectedWorkspace && selectedSession ? `${selectedWorkspace.id}:${selectedSession.id}` : "";
-  const isTerminalVisibleForSelectedThread = Boolean(selectedSessionKey) && openTerminalSessionKeys.has(selectedSessionKey);
+  const isTerminalVisibleForSelectedThread =
+    snapshot?.activeView === "threads" && Boolean(selectedSessionKey) && openTerminalSessionKeys.has(selectedSessionKey);
   const isTerminalTakeoverForSelectedThread = Boolean(selectedSessionKey) && takeoverTerminalSessionKeys.has(selectedSessionKey);
   const previousTerminalSessionKeyRef = useRef("");
   const activeTranscript =
@@ -1404,7 +1409,9 @@ export default function App() {
     />
   ) : null;
   const activeSurfaceTitle =
-    snapshot.activeView === "new-thread"
+    snapshot.activeView === "home"
+      ? "Home"
+      : snapshot.activeView === "new-thread"
       ? "New Thread"
       : snapshot.activeView === "plans"
         ? "Plans"
@@ -1438,6 +1445,18 @@ export default function App() {
       return;
     }
     setActiveView("threads");
+  };
+
+  const openHome = (workspaceId?: string) => {
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : activeWorkspaceForView?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId && snapshot.selectedWorkspaceId !== nextWorkspaceId) {
+      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId));
+      return;
+    }
+    setActiveView("home");
   };
 
   const openSkills = (workspaceId?: string) => {
@@ -1513,22 +1532,7 @@ export default function App() {
   };
 
   const handleSelectWorkspaceTab = (workspaceId: string) => {
-    if (snapshot.activeView === "plans") {
-      openPlans(workspaceId);
-    } else if (snapshot.activeView === "project-preferences") {
-      openProjectPreferences(workspaceId);
-    } else if (snapshot.activeView === "skills") {
-      openSkills(workspaceId);
-    } else if (snapshot.activeView === "extensions") {
-      openExtensions(workspaceId);
-    } else if (snapshot.activeView === "settings") {
-      setSettingsWorkspaceId(workspaceId);
-      setActiveView("settings");
-    } else if (snapshot.activeView === "new-thread") {
-      openNewThreadSurface(workspaceId);
-    } else {
-      openWorkspaceSessions(workspaceId);
-    }
+    openHome(workspaceId);
   };
 
   const submitComposerDraft = (options: { readonly deliverAs?: "steer" | "followUp" } = {}) => {
@@ -2071,7 +2075,7 @@ export default function App() {
         activeWorkspaceId={activeWorkspaceForView?.id ?? ""}
         workspaces={rootWorkspaceOptions}
         api={api}
-        terminalAvailable={Boolean(selectedSessionKey)}
+        terminalAvailable={snapshot.activeView === "threads" && Boolean(selectedSessionKey)}
         terminalVisible={isTerminalVisibleForSelectedThread}
         onSelectWorkspace={handleSelectWorkspaceTab}
         onAddWorkspace={() => {
@@ -2090,6 +2094,7 @@ export default function App() {
           threadGroups={threadGroups}
           wsMenu={wsMenu}
           api={api}
+          onOpenHome={openHome}
           onNewThread={openNewThreadSurface}
           onOpenSessions={openWorkspaceSessions}
           onOpenPlans={openPlans}
@@ -2108,7 +2113,25 @@ export default function App() {
           terminalPanel
         ) : (
           <>
-            {snapshot.activeView === "settings" ? (
+            {snapshot.activeView === "home" ? (
+              <ProjectHomeView
+                workspace={activeWorkspaceForView}
+                threadGroup={threadGroups.find((group) => group.rootWorkspace.id === activeWorkspaceForView?.id)}
+                planningState={
+                  activeWorkspaceForView ? snapshot.planningByWorkspace[activeWorkspaceForView.id] : undefined
+                }
+                runtime={activeWorkspaceForView ? getEffectiveModelRuntime(snapshot, activeWorkspaceForView) : undefined}
+                worktrees={activeWorkspaceForView ? snapshot.worktreesByWorkspace[activeWorkspaceForView.id] ?? [] : []}
+                globalPlanningPreferences={snapshot.globalPlanningPreferences}
+                onOpenPlans={openPlans}
+                onOpenProjectPreferences={openProjectPreferences}
+                onOpenNewThread={openNewThreadSurface}
+                onOpenThread={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
+                onOpenProject={() => {
+                  void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
+                }}
+              />
+            ) : snapshot.activeView === "settings" ? (
               <SettingsView
                 workspace={settingsWorkspace}
                 runtime={settingsSection === "models" ? settingsModelRuntime : settingsRuntime}

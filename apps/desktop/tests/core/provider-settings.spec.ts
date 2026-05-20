@@ -193,7 +193,7 @@ test("opening the first workspace from the empty state hydrates provider and mod
 
     await expect(emptyState).toHaveCount(0);
     await expect(window.getByTestId("workspace-list")).toContainText("provider-settings-first-workspace");
-    await expect(window.getByTestId("new-thread-composer")).toBeVisible();
+    await expect(window.getByTestId("project-home-view")).toBeVisible();
 
     await window.keyboard.press(desktopShortcut(","));
     const settingsSurface = window.getByTestId("settings-surface");

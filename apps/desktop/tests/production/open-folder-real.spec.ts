@@ -37,7 +37,7 @@ test("opens the real macOS folder picker from the empty state button and adds th
       .toBe(workspacePath);
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
-    await expect(window.getByTestId("new-thread-composer")).toBeVisible();
+    await expect(window.getByTestId("project-home-view")).toBeVisible();
   } finally {
     await harness.close();
   }

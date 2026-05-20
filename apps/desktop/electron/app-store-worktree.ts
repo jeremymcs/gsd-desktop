@@ -41,6 +41,7 @@ export async function createWorktree(store: AppStoreInternals, input: CreateWork
       composerDraft: "",
       clearLastError: true,
       refreshWorktrees: false,
+      activeView: "threads",
     });
   });
 }

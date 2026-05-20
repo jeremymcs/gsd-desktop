@@ -80,7 +80,7 @@ test("launches a packaged app under a Finder-style PATH and opens the first fold
 
     await waitForWorkspaceByPath(window, workspacePath);
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
-    await expect(window.getByTestId("new-thread-composer")).toBeVisible();
+    await expect(window.getByTestId("project-home-view")).toBeVisible();
     await expect
       .poll(async () => {
         const state = await getDesktopState(window);

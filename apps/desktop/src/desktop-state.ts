@@ -19,6 +19,7 @@ export type { SessionRole, TranscriptMessage } from "./timeline-types";
 import type { TranscriptMessage } from "./timeline-types";
 
 export type AppView =
+  | "home"
   | "threads"
   | "new-thread"
   | "plans"
@@ -576,7 +577,7 @@ export function createEmptyDesktopAppState(): DesktopAppState {
     planningByWorkspace: {},
     selectedWorkspaceId: "",
     selectedSessionId: "",
-    activeView: "threads",
+    activeView: "home",
     composerDraft: "",
     composerDraftSyncSource: "state",
     composerDraftSyncNonce: 0,

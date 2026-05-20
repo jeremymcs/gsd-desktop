@@ -2121,6 +2121,232 @@
   padding: 0;
 }
 
+.canvas--project-home {
+  min-height: 100%;
+  padding: 32px clamp(24px, 4vw, 56px);
+  overflow: auto;
+}
+
+.project-home {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+.project-home__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.project-home__header h1 {
+  margin: 4px 0 0;
+  color: var(--text-strong);
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 680;
+  letter-spacing: 0;
+}
+
+.project-home__header p {
+  margin: 8px 0 0;
+  color: var(--muted-soft);
+  font-size: var(--type-control);
+}
+
+.project-home .view-header__eyebrow,
+.project-home__hero-copy > span {
+  color: var(--accent);
+  font-size: var(--type-caption);
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project-home__hero-card,
+.project-home__panel {
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 86%, transparent 14%), var(--surface));
+  box-shadow: var(--workbench-shadow);
+}
+
+.project-home__hero-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border-radius: 14px;
+}
+
+.project-home__hero-icon,
+.project-home__thread-icon,
+.project-home__signal > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 30%, transparent 70%);
+}
+
+.project-home__hero-icon svg,
+.project-home__thread-icon svg,
+.project-home__signal svg {
+  width: 18px;
+  height: 18px;
+}
+
+.project-home__hero-copy {
+  min-width: 0;
+}
+
+.project-home__hero-copy h2 {
+  margin: 8px 0 0;
+  color: var(--text-strong);
+  font-size: 24px;
+  line-height: 1.18;
+  font-weight: 680;
+  letter-spacing: 0;
+}
+
+.project-home__hero-copy p {
+  margin: 10px 0 0;
+  max-width: 720px;
+  color: var(--muted-strong);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.project-home__phase-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.project-home__phase-strip span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--muted-strong);
+  background: color-mix(in srgb, var(--surface) 72%, transparent 28%);
+  font-size: var(--type-small);
+  font-weight: 620;
+}
+
+.project-home__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-home__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 20px;
+}
+
+.project-home__panel {
+  min-width: 0;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.project-home__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.project-home__panel-head h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: 0;
+}
+
+.text-button {
+  color: var(--accent);
+  font-size: var(--type-control);
+  font-weight: 650;
+}
+
+.project-home__thread-list,
+.project-home__signal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.project-home__thread {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  text-align: left;
+  background: color-mix(in srgb, var(--surface) 72%, transparent 28%);
+}
+
+.project-home__thread:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.project-home__thread strong,
+.project-home__signal strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: var(--type-control);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-home__thread small,
+.project-home__signal small,
+.project-home__thread time,
+.project-home__empty {
+  color: var(--muted-soft);
+  font-size: var(--type-small);
+}
+
+.project-home__thread time {
+  white-space: nowrap;
+}
+
+.project-home__signal {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent 28%);
+}
+
+.project-home__empty {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .new-thread {
   display: grid;
   min-height: 0;

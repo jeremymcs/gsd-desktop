@@ -1373,6 +1373,12 @@ export async function expectNewThreadWorkspace(window: Page, workspacePath: stri
   await expect(window.locator(".new-thread__workspace")).toHaveValue(workspace.id);
 }
 
+export async function expectProjectHomeWorkspace(window: Page, workspacePath: string): Promise<void> {
+  const workspace = await waitForWorkspaceByPath(window, workspacePath);
+  await expect(window.getByTestId("project-home-view")).toBeVisible({ timeout: 15_000 });
+  await expect(window.getByTestId("project-home-view")).toContainText(workspace.name);
+}
+
 export async function startThreadFromSurface(
   window: Page,
   options: {

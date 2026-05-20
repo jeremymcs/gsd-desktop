@@ -2,7 +2,7 @@ import { basename } from "node:path";
 import { expect, test } from "@playwright/test";
 import {
   createNamedThread,
-  expectNewThreadWorkspace,
+  expectProjectHomeWorkspace,
   getApplicationMenuItemInfo,
   getDesktopState,
   getOpenDialogInvocationCount,
@@ -42,7 +42,7 @@ test("opens the native folder picker from the empty state button and adds the se
       .toBe(workspacePath);
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
-    await expectNewThreadWorkspace(window, workspacePath);
+    await expectProjectHomeWorkspace(window, workspacePath);
   } finally {
     await harness.close();
   }
@@ -85,7 +85,7 @@ test("opens a folder from Cmd+O even when the composer is focused", async () => 
       });
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(openedWorkspacePath));
-    await expectNewThreadWorkspace(window, openedWorkspacePath);
+    await expectProjectHomeWorkspace(window, openedWorkspacePath);
   } finally {
     await harness.close();
   }
@@ -124,13 +124,13 @@ test("exposes File > Open Folder… with Command+O and reuses the same open-fold
       .toBe(workspacePath);
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(workspacePath));
-    await expectNewThreadWorkspace(window, workspacePath);
+    await expectProjectHomeWorkspace(window, workspacePath);
   } finally {
     await harness.close();
   }
 });
 
-test("opens a folder from the topbar add-folder icon and goes straight to new thread", async () => {
+test("opens a folder from the topbar add-folder icon and lands on project home", async () => {
   test.setTimeout(60_000);
   const userDataDir = await makeUserDataDir();
   const initialWorkspacePath = await makeWorkspace("native-open-folder-topbar-initial-workspace");
@@ -156,7 +156,7 @@ test("opens a folder from the topbar add-folder icon and goes straight to new th
       .toBe(openedWorkspacePath);
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(openedWorkspacePath));
-    await expectNewThreadWorkspace(window, openedWorkspacePath);
+    await expectProjectHomeWorkspace(window, openedWorkspacePath);
   } finally {
     await harness.close();
   }
@@ -193,7 +193,7 @@ test("opens multiple workspace folders from one picker selection", async () => {
 
     await expect(window.getByTestId("workspace-list")).toContainText(basename(firstWorkspacePath));
     await expect(window.getByTestId("workspace-list")).toContainText(basename(secondWorkspacePath));
-    await expectNewThreadWorkspace(window, secondWorkspacePath);
+    await expectProjectHomeWorkspace(window, secondWorkspacePath);
   } finally {
     await harness.close();
   }

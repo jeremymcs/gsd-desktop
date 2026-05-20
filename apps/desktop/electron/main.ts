@@ -315,7 +315,7 @@ async function pickWorkspaceViaDialog(): Promise<DesktopAppState> {
     return nextState;
   }
   const newThreadState =
-    nextState.activeView === "new-thread" ? nextState : await store.setActiveView("new-thread");
+    nextState.activeView === "home" ? nextState : await store.setActiveView("home");
   if (window) {
     window.webContents.send(desktopIpc.workspacePicked, nextState.selectedWorkspaceId);
   }

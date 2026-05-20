@@ -157,7 +157,8 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
 
     await window.getByRole("button", { name: "Home", exact: true }).click();
-    await expect(window.getByTestId("new-thread-composer")).toBeVisible();
+    await expect(window.getByTestId("project-home-view")).toBeVisible();
+    await expect(window.getByTestId("new-thread-composer")).toHaveCount(0);
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(window.getByTestId("plan-builder-view")).toBeVisible();
@@ -179,6 +180,7 @@ test("workspace tabs keep multiple projects open and workspace page links route 
 
     await window.getByTestId("workspace-list").getByRole("button", { name: basename(betaPath) }).click();
     await expect(window.locator(".project-header")).toContainText(basename(betaPath));
+    await expect(window.getByTestId("project-home-view")).toBeVisible();
 
     await expect
       .poll(async () => {

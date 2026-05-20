@@ -28,6 +28,7 @@ interface SidebarProps {
   readonly threadGroups: readonly ThreadGroup[];
   readonly wsMenu: WorkspaceMenuState;
   readonly api: PiDesktopApi;
+  readonly onOpenHome: (workspaceId?: string) => void;
   readonly onNewThread: (workspaceId?: string) => void;
   readonly onOpenSessions: (workspaceId?: string) => void;
   readonly onOpenPlans: (workspaceId?: string) => void;
@@ -49,6 +50,7 @@ export function Sidebar(props: SidebarProps) {
     threadGroups,
     wsMenu,
     api,
+    onOpenHome,
     onNewThread,
     onOpenSessions,
     onOpenPlans,
@@ -86,11 +88,11 @@ export function Sidebar(props: SidebarProps) {
 
         <nav className="sidebar__nav" aria-label="Project pages">
           <WorkspacePageButton
-            active={activeView === "new-thread"}
+            active={activeView === "home"}
             icon={<HomeIcon />}
             label="Home"
             disabled={!activeWorkspace}
-            onClick={() => onNewThread(activeWorkspace?.id)}
+            onClick={() => onOpenHome(activeWorkspace?.id)}
           />
           <WorkspacePageButton
             active={activeView === "plans"}
@@ -295,6 +297,19 @@ function ProjectHeader({
             >
               Open Folder
             </button>
+            {workspace.kind !== "worktree" ? (
+              <button
+                className="workspace-menu__item"
+                type="button"
+                onClick={(event) =>
+                  wsMenu.runWorkspaceMenuAction(event, () => {
+                    wsMenu.createWorktree(workspace.id);
+                  })
+                }
+              >
+                Create permanent worktree
+              </button>
+            ) : null}
             <button
               className="workspace-menu__item"
               type="button"

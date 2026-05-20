@@ -23,7 +23,7 @@ test("creates and selects a worktree-backed workspace from the desktop UI", asyn
     const window = await harness.firstWindow();
     const rootWorkspace = await waitForWorkspaceByPath(window, workspacePath);
 
-    await window.getByRole("button", { name: `Workspace actions for ${rootWorkspace.name}` }).click();
+    await window.getByRole("button", { name: `Project actions for ${rootWorkspace.name}` }).click();
     await window.getByRole("button", { name: "Create permanent worktree" }).click();
 
     await expect
@@ -43,8 +43,8 @@ test("creates and selects a worktree-backed workspace from the desktop UI", asyn
       throw new Error("Expected the selected workspace to be the newly created worktree");
     }
 
-    await expect(window.locator(".environment-picker__button")).toContainText(worktreeWorkspace.name);
-    await expect(window.locator(".empty-panel")).toContainText("Create a thread for this folder");
+    await expect(window.locator(".empty-panel")).toContainText(worktreeWorkspace.name);
+    await expect(window.locator(".empty-panel")).toContainText("Start a thread for this project");
     await expect(window.locator(".empty-panel")).not.toContainText("/Users/");
 
     await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
@@ -75,7 +75,7 @@ test("shows a worktree icon in the sidebar without a local text badge", async ()
     await expect(localRow).toHaveAttribute("data-sidebar-indicator", "none");
     await expect(localRow.locator(".session-row__workspace-icon")).toHaveCount(0);
 
-    await window.getByRole("button", { name: `Workspace actions for ${rootWorkspace.name}` }).click();
+    await window.getByRole("button", { name: `Project actions for ${rootWorkspace.name}` }).click();
     await window.getByRole("button", { name: "Create permanent worktree" }).click();
 
     await expect
@@ -116,7 +116,7 @@ test("keeps orphaned worktree workspaces visible after removing the root workspa
     const window = await harness.firstWindow();
     const rootWorkspace = await waitForWorkspaceByPath(window, workspacePath);
 
-    await window.getByRole("button", { name: `Workspace actions for ${rootWorkspace.name}` }).click();
+    await window.getByRole("button", { name: `Project actions for ${rootWorkspace.name}` }).click();
     await window.getByRole("button", { name: "Create permanent worktree" }).click();
 
     await expect
@@ -131,13 +131,13 @@ test("keeps orphaned worktree workspaces visible after removing the root workspa
     const createdWorkspace = createdState.workspaces.find((workspace) => workspace.id === createdState.selectedWorkspaceId);
     assertExists(createdWorkspace, "Expected created worktree workspace");
 
-    await window.getByRole("button", { name: `Workspace actions for ${rootWorkspace.name}` }).click();
+    await window.getByRole("button", { name: `Project actions for ${rootWorkspace.name}` }).click();
     window.once("dialog", (dialog) => {
       void dialog.accept();
     });
     await window.getByRole("button", { name: "Remove" }).click();
 
-    await expect(window.getByTestId("empty-state")).toHaveCount(0);
+    await expect(window.locator(".project-header")).toContainText(createdWorkspace.name);
     await expect
       .poll(async () => {
         const state = await getDesktopState(window);

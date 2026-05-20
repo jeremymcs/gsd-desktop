@@ -104,7 +104,7 @@ export async function selectWorkspace(store: AppStoreInternals, workspaceId: str
     selectedSessionId: store.state.selectedWorkspaceId === workspaceId ? store.state.selectedSessionId : "",
     clearLastError: true,
     refreshWorktrees: true,
-    activeView: "threads",
+    activeView: "home",
   });
 }
 

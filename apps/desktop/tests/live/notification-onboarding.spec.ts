@@ -271,7 +271,7 @@ test("does not request notification permission on launch before any work is back
     const window = await harness.firstWindow();
     await expect(window.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
     await expect.poll(() => readOptionalLog(requestLogPath), { timeout: 5_000 }).toBe("");
-    expect((await getDesktopState(window)).activeView).toBe("threads");
+    expect((await getDesktopState(window)).activeView).toBe("home");
   } finally {
     await harness.close();
   }
