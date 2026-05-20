@@ -17,7 +17,7 @@ export function SidebarToggleButton({ collapsed, shortcutLabel, onToggle }: Side
         type="button"
         onClick={onToggle}
       >
-        <SidebarToggleIcon />
+        <SidebarToggleIcon collapsed={collapsed} />
       </button>
       <span className="shortcut-tooltip sidebar-toggle__tooltip" role="tooltip">
         <span>Toggle sidebar</span>

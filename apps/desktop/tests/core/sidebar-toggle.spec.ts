@@ -37,16 +37,17 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expect(toggle).toBeVisible();
     await expect(window.locator(".sidebar")).toBeVisible();
     const toggleBox = await toggle.boundingBox();
-    const shellBox = await window.locator(".shell").boundingBox();
+    const sidebarBox = await window.locator(".sidebar").boundingBox();
     const mainBox = await window.locator(".main").boundingBox();
     expect(toggleBox).not.toBeNull();
-    expect(shellBox).not.toBeNull();
+    expect(sidebarBox).not.toBeNull();
     expect(mainBox).not.toBeNull();
-    const toggleCenterX = (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0) / 2;
-    const toggleCenterY = (toggleBox?.y ?? 0) + (toggleBox?.height ?? 0) / 2;
-    const shellCenterY = (shellBox?.y ?? 0) + (shellBox?.height ?? 0) / 2;
-    expect(Math.abs(toggleCenterX - (mainBox?.x ?? 0))).toBeLessThanOrEqual(2);
-    expect(Math.abs(toggleCenterY - shellCenterY)).toBeLessThanOrEqual(2);
+    const toggleRight = (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0);
+    const sidebarRight = (sidebarBox?.x ?? 0) + (sidebarBox?.width ?? 0);
+    expect(toggleBox?.x ?? 0).toBeGreaterThanOrEqual(sidebarBox?.x ?? 0);
+    expect(toggleRight).toBeLessThanOrEqual(sidebarRight);
+    expect(Math.abs(toggleRight - (sidebarRight - 14))).toBeLessThanOrEqual(2);
+    expect((toggleBox?.y ?? 0) - (sidebarBox?.y ?? 0)).toBeLessThanOrEqual(16);
     const expandedMainBox = await window.locator(".main").boundingBox();
     expect(expandedMainBox).not.toBeNull();
 

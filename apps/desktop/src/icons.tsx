@@ -87,12 +87,16 @@ export function FeedbackIcon() {
   );
 }
 
-export function SidebarToggleIcon() {
+export function SidebarToggleIcon({ collapsed = false }: { readonly collapsed?: boolean }) {
   return (
     <Icon>
-      <rect x="3.4" y="4.1" width="13.2" height="11.8" rx="2.2" stroke="currentColor" strokeWidth="1.35" />
-      <path d="M7.4 4.2v11.6" stroke="currentColor" strokeWidth="1.35" />
-      <path d="M11 8.1 8.9 10l2.1 1.9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+      <rect x="3.7" y="4" width="12.6" height="12" rx="2.4" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M7.2 4.3v11.4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
+      {collapsed ? (
+        <path d="m9 7.2 3 2.8-3 2.8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.55" />
+      ) : (
+        <path d="m12 7.2-3 2.8 3 2.8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.55" />
+      )}
     </Icon>
   );
 }

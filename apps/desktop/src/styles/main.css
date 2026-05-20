@@ -278,48 +278,47 @@
   -webkit-app-region: no-drag;
   display: block;
   position: absolute;
-  top: 50%;
-  left: calc(var(--sidebar-toggle-boundary-x) - (var(--sidebar-toggle-size) / 2));
-  transform: translateY(-50%);
+  top: 60px;
+  left: calc(var(--sidebar-toggle-boundary-x) - var(--sidebar-toggle-size) - 14px);
   z-index: 80;
 }
 
 .shell--sidebar-collapsed .sidebar-toggle {
-  left: 16px;
+  left: 14px;
 }
 
 .sidebar-toggle__button {
   width: var(--sidebar-toggle-size);
   height: var(--sidebar-toggle-size);
-  border-radius: 12px;
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--line) 68%);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--surface) 82%, var(--main) 18%);
+  border-radius: 10px;
+  border-color: var(--line);
+  color: var(--muted-strong);
+  background: color-mix(in srgb, var(--surface) 76%, transparent 24%);
   box-shadow:
-    0 12px 26px rgba(33, 39, 70, 0.14),
+    0 10px 22px rgba(33, 39, 70, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.42);
   backdrop-filter: blur(14px);
 }
 
 .sidebar-toggle__button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--line) 52%);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface) 86%);
-  color: var(--accent-ink);
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+  color: var(--text-strong);
 }
 
 :root.dark .sidebar-toggle__button {
-  border-color: rgba(142, 162, 255, 0.34);
-  color: #b8c4ff;
-  background: rgba(26, 29, 53, 0.92);
+  border-color: rgba(142, 162, 255, 0.22);
+  color: var(--muted-strong);
+  background: rgba(18, 21, 39, 0.86);
   box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.32),
+    0 12px 26px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 :root.dark .sidebar-toggle__button:hover:not(:disabled) {
-  border-color: rgba(142, 162, 255, 0.52);
-  background: rgba(116, 131, 255, 0.2);
-  color: #dce3ff;
+  border-color: rgba(142, 162, 255, 0.38);
+  background: rgba(116, 131, 255, 0.14);
+  color: var(--text-strong);
 }
 
 .canvas {
