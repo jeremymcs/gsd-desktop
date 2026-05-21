@@ -27,12 +27,12 @@ test("opens a workspace terminal with persistent output, tabs, and takeover cont
     await waitForWorkspaceByPath(window, workspacePath);
     await createNamedThread(window, "Terminal host thread");
 
-    await window.getByLabel("Toggle terminal").hover();
-    const terminalTooltip = window.locator(".topbar__tooltip", { hasText: "Toggle terminal" });
-    await expect(terminalTooltip).toContainText("Toggle terminal");
+    await window.getByLabel("Toggle Terminal").hover();
+    const terminalTooltip = window.locator(".topbar__tooltip", { hasText: "Toggle Terminal" });
+    await expect(terminalTooltip).toContainText("Toggle Terminal");
     await expect(terminalTooltip.locator("kbd")).toHaveText(/⌘J|Ctrl\+J/);
 
-    await window.getByLabel("Toggle terminal").click();
+    await window.getByLabel("Toggle Terminal").click();
     const terminal = window.getByTestId("integrated-terminal");
     await expect(terminal).toBeVisible();
     await expect(window.getByTestId("terminal-tab")).toHaveCount(1);
@@ -113,7 +113,7 @@ test("persists the integrated terminal shell setting", async () => {
     await window.keyboard.press(desktopShortcut(","));
     await expect(window.getByTestId("settings-surface")).toBeVisible();
     await window.getByRole("button", { name: "General", exact: true }).click();
-    const shellInput = window.getByLabel("Shell of integrated terminal");
+    const shellInput = window.getByLabel("Terminal Shell");
     await shellInput.fill("/bin/zsh");
     await shellInput.press("Enter");
     await expect.poll(async () => (await getDesktopState(window)).integratedTerminalShell).toBe("/bin/zsh");

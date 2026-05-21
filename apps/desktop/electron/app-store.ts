@@ -70,6 +70,9 @@ import {
   type RevisePlanningAnswerInput,
   type SelectedTranscriptRecord,
   type SelectPlanningPlanInput,
+  type SkipPlanningQuestionInput,
+  type SkipPlanningStageInput,
+  type SetProjectDefaultWorktreeInput,
   type StartPlanningExecutionInput,
   type StartPlanningPlanInput,
   type StartPlanningResearchInput,
@@ -80,10 +83,12 @@ import {
   type SetGlobalPlanningPhaseModelsInput,
   type UpdatePlanningChangeProposalInput,
   type UpdatePlanningIdeaInput,
+  type UpdatePlanningQuestionStateInput,
   type UpdatePlanningPlanStatusInput,
   type UpdatePlanningWorkflowPreferencesInput,
   type UpdatePlanningTaskExecutionInput,
   type UpdateBacklogItemInput,
+  type UpsertPlanningContextRecordsInput,
   type UpsertPlanningRequirementsInput,
   type WithdrawPlanningChangeProposalInput,
   type WorkspaceSessionTarget,
@@ -140,6 +145,7 @@ type SessionEventListener = (event: SessionDriverEvent, state: DesktopAppState) 
 type TranscriptMessageRow = Extract<TranscriptMessage, { kind: "message" }>;
 
 const LEGACY_TRANSCRIPT_HISTORY_LIMIT = 180;
+const APP_DEFAULTS_PREFERENCE_KEY = "__app_defaults__";
 
 interface PersistedTranscriptRecord {
   readonly version: 1;
@@ -383,6 +389,7 @@ export class DesktopAppStore implements AppStoreInternals {
       id: randomUUID(),
       workspaceId,
       text,
+      category: input.category ?? "follow-up",
       status: "open" as const,
       source: {
         ...input.source,
@@ -438,6 +445,42 @@ export class DesktopAppStore implements AppStoreInternals {
     return worktree.removeWorktree(this, input);
   }
 
+  async setProjectDefaultWorktree(input: SetProjectDefaultWorktreeInput): Promise<DesktopAppState> {
+    await this.initialize();
+    const workspaceId = resolveRepoWorkspaceId(this.state.workspaces, input.workspaceId) ?? input.workspaceId;
+    const workspace = this.state.workspaces.find((entry) => entry.id === workspaceId);
+    if (!workspace) {
+      return this.withError(`Unknown workspace: ${input.workspaceId}`);
+    }
+    if (input.worktreeId) {
+      const worktree = (this.state.worktreesByWorkspace[workspaceId] ?? []).find((entry) => entry.id === input.worktreeId);
+      if (!worktree || worktree.status !== "ready" || !worktree.linkedWorkspaceId) {
+        return this.withError(`Unknown ready worktree: ${input.worktreeId}`);
+      }
+    }
+    this.state = {
+      ...this.state,
+      projectPreferencesByWorkspace: {
+        ...this.state.projectPreferencesByWorkspace,
+        [workspaceId]: {
+          ...(input.worktreeId ? { defaultWorktreeId: input.worktreeId } : {}),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, workspaceId, {
+        scope: "project-preferences",
+        field: "defaultWorktree",
+        from: this.state.projectPreferencesByWorkspace[workspaceId]?.defaultWorktreeId ?? "local",
+        to: input.worktreeId ?? "local",
+        reason: "Project default worktree changed",
+      }),
+      lastError: undefined,
+      revision: this.state.revision + 1,
+    };
+    await this.persistUiState();
+    return this.emit();
+  }
+
   /* ── Planning methods (delegated) ─────────────────────── */
 
   async loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState> {
@@ -472,12 +515,24 @@ export class DesktopAppStore implements AppStoreInternals {
     return plans.parkPlanningIdea(this, input);
   }
 
+  async skipPlanningQuestion(input: SkipPlanningQuestionInput): Promise<DesktopAppState> {
+    return plans.skipPlanningQuestion(this, input);
+  }
+
   async revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState> {
     return plans.revisePlanningAnswer(this, input);
   }
 
+  async updatePlanningQuestionState(input: UpdatePlanningQuestionStateInput): Promise<DesktopAppState> {
+    return plans.updatePlanningQuestionState(this, input);
+  }
+
   async upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState> {
     return plans.upsertPlanningRequirements(this, input);
+  }
+
+  async upsertPlanningContextRecords(input: UpsertPlanningContextRecordsInput): Promise<DesktopAppState> {
+    return plans.upsertPlanningContextRecords(this, input);
   }
 
   async reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState> {
@@ -522,6 +577,10 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState> {
     return plans.startPlanningResearch(this, input);
+  }
+
+  async skipPlanningStage(input: SkipPlanningStageInput): Promise<DesktopAppState> {
+    return plans.skipPlanningStage(this, input);
   }
 
   async proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState> {
@@ -702,12 +761,29 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async setNotificationPreferences(preferences: Partial<NotificationPreferences>): Promise<DesktopAppState> {
     await this.initialize();
+    const nextPreferences = {
+      ...this.state.notificationPreferences,
+      ...preferences,
+    };
+    let preferenceChangesByWorkspace = this.state.preferenceChangesByWorkspace;
+    for (const key of Object.keys(preferences) as (keyof NotificationPreferences)[]) {
+      const previous = String(this.state.notificationPreferences[key]);
+      const next = String(nextPreferences[key]);
+      if (previous === next) {
+        continue;
+      }
+      preferenceChangesByWorkspace = appendPreferenceChange(preferenceChangesByWorkspace, APP_DEFAULTS_PREFERENCE_KEY, {
+        scope: "settings",
+        field: `notifications.${key}`,
+        from: previous,
+        to: next,
+        reason: "App notification default changed",
+      });
+    }
     this.state = {
       ...this.state,
-      notificationPreferences: {
-        ...this.state.notificationPreferences,
-        ...preferences,
-      },
+      notificationPreferences: nextPreferences,
+      preferenceChangesByWorkspace,
       lastError: undefined,
       revision: this.state.revision + 1,
     };
@@ -736,12 +812,20 @@ export class DesktopAppStore implements AppStoreInternals {
     if (this.state.modelSettingsScopeMode === modelSettingsScopeMode) {
       return this.emit();
     }
+    const previousMode = this.state.modelSettingsScopeMode;
     if (modelSettingsScopeMode === "app-global") {
       await this.restoreGlobalModelSettings(this.state.globalModelSettings);
     }
     this.state = {
       ...this.state,
       modelSettingsScopeMode,
+      preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, APP_DEFAULTS_PREFERENCE_KEY, {
+        scope: "settings",
+        field: "modelSettingsScope",
+        from: previousMode,
+        to: modelSettingsScopeMode,
+        reason: "Model settings scope changed",
+      }),
       lastError: undefined,
       revision: this.state.revision + 1,
     };
@@ -751,11 +835,20 @@ export class DesktopAppStore implements AppStoreInternals {
 
   async setGlobalPlanningPhaseModels(input: SetGlobalPlanningPhaseModelsInput): Promise<DesktopAppState> {
     await this.initialize();
+    const nextPhaseModels = normalizeWorkflowPhaseModelPreferences(input.phaseModels);
+    const previousPhaseModels = this.state.globalPlanningPreferences.phaseModels;
     this.state = {
       ...this.state,
       globalPlanningPreferences: {
-        phaseModels: normalizeWorkflowPhaseModelPreferences(input.phaseModels),
+        phaseModels: nextPhaseModels,
       },
+      preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, APP_DEFAULTS_PREFERENCE_KEY, {
+        scope: "settings",
+        field: "workflowStageModels",
+        from: JSON.stringify(previousPhaseModels),
+        to: JSON.stringify(nextPhaseModels),
+        reason: "App workflow-stage model defaults changed",
+      }),
       lastError: undefined,
       revision: this.state.revision + 1,
     };
@@ -790,21 +883,55 @@ export class DesktopAppStore implements AppStoreInternals {
   async setDefaultModel(workspaceId: string, provider: string, modelId: string): Promise<DesktopAppState> {
     const targetWorkspaceId = this.resolveModelSettingsWorkspaceId(workspaceId);
     if (this.state.modelSettingsScopeMode !== "per-repo") {
-      return this.withRuntimeUpdate(targetWorkspaceId, (ws) =>
-        this.driver.runtimeSupervisor.setDefaultModel(ws, { provider, modelId }),
-      );
+      await this.initialize();
+      const ws = this.workspaceRefFromState(targetWorkspaceId);
+      if (!ws) {
+        return this.withError(`Unknown workspace: ${targetWorkspaceId}`);
+      }
+      const previousSettings = this.state.runtimeByWorkspace[targetWorkspaceId]?.settings;
+      return this.withErrorHandling(async () => {
+        const snapshot = await this.driver.runtimeSupervisor.setDefaultModel(ws, { provider, modelId });
+        this.runtimeByWorkspace.set(targetWorkspaceId, snapshot);
+        this.state = {
+          ...this.state,
+          preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, APP_DEFAULTS_PREFERENCE_KEY, {
+            scope: "settings",
+            field: "defaultModel",
+            from: previousSettings?.defaultProvider && previousSettings.defaultModelId
+              ? `${previousSettings.defaultProvider}/${previousSettings.defaultModelId}`
+              : "unset",
+            to: `${provider}/${modelId}`,
+            reason: "App default model changed",
+          }),
+        };
+        await this.refreshSessionCommandsForWorkspace(targetWorkspaceId);
+        return this.refreshState({ clearLastError: true });
+      });
     }
     await this.initialize();
     const ws = this.workspaceRefFromState(targetWorkspaceId);
     if (!ws) {
       return this.withError(`Unknown workspace: ${targetWorkspaceId}`);
     }
+    const previousSettings = this.state.runtimeByWorkspace[targetWorkspaceId]?.settings;
     return this.withErrorHandling(async () => {
       await updateProjectModelSettingsFile(ws.path, (settings) => ({
         ...settings,
         defaultProvider: provider,
         defaultModel: modelId,
       }));
+      this.state = {
+        ...this.state,
+        preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, targetWorkspaceId, {
+          scope: "settings",
+          field: "defaultModel",
+          from: previousSettings?.defaultProvider && previousSettings.defaultModelId
+            ? `${previousSettings.defaultProvider}/${previousSettings.defaultModelId}`
+            : "unset",
+          to: `${provider}/${modelId}`,
+          reason: "Project default model changed",
+        }),
+      };
       return this.refreshState({ clearLastError: true });
     });
   }
@@ -815,20 +942,50 @@ export class DesktopAppStore implements AppStoreInternals {
   ): Promise<DesktopAppState> {
     const targetWorkspaceId = this.resolveModelSettingsWorkspaceId(workspaceId);
     if (this.state.modelSettingsScopeMode !== "per-repo") {
-      return this.withRuntimeUpdate(targetWorkspaceId, (ws) =>
-        this.driver.runtimeSupervisor.setDefaultThinkingLevel(ws, thinkingLevel),
-      );
+      await this.initialize();
+      const ws = this.workspaceRefFromState(targetWorkspaceId);
+      if (!ws) {
+        return this.withError(`Unknown workspace: ${targetWorkspaceId}`);
+      }
+      const previousThinkingLevel = this.state.runtimeByWorkspace[targetWorkspaceId]?.settings.defaultThinkingLevel ?? "unset";
+      return this.withErrorHandling(async () => {
+        const snapshot = await this.driver.runtimeSupervisor.setDefaultThinkingLevel(ws, thinkingLevel);
+        this.runtimeByWorkspace.set(targetWorkspaceId, snapshot);
+        this.state = {
+          ...this.state,
+          preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, APP_DEFAULTS_PREFERENCE_KEY, {
+            scope: "settings",
+            field: "reasoningLevel",
+            from: previousThinkingLevel,
+            to: thinkingLevel ?? "unset",
+            reason: "App reasoning level changed",
+          }),
+        };
+        await this.refreshSessionCommandsForWorkspace(targetWorkspaceId);
+        return this.refreshState({ clearLastError: true });
+      });
     }
     await this.initialize();
     const ws = this.workspaceRefFromState(targetWorkspaceId);
     if (!ws) {
       return this.withError(`Unknown workspace: ${targetWorkspaceId}`);
     }
+    const previousThinkingLevel = this.state.runtimeByWorkspace[targetWorkspaceId]?.settings.defaultThinkingLevel ?? "unset";
     return this.withErrorHandling(async () => {
       await updateProjectModelSettingsFile(ws.path, (settings) => ({
         ...settings,
         ...(thinkingLevel ? { defaultThinkingLevel: thinkingLevel } : {}),
       }));
+      this.state = {
+        ...this.state,
+        preferenceChangesByWorkspace: appendPreferenceChange(this.state.preferenceChangesByWorkspace, targetWorkspaceId, {
+          scope: "settings",
+          field: "reasoningLevel",
+          from: previousThinkingLevel,
+          to: thinkingLevel ?? "unset",
+          reason: "Project reasoning level changed",
+        }),
+      };
       return this.refreshState({ clearLastError: true });
     });
   }
@@ -995,6 +1152,10 @@ export class DesktopAppStore implements AppStoreInternals {
           ...persisted.notificationPreferences,
         },
         globalPlanningPreferences: persisted.globalPlanningPreferences ?? this.state.globalPlanningPreferences,
+        projectPreferencesByWorkspace:
+          persisted.projectPreferencesByWorkspace ?? this.state.projectPreferencesByWorkspace,
+        preferenceChangesByWorkspace:
+          persisted.preferenceChangesByWorkspace ?? this.state.preferenceChangesByWorkspace,
         backlogByWorkspace: persisted.backlogByWorkspace ?? this.state.backlogByWorkspace,
         integratedTerminalShell: persisted.integratedTerminalShell ?? this.state.integratedTerminalShell,
         lastViewedAtBySession: persisted.lastViewedAtBySession ?? {},
@@ -1194,6 +1355,14 @@ export class DesktopAppStore implements AppStoreInternals {
         ...this.state,
         workspaces,
         worktreesByWorkspace,
+        projectPreferencesByWorkspace: pruneProjectPreferencesByWorkspace(
+          this.state.projectPreferencesByWorkspace,
+          workspaces,
+        ),
+        preferenceChangesByWorkspace: prunePreferenceChangesByWorkspace(
+          this.state.preferenceChangesByWorkspace,
+          workspaces,
+        ),
         backlogByWorkspace: pruneBacklogByWorkspace(this.state.backlogByWorkspace, workspaces),
         selectedWorkspaceId,
         selectedSessionId,
@@ -1943,6 +2112,12 @@ export class DesktopAppStore implements AppStoreInternals {
       globalPlanningPreferences: hasWorkflowPhaseModelPreferences(this.state.globalPlanningPreferences.phaseModels)
         ? this.state.globalPlanningPreferences
         : undefined,
+      projectPreferencesByWorkspace: hasProjectPreferences(this.state.projectPreferencesByWorkspace)
+        ? this.state.projectPreferencesByWorkspace
+        : undefined,
+      preferenceChangesByWorkspace: hasPreferenceChanges(this.state.preferenceChangesByWorkspace)
+        ? this.state.preferenceChangesByWorkspace
+        : undefined,
       backlogByWorkspace: hasBacklogItems(this.state.backlogByWorkspace) ? this.state.backlogByWorkspace : undefined,
       integratedTerminalShell: this.state.integratedTerminalShell || undefined,
       lastViewedAtBySession: mapToRecord(this.sessionState.lastViewedAtBySession),
@@ -2576,6 +2751,62 @@ function pruneBacklogByWorkspace(
   return Object.fromEntries(
     Object.entries(backlogByWorkspace).filter(([workspaceId, items]) => workspaceIds.has(workspaceId) && items.length > 0),
   );
+}
+
+function pruneProjectPreferencesByWorkspace(
+  projectPreferencesByWorkspace: DesktopAppState["projectPreferencesByWorkspace"],
+  workspaces: DesktopAppState["workspaces"],
+): DesktopAppState["projectPreferencesByWorkspace"] {
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  return Object.fromEntries(
+    Object.entries(projectPreferencesByWorkspace).filter(([workspaceId, preferences]) =>
+      workspaceIds.has(workspaceId) && Boolean(preferences.defaultWorktreeId),
+    ),
+  );
+}
+
+function prunePreferenceChangesByWorkspace(
+  preferenceChangesByWorkspace: DesktopAppState["preferenceChangesByWorkspace"],
+  workspaces: DesktopAppState["workspaces"],
+): DesktopAppState["preferenceChangesByWorkspace"] {
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  return Object.fromEntries(
+    Object.entries(preferenceChangesByWorkspace).filter(([workspaceId, changes]) =>
+      workspaceIds.has(workspaceId) && changes.length > 0,
+    ),
+  );
+}
+
+function hasProjectPreferences(
+  projectPreferencesByWorkspace: DesktopAppState["projectPreferencesByWorkspace"],
+): boolean {
+  return Object.values(projectPreferencesByWorkspace).some((preferences) => Boolean(preferences.defaultWorktreeId));
+}
+
+function hasPreferenceChanges(
+  preferenceChangesByWorkspace: DesktopAppState["preferenceChangesByWorkspace"],
+): boolean {
+  return Object.values(preferenceChangesByWorkspace).some((changes) => changes.length > 0);
+}
+
+function appendPreferenceChange(
+  changesByWorkspace: DesktopAppState["preferenceChangesByWorkspace"],
+  workspaceId: string,
+  change: Omit<DesktopAppState["preferenceChangesByWorkspace"][string][number], "id" | "changedAt" | "changedBy">,
+): DesktopAppState["preferenceChangesByWorkspace"] {
+  const existing = changesByWorkspace[workspaceId] ?? [];
+  return {
+    ...changesByWorkspace,
+    [workspaceId]: [
+      {
+        id: randomUUID(),
+        ...change,
+        changedBy: "user" as const,
+        changedAt: new Date().toISOString(),
+      },
+      ...existing,
+    ].slice(0, 50),
+  };
 }
 
 function hasBacklogItems(backlogByWorkspace: DesktopAppState["backlogByWorkspace"]): boolean {

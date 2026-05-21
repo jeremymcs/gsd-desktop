@@ -28,14 +28,17 @@ test("supports workspace rename and remove from the sidebar menu", async () => {
     const workspace = state.workspaces.find((entry) => entry.path === workspaceA);
     assertExists(workspace, "Expected first workspace");
 
-    await window.getByRole("button", { name: `Workspace actions for ${basename(workspaceA)}` }).click();
+    await window.getByTestId("workspace-list").getByRole("button", { name: basename(workspaceA) }).click();
+    await expect(window.locator(".project-header")).toContainText(basename(workspaceA));
+
+    await window.getByRole("button", { name: `Project actions for ${basename(workspaceA)}` }).click();
     const workspaceMenu = window.locator(".workspace-menu").last();
     await expect(workspaceMenu.getByRole("button", { name: "Open Folder" })).toBeVisible();
-    await expect(workspaceMenu.getByRole("button", { name: "Edit name" })).toBeVisible();
-    await expect(workspaceMenu.getByRole("button", { name: "Remove" })).toBeVisible();
+    await expect(workspaceMenu.getByRole("button", { name: "Rename Project" })).toBeVisible();
+    await expect(workspaceMenu.getByRole("button", { name: "Remove Project" })).toBeVisible();
 
-    await workspaceMenu.getByRole("button", { name: "Edit name" }).click();
-    const renameInput = window.getByLabel(`Rename ${basename(workspaceA)}`);
+    await workspaceMenu.getByRole("button", { name: "Rename Project" }).click();
+    const renameInput = window.getByLabel(`Rename Project ${basename(workspaceA)}`);
     await renameInput.fill("Renamed workspace");
     await window.getByRole("button", { name: "Save" }).click();
 
@@ -47,8 +50,8 @@ test("supports workspace rename and remove from the sidebar menu", async () => {
     window.once("dialog", (dialog) => {
       void dialog.accept();
     });
-    await window.getByRole("button", { name: "Workspace actions for Renamed workspace" }).click();
-    await window.getByRole("button", { name: "Remove" }).click();
+    await window.getByRole("button", { name: "Project actions for Renamed workspace" }).click();
+    await window.getByRole("button", { name: "Remove Project" }).click();
 
     await expect.poll(async () => {
       const latest = await getDesktopState(window);

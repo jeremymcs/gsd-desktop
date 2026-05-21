@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
-import type { GlobalPlanningPreferences, WorkspacePlanningState, WorkspaceRecord, WorktreeRecord } from "./desktop-state";
+import type {
+  GlobalPlanningPreferences,
+  ProjectBacklogItem,
+  WorkspacePlanningState,
+  WorkspaceRecord,
+  WorktreeRecord,
+} from "./desktop-state";
 import { BranchIcon, ChatIcon, FolderIcon, PlanIcon, SettingsIcon } from "./icons";
 import { formatRelativeTime } from "./string-utils";
 import type { ThreadGroup, ThreadListEntry } from "./thread-groups";
@@ -9,6 +15,7 @@ interface ProjectHomeViewProps {
   readonly workspace: WorkspaceRecord | undefined;
   readonly threadGroup: ThreadGroup | undefined;
   readonly planningState: WorkspacePlanningState | undefined;
+  readonly backlogItems: readonly ProjectBacklogItem[];
   readonly runtime: RuntimeSnapshot | undefined;
   readonly worktrees: readonly WorktreeRecord[];
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
@@ -16,6 +23,7 @@ interface ProjectHomeViewProps {
   readonly onOpenProjectPreferences: (workspaceId?: string) => void;
   readonly onOpenNewThread: (workspaceId?: string) => void;
   readonly onOpenThread: (target: { workspaceId: string; sessionId: string }) => void;
+  readonly onCaptureAdHocTask: (thread: ThreadListEntry) => void;
   readonly onOpenProject: () => void;
 }
 
@@ -23,6 +31,7 @@ export function ProjectHomeView({
   workspace,
   threadGroup,
   planningState,
+  backlogItems,
   runtime,
   worktrees,
   globalPlanningPreferences,
@@ -30,13 +39,14 @@ export function ProjectHomeView({
   onOpenProjectPreferences,
   onOpenNewThread,
   onOpenThread,
+  onCaptureAdHocTask,
   onOpenProject,
 }: ProjectHomeViewProps) {
   if (!workspace) {
     return (
       <section className="canvas canvas--empty" data-testid="empty-state">
         <div className="empty-panel">
-          <div className="session-header__eyebrow">Project Home</div>
+          <div className="session-header__eyebrow">Project Overview</div>
           <h1>Open a Project to Start</h1>
           <p>Add a project folder to see plans, threads, and project health in one place.</p>
           <div className="empty-panel__actions">
@@ -58,6 +68,12 @@ export function ProjectHomeView({
   const planName = selectedPlan?.name ?? selectedDashboardRow?.name ?? activePlans[0]?.name;
   const nextWork = selectedDashboardRow?.nextWork || "Open the plan to choose the next step.";
   const latestThreads = threadGroup?.threads.slice(0, 3) ?? [];
+  const adHocThreads = threadGroup?.threads.filter((thread) => thread.purpose === "general").slice(0, 3) ?? [];
+  const reconciledThreadKeys = new Set(
+    backlogItems
+      .filter((item) => item.source.messageId.startsWith("thread:") && item.status !== "removed")
+      .map((item) => `${item.source.workspaceId}:${item.source.sessionId}`),
+  );
   const runningThreads = threadGroup?.threads.filter((thread) => thread.session.status === "running").length ?? 0;
   const issueCount = (planningState?.planDashboardRows ?? []).reduce(
     (total, row) =>
@@ -76,7 +92,7 @@ export function ProjectHomeView({
       <div className="project-home">
         <header className="project-home__header">
           <div>
-            <div className="view-header__eyebrow">Project Home</div>
+            <div className="view-header__eyebrow">Project Overview</div>
             <h1>{workspace.name}</h1>
             <p>{workspace.path}</p>
           </div>
@@ -90,9 +106,9 @@ export function ProjectHomeView({
             <PlanIcon />
           </div>
           <div className="project-home__hero-copy">
-            <span>{planName ? "Continue the plan" : "Create a plan"}</span>
+            <span>{planName ? "Continue the plan" : "Start guided plan"}</span>
             <h2>{planName ?? "Turn this project into a guided GSD plan."}</h2>
-            <p>{planName ? nextWork : "Capture the outcome, constraints, milestones, phases, slices, and tasks before execution starts."}</p>
+            <p>{planName ? nextWork : "Capture the outcome, constraints, milestones, slices, and tasks before execution starts."}</p>
             {selectedDashboardRow ? (
               <div className="project-home__phase-strip">
                 <span>{selectedDashboardRow.activePhase}</span>
@@ -104,7 +120,7 @@ export function ProjectHomeView({
           </div>
           <div className="project-home__hero-actions">
             <button className="button button--primary" type="button" onClick={() => onOpenPlans(workspace.id)}>
-              {planName ? "Open Plan" : "Create Plan"}
+              {planName ? "Open Plan" : "Start Guided Plan"}
             </button>
             <button className="button button--ghost" type="button" onClick={() => onOpenNewThread(workspace.id)}>
               Start Thread
@@ -113,6 +129,49 @@ export function ProjectHomeView({
         </section>
 
         <div className="project-home__grid">
+          <section className="project-home__panel" data-testid="ad-hoc-reconciliation">
+            <div className="project-home__panel-head">
+              <h2>Ad Hoc Work</h2>
+              <button className="text-button" type="button" onClick={() => onOpenNewThread(workspace.id)}>
+                New Thread
+              </button>
+            </div>
+            {adHocThreads.length > 0 ? (
+              <div className="project-home__thread-list">
+                {adHocThreads.map((thread) => {
+                  const reconciled = reconciledThreadKeys.has(`${thread.workspaceId}:${thread.session.id}`);
+                  return (
+                    <div
+                      className="project-home__thread"
+                      data-testid="ad-hoc-thread-row"
+                      key={`${thread.workspaceId}:${thread.session.id}`}
+                    >
+                      <span className="project-home__thread-icon">
+                        <ChatIcon />
+                      </span>
+                      <span className="project-home__thread-body">
+                        <strong>{thread.session.title}</strong>
+                        <small className="project-home__thread-preview">
+                          {reconciled ? "Saved to Backlog" : thread.session.preview || thread.environment.label}
+                        </small>
+                      </span>
+                      <button
+                        className="text-button"
+                        disabled={reconciled}
+                        type="button"
+                        onClick={() => onCaptureAdHocTask(thread)}
+                      >
+                        {reconciled ? "Saved" : "Save Task"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="project-home__empty">Ad hoc task threads will appear here for reconciliation.</p>
+            )}
+          </section>
+
           <section className="project-home__panel">
             <div className="project-home__panel-head">
               <h2>Recent Threads</h2>
@@ -221,10 +280,10 @@ function describePreferenceStatus(
 ): string {
   const planPhaseModels = planningState?.selectedPlan?.workflowPreferences?.models.phaseOverrides ?? {};
   if (Object.keys(planPhaseModels).length > 0) {
-    return "Custom phase models";
+    return "Custom workflow stage models";
   }
   if (Object.keys(globalPlanningPreferences.phaseModels).length > 0) {
-    return "Using team phase defaults";
+    return "Using app workflow stage defaults";
   }
   if (runtime?.settings.defaultProvider && runtime.settings.defaultModelId) {
     return `${runtime.settings.defaultProvider}/${runtime.settings.defaultModelId}`;

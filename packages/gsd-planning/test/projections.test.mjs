@@ -51,7 +51,7 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(requirements, /\| R001 \| active \| covered \| M001\/S01\/T01 \|/);
     assert.match(requirements, /\| R002 \| active \| uncovered \| _None_ \|/);
     assert.match(requirements, /\| R003 \| deferred \| deferred \| _None_ \|/);
-    assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Phase Sequence/);
+    assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /## Optional Phase Groups/);
     assert.match(files.find((file) => file.path === ".gsd/PROJECT.md")?.content ?? "", /P01: Foundation/);
     const nextWork = files.find((file) => file.path === ".gsd/NEXT.md")?.content ?? "";
     assert.match(nextWork, /# Next Work/);
@@ -64,7 +64,7 @@ test("renders the planning-phase projection file set with generated ownership he
     assert.match(nextWork, /## Model Routing/);
     assert.match(nextWork, /Execute: not configured in project - resolve from global or session default at runtime/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /## Boundary Map/);
-    assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Phase:\*\* P01 - Foundation/);
+    assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /\*\*Optional Phase Group:\*\* P01 - Foundation/);
     assert.match(files.find((file) => file.path.endsWith("M001-ROADMAP.md"))?.content ?? "", /`reqs:\[R001\]`/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /### Key Links/);
     assert.match(files.find((file) => file.path.endsWith("T01-PLAN.md"))?.content ?? "", /\*\*Requirements:\*\* R001/);
@@ -307,15 +307,15 @@ test("projects change proposal activity into the state change log", async () => 
 
     assert.match(state, /## Change Log/);
     assert.match(state, /### Add audit task/);
-    assert.match(state, /- \*\*Status:\*\* Approved/);
+    assert.match(state, /- \*\*Status:\*\* Accepted/);
     assert.match(state, /- \*\*Injected task:\*\* M001\/S01\/T02/);
     assert.match(state, /  - Drafted: Drafted proposal/);
-    assert.match(state, /  - Approved: Approved as new task M001\/S01\/T02/);
+    assert.match(state, /  - Accepted: Accepted as new task M001\/S01\/T02/);
     assert.match(state, /  - Hidden: Hidden injected task M001\/S01\/T02/);
     assert.match(state, /  - Restored: Restored injected task M001\/S01\/T02/);
     assert.match(state, /### Drop banner/);
-    assert.match(state, /- \*\*Status:\*\* Deleted/);
-    assert.match(state, /  - Deleted: Deleted draft/);
+    assert.match(state, /- \*\*Status:\*\* Rejected/);
+    assert.match(state, /  - Rejected: Rejected draft/);
     assert.doesNotMatch(state, /change\.proposal/);
     assert.doesNotMatch(state, /plan\.item/);
 

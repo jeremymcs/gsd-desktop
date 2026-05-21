@@ -44,7 +44,7 @@ test("new thread reuses composer behaviors for slash commands, image previews, a
     const thinkingBadge = window.locator(".new-thread__hint .model-selector__badge").nth(1);
     await expect(modelBadge).toBeVisible();
     await expect(modelBadge).toHaveText("openai/gpt-5");
-    await expect(thinkingBadge).toHaveText("think/medium");
+    await expect(thinkingBadge).toHaveText("reasoning/medium");
     const environmentBox = await window.locator(".new-thread__environment-group").boundingBox();
     const selectorBox = await window.locator(".new-thread__hint .model-selector").boundingBox();
     expect(environmentBox).not.toBeNull();

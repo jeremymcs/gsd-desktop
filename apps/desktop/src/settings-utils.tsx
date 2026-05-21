@@ -43,7 +43,7 @@ export function sectionDescription(section: SettingsSection, workspaceName: stri
     case "providers":
       return `Connect the services GSD can use for ${workspaceName}.`;
     case "models":
-      return "Choose model defaults for new threads, planning phases, and pickers.";
+      return "Choose model defaults for new threads, workflow stages, and pickers.";
     case "notifications":
       return "Decide when GSD should let you know background work needs attention.";
     default:

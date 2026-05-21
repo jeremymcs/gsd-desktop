@@ -47,6 +47,176 @@ test("replays persisted legacy reference metadata without importing it as plan s
   }
 });
 
+test("replays question frame snapshots and answer provenance after reopen", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Question Frame Plan" });
+    const withFrames = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "question-frames.snapshotted",
+        frames: [
+          {
+            id: "project_title",
+            questionId: "project_title",
+            stage: "project",
+            label: "Name",
+            prompt: "What should we call this project?",
+            helper: "Use a short working title.",
+            loadBearing: true,
+            optional: false,
+            source: "guided-discuss-project.md",
+            version: 1,
+          },
+        ],
+      },
+    });
+    const withAnswer = store.appendEvent({
+      planId: created.id,
+      expectedRevision: withFrames.revision,
+      event: {
+        type: "answer.recorded",
+        answer: {
+          stage: "project",
+          questionId: "project_title",
+          questionFrameId: "project_title",
+          questionFrameVersion: 1,
+          questionFrameSource: "guided-discuss-project.md",
+          prompt: "What should we call this project?",
+          answer: "Question Frame Plan",
+          loadBearing: true,
+        },
+      },
+    });
+
+    assert.equal(withAnswer.questionFrameSnapshots.length, 1);
+    assert.equal(withAnswer.questionFrameSnapshots[0]?.source, "guided-discuss-project.md");
+    assert.equal(withAnswer.answers[0]?.questionFrameVersion, 1);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.questionFrameSnapshots[0]?.questionId, "project_title");
+    assert.equal(reopened.answers[0]?.questionFrameSource, "guided-discuss-project.md");
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("replays skipped workflow stages with reasons after reopen", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Skipped Stage Plan" });
+    const skipped = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "stage.skipped",
+        stage: "research",
+        reason: "Existing code inspection is enough for this small change.",
+      },
+    });
+
+    assert.equal(skipped.skippedStages.length, 1);
+    assert.equal(skipped.skippedStages[0]?.stage, "research");
+    assert.equal(skipped.stages.find((stage) => stage.stage === "research")?.status, "skipped");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.skippedStages[0]?.reason, "Existing code inspection is enough for this small change.");
+    assert.equal(reopened.stages.find((stage) => stage.stage === "research")?.status, "skipped");
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("replays plan revision history after reopen", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Revision Plan" });
+    const withRevision = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "plan.revision-created",
+        revision: {
+          revisionNumber: 1,
+          sourceType: "accepted-plan",
+          sourceId: "roadmap-output-1",
+          title: "Plan proposal",
+          acceptedOutputId: "roadmap-output-1",
+        },
+      },
+    });
+
+    assert.equal(withRevision.planRevisions[0]?.revisionNumber, 1);
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.planRevisions[0]?.sourceType, "accepted-plan");
+    assert.equal(reopened.planRevisions[0]?.title, "Plan proposal");
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("replays active slice focus after reopen", async () => {
+  const workspaceRoot = await makeWorkspace();
+
+  try {
+    let store = openPlanningStore({ workspaceRoot });
+    const created = store.createPlan({ name: "Slice Focus Plan" });
+    const focused = store.appendEvent({
+      planId: created.id,
+      expectedRevision: created.revision,
+      event: {
+        type: "slice.focus-updated",
+        focus: {
+          milestoneId: "M1",
+          milestoneTitle: "First useful version",
+          sliceId: "S1",
+          slicePath: "M1/S1",
+          sliceTitle: "Planning persistence",
+          taskId: "T1",
+          taskPath: "M1/S1/T1",
+          taskTitle: "Persist every answer",
+          workspaceId: "workspace-1",
+          sessionId: "session-1",
+          sessionTitle: "Task T1 - Persist every answer",
+        },
+      },
+    });
+
+    assert.equal(focused.sliceFocus[0]?.slicePath, "M1/S1");
+    assert.equal(focused.sliceFocus[0]?.taskPath, "M1/S1/T1");
+    store.close();
+
+    store = openPlanningStore({ workspaceRoot });
+    const reopened = store.getPlanSnapshot(created.id);
+    assert.ok(reopened);
+    assert.equal(reopened.sliceFocus[0]?.sliceTitle, "Planning persistence");
+    assert.equal(reopened.sliceFocus[0]?.sessionTitle, "Task T1 - Persist every answer");
+    store.close();
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("replays persisted run recovery summary state", async () => {
   const workspaceRoot = await makeWorkspace();
 

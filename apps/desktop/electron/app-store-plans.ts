@@ -10,11 +10,13 @@ import {
   computeNextWorkQueue,
   discoverLegacyMarkdownReferences,
   type ApprovedPlanInjectionRecord,
+  type DecisionRecord,
   type PlanEvent,
   type PlanListEntry,
   type PlanSnapshot,
   type PlanningStore,
   type RequirementRecord,
+  type RiskRecord,
   type RunRecoveryStopReason,
   type RunRecoveryTaskTargetRecord,
   type TaskSessionLinkExecutionModelRecord,
@@ -61,6 +63,8 @@ import type {
   RestorePlanningTaskInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  SkipPlanningStageInput,
+  SkipPlanningQuestionInput,
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
@@ -69,8 +73,10 @@ import type {
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
   UpdatePlanningPlanStatusInput,
+  UpdatePlanningQuestionStateInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningContextRecordsInput,
   UpsertPlanningRequirementsInput,
   WithdrawPlanningChangeProposalInput,
   WorkspacePlanningState,
@@ -83,8 +89,10 @@ import {
 import { buildPlanningProjectionInput } from "../src/plan-builder-projections";
 import { buildRequirementDrafts } from "../src/plan-builder-requirements";
 import {
+  buildDiscussQuestionFrameSnapshots,
   buildProjectPatch,
   discussStageOrder,
+  getQuestionFrameSnapshot,
   getDiscussQuestion,
   getDiscussQuestionsForStage,
   getDiscussStageProgress,
@@ -158,6 +166,10 @@ export async function createPlanningPlan(
         name: input.name,
         initialPhase: "discuss",
         initialStage: "project",
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "question-frames.snapshotted",
+        frames: buildDiscussQuestionFrameSnapshots(),
       });
       const firstQuestion = getDiscussQuestionsForStage("project")[0];
       if (firstQuestion) {
@@ -321,6 +333,8 @@ export async function recordPlanningAnswer(
   return store.withErrorHandling(async () => {
     return withPlanningStore(workspace.path, (planningStore) => {
       const answerId = randomUUID();
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const frame = getQuestionFrameSnapshot(current, input.questionId) ?? getDiscussQuestion(input.questionId);
       let snapshot = planningStore.appendEvent({
         planId: input.planId,
         expectedRevision: input.expectedRevision,
@@ -330,11 +344,23 @@ export async function recordPlanningAnswer(
             id: answerId,
             stage,
             questionId: input.questionId,
+            ...(frame ? { questionFrameId: frame.id } : {}),
+            ...(frame ? { questionFrameVersion: frame.version } : {}),
+            ...(frame ? { questionFrameSource: frame.source } : {}),
             prompt: input.prompt,
             answer: input.answer,
             loadBearing: input.loadBearing,
             ...(input.discretionRationale ? { discretionRationale: input.discretionRationale } : {}),
           },
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "question.state-updated",
+        question: {
+          questionId: input.questionId,
+          stage,
+          status: "answered",
+          optional: frame?.optional ?? false,
         },
       });
 
@@ -343,6 +369,7 @@ export async function recordPlanningAnswer(
           type: "idea.parked",
           item: {
             sourceType: "answer",
+            destination: input.parkDestination ?? "backlog",
             sourceAnswerId: answerId,
             sourceStage: stage,
             sourceQuestionId: input.questionId,
@@ -390,6 +417,7 @@ export async function parkPlanningIdea(
           type: "idea.parked",
           item: {
             sourceType: "composer",
+            destination: input.destination,
             sourceStage: input.sourceStage,
             sourceQuestionId: input.sourceQuestionId.trim() || "composer_note",
             sourcePrompt: input.sourcePrompt.trim() || "Composer note",
@@ -399,6 +427,79 @@ export async function parkPlanningIdea(
         },
       });
 
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function skipPlanningQuestion(
+  store: AppStoreInternals,
+  input: SkipPlanningQuestionInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+  if (!isDiscussStage(input.stage)) {
+    return store.withError(`Unsupported planning stage: ${input.stage}`);
+  }
+  const stage = input.stage;
+
+  const reason = input.reason.trim();
+  if (!reason) {
+    return store.withError("Skipped questions need a reason");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const frame = getQuestionFrameSnapshot(current, input.questionId) ?? getDiscussQuestion(input.questionId);
+      let snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "answer.skipped",
+          skip: {
+            stage,
+            questionId: input.questionId,
+            ...(frame ? { questionFrameId: frame.id } : {}),
+            ...(frame ? { questionFrameVersion: frame.version } : {}),
+            ...(frame ? { questionFrameSource: frame.source } : {}),
+            prompt: input.prompt,
+            reasonType: input.reasonType,
+            reason,
+            createsOpenQuestion: input.createsOpenQuestion,
+          },
+        },
+      });
+      snapshot = appendEvent(planningStore, snapshot, {
+        type: "question.state-updated",
+        question: {
+          questionId: input.questionId,
+          stage,
+          status: "skipped",
+          optional: frame?.optional ?? false,
+          reason,
+        },
+      });
+
+      if (input.createsOpenQuestion) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "idea.parked",
+          item: {
+            sourceType: "skipped-question",
+            destination: "open-question",
+            sourceStage: stage,
+            sourceQuestionId: input.questionId,
+            sourcePrompt: input.prompt,
+            text: reason,
+            rationale: `Skipped question: ${input.prompt}`,
+          },
+        });
+      }
+
+      snapshot = advanceDiscussStageAfterAnswer(planningStore, snapshot, stage);
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });
@@ -416,6 +517,8 @@ export async function revisePlanningAnswer(
 
   return store.withErrorHandling(async () => {
     return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const original = current.answers.find((answer) => answer.id === input.answerId);
       let snapshot = planningStore.appendEvent({
         planId: input.planId,
         expectedRevision: input.expectedRevision,
@@ -426,6 +529,17 @@ export async function revisePlanningAnswer(
           ...(input.rationale ? { rationale: input.rationale } : {}),
         },
       });
+      if (original && isDiscussStage(original.stage)) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "question.state-updated",
+          question: {
+            questionId: original.questionId,
+            stage: original.stage,
+            status: "answered",
+            optional: getQuestionFrameSnapshot(current, original.questionId)?.optional ?? false,
+          },
+        });
+      }
 
       if (input.projectPatch) {
         snapshot = appendEvent(planningStore, snapshot, {
@@ -434,6 +548,42 @@ export async function revisePlanningAnswer(
         });
       }
 
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function updatePlanningQuestionState(
+  store: AppStoreInternals,
+  input: UpdatePlanningQuestionStateInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const question = getQuestionFrameSnapshot(current, input.questionId) ?? getDiscussQuestion(input.questionId);
+      if (!question) {
+        throw new Error(`Unknown planning question: ${input.questionId}`);
+      }
+      const snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "question.state-updated",
+          question: {
+            questionId: input.questionId,
+            stage: question.stage,
+            status: input.status,
+            optional: question.optional ?? false,
+            ...(input.reason?.trim() ? { reason: input.reason.trim() } : {}),
+          },
+        },
+      });
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });
@@ -474,6 +624,66 @@ export async function upsertPlanningRequirements(
         snapshot = appendEvent(planningStore, snapshot, {
           type: "requirement.upserted",
           requirement,
+        });
+      }
+
+      if (snapshot.activePhase !== previousPosition.phase || snapshot.activeStage !== previousPosition.stage) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "phase.updated",
+          phase: previousPosition.phase,
+          stage: previousPosition.stage,
+        });
+      }
+
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function upsertPlanningContextRecords(
+  store: AppStoreInternals,
+  input: UpsertPlanningContextRecordsInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+
+  const decisions = input.decisions.map(normalizeDecision);
+  const risks = input.risks.map(normalizeRisk);
+  if (decisions.length + risks.length === 0) {
+    return store.withError("At least one decision or risk is required");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const previousPosition = {
+        phase: current.activePhase,
+        stage: current.activeStage,
+      };
+      const [firstDecision, ...remainingDecisions] = decisions;
+      const [firstRisk, ...remainingRisks] = risks;
+      const firstEvent: PlanEvent = firstDecision
+        ? { type: "decision.upserted", decision: firstDecision }
+        : { type: "risk.upserted", risk: firstRisk as RiskRecord };
+      let snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: firstEvent,
+      });
+
+      for (const decision of remainingDecisions) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "decision.upserted",
+          decision,
+        });
+      }
+      for (const risk of firstDecision ? risks : remainingRisks) {
+        snapshot = appendEvent(planningStore, snapshot, {
+          type: "risk.upserted",
+          risk,
         });
       }
 
@@ -719,7 +929,7 @@ export async function approvePlanningChangeProposal(
     requirementIds: [],
   };
   if (!targetMilestoneId || !targetSliceId || !task.id || !task.title || !task.acceptance) {
-    return store.withError("Approved changes need a target slice, task id, title, and acceptance");
+    return store.withError("Accepted changes need a target slice, task id, title, and acceptance");
   }
 
   return store.withErrorHandling(async () => {
@@ -775,7 +985,7 @@ export async function approvePlanningChangeProposal(
         output: {
           id: outputId,
           stage: "roadmap",
-          title: `Approved change - ${proposal.title}`,
+          title: `Accepted change - ${proposal.title}`,
           content: serializePlanProposal(nextPlan),
           status: "proposed",
         },
@@ -784,6 +994,12 @@ export async function approvePlanningChangeProposal(
         type: "generated-output.reviewed",
         outputId,
         status: "accepted",
+      });
+      snapshot = appendPlanRevision(planningStore, snapshot, {
+        sourceType: "accepted-plan-change",
+        sourceId: proposal.id,
+        title: proposal.title,
+        acceptedOutputId: outputId,
       });
       snapshot = appendEvent(planningStore, snapshot, {
         type: "stage.updated",
@@ -890,6 +1106,12 @@ export async function approvePlanningTaskModification(
         type: "generated-output.reviewed",
         outputId,
         status: "accepted",
+      });
+      snapshot = appendPlanRevision(planningStore, snapshot, {
+        sourceType: "accepted-plan-change",
+        sourceId: proposal.id,
+        title: proposal.title,
+        acceptedOutputId: outputId,
       });
       snapshot = appendEvent(planningStore, snapshot, {
         type: "stage.updated",
@@ -1113,6 +1335,11 @@ export async function confirmPlanningStage(
 
   return store.withErrorHandling(async () => {
     return withPlanningStore(workspace.path, (planningStore) => {
+      const current = getRequiredPlanSnapshot(planningStore, input.planId);
+      const progress = getDiscussStageProgress(current, stage);
+      if (!progress.readyForReview) {
+        throw new Error("Stage readiness is blocked by unanswered or needs-review questions");
+      }
       let snapshot = planningStore.appendEvent({
         planId: input.planId,
         expectedRevision: input.expectedRevision,
@@ -1179,6 +1406,41 @@ export async function startPlanningResearch(
         },
       });
 
+      return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
+    });
+  });
+}
+
+export async function skipPlanningStage(
+  store: AppStoreInternals,
+  input: SkipPlanningStageInput,
+): Promise<DesktopAppState> {
+  await store.initialize();
+  const workspace = resolvePlanningWorkspace(store, input.workspaceId);
+  if (!workspace) {
+    return store.withError(`Unknown workspace: ${input.workspaceId}`);
+  }
+  const reason = input.reason.trim();
+  if (!reason) {
+    return store.withError("Skipped stages need a reason");
+  }
+  if (input.stage !== "research") {
+    return store.withError("Only Research can be skipped right now");
+  }
+
+  return store.withErrorHandling(async () => {
+    return withPlanningStore(workspace.path, (planningStore) => {
+      let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
+      assertDiscussComplete(snapshot);
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: input.expectedRevision,
+        event: {
+          type: "stage.skipped",
+          stage: input.stage,
+          reason,
+        },
+      });
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
     });
   });
@@ -1394,6 +1656,14 @@ export async function reviewPlanningPlan(
           status: input.status,
         },
       });
+      if (input.status === "accepted") {
+        snapshot = appendPlanRevision(planningStore, snapshot, {
+          sourceType: "accepted-plan",
+          sourceId: input.outputId,
+          title: output.title,
+          acceptedOutputId: input.outputId,
+        });
+      }
       snapshot = appendEvent(planningStore, snapshot, {
         type: "stage.updated",
         stage: "roadmap",
@@ -1518,6 +1788,26 @@ export async function linkPlanningTaskSession(
             sessionId: session.ref.sessionId,
             title: buildTaskSessionTitle(input),
             executionModel: toTaskSessionExecutionModelRecord(executionModel),
+          },
+        },
+      });
+      snapshot = planningStore.appendEvent({
+        planId: input.planId,
+        expectedRevision: snapshot.revision,
+        event: {
+          type: "slice.focus-updated",
+          focus: {
+            milestoneId: taskContext.milestone.id,
+            milestoneTitle: taskContext.milestone.title,
+            sliceId: taskContext.slice.id,
+            slicePath: `${taskContext.milestone.id}/${taskContext.slice.id}`,
+            sliceTitle: taskContext.slice.title,
+            taskId: taskContext.task.id,
+            taskPath: taskContext.taskPath,
+            taskTitle: taskContext.task.title,
+            workspaceId: session.ref.workspaceId,
+            sessionId: session.ref.sessionId,
+            sessionTitle: buildTaskSessionTitle(input),
           },
         },
       });
@@ -1723,7 +2013,6 @@ export async function startPlanningShip(
     return withPlanningStore(workspace.path, (planningStore) => {
       let snapshot = getRequiredPlanSnapshot(planningStore, input.planId);
       assertAcceptedPlan(snapshot);
-      assertReadyForShip(snapshot);
 
       if (snapshot.activePhase === "ship") {
         return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, snapshot);
@@ -1731,10 +2020,31 @@ export async function startPlanningShip(
       if (snapshot.activePhase !== "verify") {
         throw new Error("VERIFY must be active before SHIP can start");
       }
+      const blockedTasks = getShipBlockedTasks(snapshot);
+      if (blockedTasks.length > 0) {
+        const rationale = input.riskAcceptanceRationale?.trim();
+        if (!rationale) {
+          throw new Error("SHIP blocked: verification gaps need Risk Acceptance");
+        }
+        const riskId = snapshot.risks.find((risk) => risk.status === "open" || risk.status === "mitigating")?.id;
+        for (const task of blockedTasks) {
+          snapshot = appendEvent(planningStore, snapshot, {
+            type: "risk.accepted",
+            acceptance: {
+              ...(riskId ? { riskId } : {}),
+              taskId: task.taskId,
+              taskPath: task.taskPath,
+              acceptance: task.acceptance,
+              rationale,
+            },
+          });
+        }
+      }
+      assertReadyForShip(snapshot);
 
       snapshot = planningStore.appendEvent({
         planId: input.planId,
-        expectedRevision: input.expectedRevision,
+        expectedRevision: snapshot.revision,
         event: {
           type: "phase.updated",
           phase: "ship",
@@ -1763,12 +2073,12 @@ export async function recordPlanningShipSummary(
       assertAcceptedPlan(snapshot);
       assertReadyForShip(snapshot);
       if (snapshot.activePhase !== "ship") {
-        throw new Error("SHIP must be active before recording a ship summary");
+        throw new Error("SHIP must be active before recording a ship handoff");
       }
 
       const summary = input.summary.trim();
       if (!summary) {
-        throw new Error("Ship summary is required");
+        throw new Error("Ship handoff is required");
       }
 
       const updated = planningStore.appendEvent({
@@ -1781,6 +2091,35 @@ export async function recordPlanningShipSummary(
           },
         },
       });
+      const followUps = (input.followUps ?? []).map((entry) => entry.trim()).filter(Boolean);
+      if (followUps.length > 0) {
+        const now = new Date().toISOString();
+        const currentItems = store.state.backlogByWorkspace[workspace.id] ?? [];
+        const createdItems = followUps.map((text) => ({
+          id: randomUUID(),
+          workspaceId: workspace.id,
+          text,
+          category: "follow-up" as const,
+          status: "open" as const,
+          source: {
+            workspaceId: workspace.id,
+            sessionId: input.planId,
+            messageId: `ship:${updated.shipSummaries.at(-1)?.id ?? updated.revision}:${text}`,
+            role: "ship",
+            label: `Ship Handoff · ${updated.name}`,
+            createdAt: now,
+          },
+          createdAt: now,
+          updatedAt: now,
+        }));
+        store.state = {
+          ...store.state,
+          backlogByWorkspace: {
+            ...store.state.backlogByWorkspace,
+            [workspace.id]: [...createdItems, ...currentItems],
+          },
+        };
+      }
 
       return publishCurrentPlanningState(store, planningStore, workspace.id, workspace.path, updated);
     });
@@ -1856,6 +2195,28 @@ function appendEvent(planningStore: PlanningStore, snapshot: PlanSnapshot, event
     planId: snapshot.id,
     expectedRevision: snapshot.revision,
     event,
+  });
+}
+
+function appendPlanRevision(
+  planningStore: PlanningStore,
+  snapshot: PlanSnapshot,
+  revision: {
+    readonly sourceType: "accepted-plan" | "accepted-plan-change";
+    readonly sourceId: string;
+    readonly title: string;
+    readonly acceptedOutputId: string;
+  },
+): PlanSnapshot {
+  return appendEvent(planningStore, snapshot, {
+    type: "plan.revision-created",
+    revision: {
+      revisionNumber: snapshot.planRevisions.length + 1,
+      sourceType: revision.sourceType,
+      sourceId: revision.sourceId,
+      title: revision.title,
+      acceptedOutputId: revision.acceptedOutputId,
+    },
   });
 }
 
@@ -2044,6 +2405,9 @@ const requirementValidationStatuses = new Set<RequirementRecord["validationStatu
   "partial",
   "missing",
 ]);
+const riskImpacts = new Set<RiskRecord["impact"]>(["low", "medium", "high"]);
+const riskLikelihoods = new Set<RiskRecord["likelihood"]>(["low", "medium", "high"]);
+const riskStatuses = new Set<RiskRecord["status"]>(["open", "mitigating", "accepted", "resolved"]);
 
 function getPlanningRequirementRows(snapshot: PlanSnapshot): readonly RequirementRecord[] {
   return snapshot.requirements.length > 0 ? snapshot.requirements : buildRequirementDrafts(snapshot);
@@ -2080,6 +2444,49 @@ function normalizeRequirement(requirement: RequirementRecord): RequirementRecord
     validationStatus: requirement.validationStatus,
   };
   return notes ? { ...normalized, notes } : normalized;
+}
+
+function normalizeDecision(decision: DecisionRecord): DecisionRecord {
+  const id = decision.id.trim();
+  const choice = decision.choice.trim();
+  const rationale = decision.rationale.trim();
+  if (!id.startsWith("D") || !choice || !rationale) {
+    throw new Error("Decisions need a D-prefixed id, choice, and rationale");
+  }
+  return {
+    id,
+    choice,
+    rationale,
+    alternatives: decision.alternatives.map((entry) => entry.trim()).filter(Boolean),
+    date: decision.date.trim() || new Date().toISOString(),
+    linkedThreadIds: decision.linkedThreadIds.map((entry) => entry.trim()).filter(Boolean),
+    linkedPlanChangeIds: decision.linkedPlanChangeIds.map((entry) => entry.trim()).filter(Boolean),
+  };
+}
+
+function normalizeRisk(risk: RiskRecord): RiskRecord {
+  const id = risk.id.trim();
+  const title = risk.title.trim();
+  const mitigation = risk.mitigation.trim();
+  const owner = risk.owner.trim();
+  if (!id.startsWith("K") || !title || !mitigation || !owner) {
+    throw new Error("Risks need a K-prefixed id, title, mitigation, and owner");
+  }
+  if (!riskImpacts.has(risk.impact) || !riskLikelihoods.has(risk.likelihood) || !riskStatuses.has(risk.status)) {
+    throw new Error("Risk impact, likelihood, and status must be recognized values");
+  }
+  return {
+    id,
+    title,
+    impact: risk.impact,
+    likelihood: risk.likelihood,
+    mitigation,
+    owner,
+    status: risk.status,
+    linkedSliceIds: risk.linkedSliceIds.map((entry) => entry.trim()).filter(Boolean),
+    linkedVerificationIds: risk.linkedVerificationIds.map((entry) => entry.trim()).filter(Boolean),
+    linkedRiskAcceptanceIds: risk.linkedRiskAcceptanceIds.map((entry) => entry.trim()).filter(Boolean),
+  };
 }
 
 function normalizeWorkflowPreferences(
@@ -2319,9 +2726,12 @@ function modifyTaskInAcceptedPlan(
 }
 
 function assertDiscussComplete(snapshot: PlanSnapshot): void {
-  const complete = discussStageOrder.every((stage) => getDiscussStageProgress(snapshot, stage).depthConfirmed);
+  const complete = discussStageOrder.every((stage) => {
+    const progress = getDiscussStageProgress(snapshot, stage);
+    return progress.depthConfirmed && progress.readyForReview;
+  });
   if (!complete) {
-    throw new Error("DISCUSS must be confirmed before research can start");
+    throw new Error("DISCUSS must be confirmed with no needs-review questions before research can start");
   }
 }
 
@@ -2329,8 +2739,9 @@ function assertAcceptedResearch(snapshot: PlanSnapshot): void {
   const hasAcceptedResearch = snapshot.generatedOutputs.some(
     (output) => output.stage === "research" && output.status === "accepted",
   );
-  if (!hasAcceptedResearch) {
-    throw new Error("Accepted RESEARCH is required before PLAN can start");
+  const researchSkipped = snapshot.skippedStages.some((stage) => stage.stage === "research");
+  if (!hasAcceptedResearch && !researchSkipped) {
+    throw new Error("Accepted or skipped RESEARCH is required before PLAN can start");
   }
 }
 
@@ -2399,18 +2810,32 @@ function assertReadyForVerify(snapshot: PlanSnapshot): void {
 }
 
 function assertReadyForShip(snapshot: PlanSnapshot): void {
-  const acceptedTasks = getAcceptedPlanTasks(snapshot);
-  if (acceptedTasks.length === 0) {
+  const blockedTasks = getShipBlockedTasks(snapshot);
+  if (blockedTasks.length === 0 && getAcceptedPlanTasks(snapshot).length === 0) {
     throw new Error("SHIP blocked: accepted PLAN has no tasks");
   }
-  for (const task of acceptedTasks) {
+  if (blockedTasks.length > 0) {
+    throw new Error(`SHIP blocked: ${blockedTasks[0]?.taskId ?? "task"} needs passed verification or Risk Acceptance`);
+  }
+}
+
+function getShipBlockedTasks(
+  snapshot: PlanSnapshot,
+): readonly { readonly taskId: string; readonly taskPath: string; readonly acceptance: string }[] {
+  return getAcceptedPlanTasks(snapshot).filter((task) => {
     const verification = [...snapshot.taskVerifications]
       .reverse()
       .find((entry) => entry.taskId === task.taskId && entry.acceptance === task.acceptance);
-    if (verification?.status !== "passed") {
-      throw new Error(`SHIP blocked: ${task.taskId} needs passed verification`);
+    if (verification?.status === "passed") {
+      return false;
     }
-  }
+    return !snapshot.riskAcceptances.some(
+      (acceptance) =>
+        acceptance.taskId === task.taskId &&
+        acceptance.taskPath === task.taskPath &&
+        acceptance.acceptance === task.acceptance,
+    );
+  });
 }
 
 function assertTaskReadyForVerification(snapshot: PlanSnapshot, taskId: string): void {
@@ -2571,6 +2996,7 @@ function applyPlanningStarterTemplate(
     if (!question || question.stage !== prefill.stage) {
       throw new Error(`Starter template references an unknown question: ${prefill.questionId}`);
     }
+    const frame = getQuestionFrameSnapshot(next, prefill.questionId) ?? question;
 
     next = appendEvent(planningStore, next, {
       type: "answer.recorded",
@@ -2578,6 +3004,9 @@ function applyPlanningStarterTemplate(
         id: randomUUID(),
         stage: prefill.stage,
         questionId: prefill.questionId,
+        questionFrameId: frame.id,
+        questionFrameVersion: frame.version,
+        questionFrameSource: frame.source,
         prompt: question.prompt,
         answer: prefill.answer,
         loadBearing: question.loadBearing,

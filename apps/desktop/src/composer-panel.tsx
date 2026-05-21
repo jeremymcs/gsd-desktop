@@ -30,6 +30,7 @@ interface ComposerPanelProps {
   readonly provider: string | undefined;
   readonly modelId: string | undefined;
   readonly thinkingLevel: string | undefined;
+  readonly environmentLabel: string;
   readonly slashSections: readonly ComposerSlashCommandSection[];
   readonly slashOptions: readonly ComposerSlashOption[];
   readonly selectedSlashCommand?: ComposerSlashCommand;
@@ -79,6 +80,7 @@ export function ComposerPanel({
   provider,
   modelId,
   thinkingLevel,
+  environmentLabel,
   slashSections,
   slashOptions,
   selectedSlashCommand,
@@ -160,6 +162,24 @@ export function ComposerPanel({
           onToggleExtensionDock={onToggleExtensionDock}
           footer={(
             <div className="composer__footer">
+              <button className="composer-context-row" data-testid="composer-context-row" type="button">
+                <span>
+                  <strong>Mode</strong>
+                  <small>{activeSlashCommand?.title ?? "Ask"}</small>
+                </span>
+                <span>
+                  <strong>Model</strong>
+                  <small>{formatComposerModel(provider, modelId)}</small>
+                </span>
+                <span>
+                  <strong>Reasoning</strong>
+                  <small>{formatComposerReasoning(thinkingLevel)}</small>
+                </span>
+                <span>
+                  <strong>Worktree</strong>
+                  <small>{environmentLabel}</small>
+                </span>
+              </button>
               <div className="composer__footer-row">
                 <div className="composer__hint">
                   {selectedSession.status === "running"
@@ -209,4 +229,12 @@ export function ComposerPanel({
       </div>
     </footer>
   );
+}
+
+function formatComposerModel(provider: string | undefined, modelId: string | undefined): string {
+  return provider && modelId ? `${provider}/${modelId}` : "Not selected";
+}
+
+function formatComposerReasoning(thinkingLevel: string | undefined): string {
+  return thinkingLevel ? thinkingLevel.charAt(0).toUpperCase() + thinkingLevel.slice(1) : "Default";
 }

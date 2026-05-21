@@ -37,6 +37,9 @@ import type {
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
   SelectPlanningPlanInput,
+  SetProjectDefaultWorktreeInput,
+  SkipPlanningStageInput,
+  SkipPlanningQuestionInput,
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
@@ -47,9 +50,11 @@ import type {
   UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningQuestionStateInput,
   UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningContextRecordsInput,
   UpsertPlanningRequirementsInput,
   WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
@@ -81,6 +86,7 @@ export const desktopIpc = {
   openWorkspaceInFinder: "pi-gui:open-workspace-in-finder",
   createWorktree: "pi-gui:create-worktree",
   removeWorktree: "pi-gui:remove-worktree",
+  setProjectDefaultWorktree: "pi-gui:set-project-default-worktree",
   openSkillInFinder: "pi-gui:open-skill-in-finder",
   openExtensionInFinder: "pi-gui:open-extension-in-finder",
   loadPlanningWorkspace: "pi-gui:load-planning-workspace",
@@ -91,8 +97,11 @@ export const desktopIpc = {
   updatePlanningWorkflowPreferences: "pi-gui:update-planning-workflow-preferences",
   recordPlanningAnswer: "pi-gui:record-planning-answer",
   parkPlanningIdea: "pi-gui:park-planning-idea",
+  skipPlanningQuestion: "pi-gui:skip-planning-question",
   revisePlanningAnswer: "pi-gui:revise-planning-answer",
+  updatePlanningQuestionState: "pi-gui:update-planning-question-state",
   upsertPlanningRequirements: "pi-gui:upsert-planning-requirements",
+  upsertPlanningContextRecords: "pi-gui:upsert-planning-context-records",
   reviewPlanningIdea: "pi-gui:review-planning-idea",
   updatePlanningIdea: "pi-gui:update-planning-idea",
   draftPlanningChangeProposal: "pi-gui:draft-planning-change-proposal",
@@ -104,6 +113,7 @@ export const desktopIpc = {
   restorePlanningTask: "pi-gui:restore-planning-task",
   confirmPlanningStage: "pi-gui:confirm-planning-stage",
   startPlanningResearch: "pi-gui:start-planning-research",
+  skipPlanningStage: "pi-gui:skip-planning-stage",
   proposePlanningResearch: "pi-gui:propose-planning-research",
   reviewPlanningResearch: "pi-gui:review-planning-research",
   startPlanningPlan: "pi-gui:start-planning-plan",
@@ -303,6 +313,7 @@ export interface PiDesktopApi {
   openWorkspaceInFinder(workspaceId: string): Promise<void>;
   createWorktree(input: CreateWorktreeInput): Promise<DesktopAppState>;
   removeWorktree(input: RemoveWorktreeInput): Promise<DesktopAppState>;
+  setProjectDefaultWorktree(input: SetProjectDefaultWorktreeInput): Promise<DesktopAppState>;
   openSkillInFinder(workspaceId: string, filePath: string): Promise<void>;
   openExtensionInFinder(workspaceId: string, filePath: string): Promise<void>;
   loadPlanningWorkspace(workspaceId: string): Promise<DesktopAppState>;
@@ -313,8 +324,11 @@ export interface PiDesktopApi {
   updatePlanningWorkflowPreferences(input: UpdatePlanningWorkflowPreferencesInput): Promise<DesktopAppState>;
   recordPlanningAnswer(input: RecordPlanningAnswerInput): Promise<DesktopAppState>;
   parkPlanningIdea(input: ParkPlanningIdeaInput): Promise<DesktopAppState>;
+  skipPlanningQuestion(input: SkipPlanningQuestionInput): Promise<DesktopAppState>;
   revisePlanningAnswer(input: RevisePlanningAnswerInput): Promise<DesktopAppState>;
+  updatePlanningQuestionState(input: UpdatePlanningQuestionStateInput): Promise<DesktopAppState>;
   upsertPlanningRequirements(input: UpsertPlanningRequirementsInput): Promise<DesktopAppState>;
+  upsertPlanningContextRecords(input: UpsertPlanningContextRecordsInput): Promise<DesktopAppState>;
   reviewPlanningIdea(input: ReviewPlanningIdeaInput): Promise<DesktopAppState>;
   updatePlanningIdea(input: UpdatePlanningIdeaInput): Promise<DesktopAppState>;
   draftPlanningChangeProposal(input: DraftPlanningChangeProposalInput): Promise<DesktopAppState>;
@@ -326,6 +340,7 @@ export interface PiDesktopApi {
   restorePlanningTask(input: RestorePlanningTaskInput): Promise<DesktopAppState>;
   confirmPlanningStage(input: ConfirmPlanningStageInput): Promise<DesktopAppState>;
   startPlanningResearch(input: StartPlanningResearchInput): Promise<DesktopAppState>;
+  skipPlanningStage(input: SkipPlanningStageInput): Promise<DesktopAppState>;
   proposePlanningResearch(input: ProposePlanningResearchInput): Promise<DesktopAppState>;
   reviewPlanningResearch(input: ReviewPlanningResearchInput): Promise<DesktopAppState>;
   startPlanningPlan(input: StartPlanningPlanInput): Promise<DesktopAppState>;

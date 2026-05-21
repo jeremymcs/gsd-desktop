@@ -60,7 +60,7 @@ test("switches between app-global and per-repo model scope while worktrees inher
     await expect(window.locator(".settings-select")).toHaveValue("openai:gpt-5");
 
     await openSettingsSection(window, "General");
-    await window.getByRole("button", { name: "Per repo" }).click();
+    await window.getByRole("button", { name: "Per Project" }).click();
     await expect.poll(async () => (await getDesktopState(window)).modelSettingsScopeMode).toBe("per-repo");
 
     await openSettingsSection(window, "Models");
@@ -118,7 +118,7 @@ test("switches between app-global and per-repo model scope while worktrees inher
     await expect(window.locator(".settings-select")).toHaveValue("openai:gpt-5");
 
     await window.getByRole("button", { name: "Threads", exact: true }).click();
-    await expect(window.getByRole("button", { name: "openai/gpt-4-turbo" }).first()).toBeVisible();
+    await expect(window.getByRole("button", { name: "openai/gpt-5" }).first()).toBeVisible();
     await expectComposerModelOptions(window, {
       visibleModelLabels: ["GPT-5", "GPT-4 Turbo"],
       hiddenModelLabels: ["GPT-4o"],

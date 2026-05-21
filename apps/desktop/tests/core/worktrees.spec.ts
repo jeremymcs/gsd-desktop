@@ -47,10 +47,36 @@ test("creates and selects a worktree-backed workspace from the desktop UI", asyn
     await expect(window.locator(".empty-panel")).toContainText("Start a thread for this project");
     await expect(window.locator(".empty-panel")).not.toContainText("/Users/");
 
+    await window.evaluate(async (workspaceId) => {
+      await window.piApp.selectWorkspace(workspaceId);
+    }, rootWorkspace.id);
+    await window.getByLabel("Project pages").getByRole("button", { name: "Project Preferences", exact: true }).click();
+    const firstWorktree = stateAfterCreate.worktreesByWorkspace[rootWorkspace.id]?.[0];
+    assertExists(firstWorktree, "Expected a created worktree record");
+    await window.getByTestId("project-default-worktree-select").selectOption(firstWorktree.id);
+    await expect
+      .poll(async () => (await getDesktopState(window)).projectPreferencesByWorkspace[rootWorkspace.id]?.defaultWorktreeId)
+      .toBe(firstWorktree.id);
+    await expect
+      .poll(async () => (await getDesktopState(window)).preferenceChangesByWorkspace[rootWorkspace.id]?.[0]?.field)
+      .toBe("defaultWorktree");
+    await expect(window.getByTestId("preference-change-log")).toContainText("Default Worktree");
+    await expect(window.getByTestId("preference-change-log")).toContainText(firstWorktree.id);
+
     await window.getByRole("complementary").getByRole("button", { name: "New Thread" }).click();
     await expect(window.getByTestId("new-thread-composer")).toBeVisible();
     await expect(window.getByRole("button", { name: "Local", exact: true })).toBeVisible();
     await expect(window.getByRole("button", { name: "Worktree", exact: true })).toBeVisible();
+    await window.getByTestId("new-thread-composer").fill("Use the default worktree");
+    await window.getByRole("button", { name: "Start Thread" }).click();
+    await expect
+      .poll(async () => {
+        const state = await getDesktopState(window);
+        return state.workspaces.find((workspace) => workspace.id === state.selectedWorkspaceId)?.kind;
+      })
+      .toBe("worktree");
+    await expect(window.getByTestId("transcript")).toContainText("Environment Change");
+    await expect(window.getByTestId("transcript")).toContainText("Thread uses");
   } finally {
     await harness.close();
   }

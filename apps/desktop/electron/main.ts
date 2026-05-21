@@ -57,6 +57,9 @@ import type {
   RemoveWorktreeInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  SkipPlanningQuestionInput,
+  SkipPlanningStageInput,
+  SetProjectDefaultWorktreeInput,
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
@@ -67,9 +70,11 @@ import type {
   UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningQuestionStateInput,
   UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningContextRecordsInput,
   UpsertPlanningRequirementsInput,
   WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
@@ -559,6 +564,9 @@ app.whenReady().then(async () => {
   ipcMain.handle(desktopIpc.removeWorktree, (_event, input: RemoveWorktreeInput) =>
     store.removeWorktree(input),
   );
+  ipcMain.handle(desktopIpc.setProjectDefaultWorktree, (_event, input: SetProjectDefaultWorktreeInput) =>
+    store.setProjectDefaultWorktree(input),
+  );
   ipcMain.handle(desktopIpc.loadPlanningWorkspace, (_event, workspaceId: string) =>
     store.loadPlanningWorkspace(workspaceId),
   );
@@ -583,11 +591,20 @@ app.whenReady().then(async () => {
   ipcMain.handle(desktopIpc.parkPlanningIdea, (_event, input: ParkPlanningIdeaInput) =>
     store.parkPlanningIdea(input),
   );
+  ipcMain.handle(desktopIpc.skipPlanningQuestion, (_event, input: SkipPlanningQuestionInput) =>
+    store.skipPlanningQuestion(input),
+  );
   ipcMain.handle(desktopIpc.revisePlanningAnswer, (_event, input: RevisePlanningAnswerInput) =>
     store.revisePlanningAnswer(input),
   );
+  ipcMain.handle(desktopIpc.updatePlanningQuestionState, (_event, input: UpdatePlanningQuestionStateInput) =>
+    store.updatePlanningQuestionState(input),
+  );
   ipcMain.handle(desktopIpc.upsertPlanningRequirements, (_event, input: UpsertPlanningRequirementsInput) =>
     store.upsertPlanningRequirements(input),
+  );
+  ipcMain.handle(desktopIpc.upsertPlanningContextRecords, (_event, input: UpsertPlanningContextRecordsInput) =>
+    store.upsertPlanningContextRecords(input),
   );
   ipcMain.handle(desktopIpc.reviewPlanningIdea, (_event, input: ReviewPlanningIdeaInput) =>
     store.reviewPlanningIdea(input),
@@ -621,6 +638,9 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle(desktopIpc.startPlanningResearch, (_event, input: StartPlanningResearchInput) =>
     store.startPlanningResearch(input),
+  );
+  ipcMain.handle(desktopIpc.skipPlanningStage, (_event, input: SkipPlanningStageInput) =>
+    store.skipPlanningStage(input),
   );
   ipcMain.handle(desktopIpc.proposePlanningResearch, (_event, input: ProposePlanningResearchInput) =>
     store.proposePlanningResearch(input),

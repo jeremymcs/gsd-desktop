@@ -1,4 +1,11 @@
-import type { AnswerRecord, PlanSnapshot, PlanStage, ProjectSummary } from "@pi-gui/gsd-planning";
+import type {
+  AnswerRecord,
+  PlanSnapshot,
+  PlanStage,
+  ProjectSummary,
+  QuestionFrameSnapshotRecord,
+  QuestionStateRecord,
+} from "@pi-gui/gsd-planning";
 
 export type DiscussStage = Extract<PlanStage, "project" | "requirements" | "milestone">;
 
@@ -9,14 +16,19 @@ export interface DiscussQuestion {
   readonly prompt: string;
   readonly helper: string;
   readonly loadBearing: boolean;
+  readonly optional?: boolean;
+  readonly source: string;
+  readonly version: number;
 }
 
 export interface DiscussStageProgress {
   readonly stage: DiscussStage;
   readonly total: number;
   readonly answered: number;
+  readonly skipped: number;
   readonly readyForReview: boolean;
   readonly depthConfirmed: boolean;
+  readonly needsReview: number;
 }
 
 export const discussStageOrder: readonly DiscussStage[] = ["project", "requirements", "milestone"];
@@ -29,6 +41,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What should we call this project?",
     helper: "Use a short working title. It can change later.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_vision",
@@ -37,6 +51,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What are we building, and what outcome should it create?",
     helper: "Describe the end state in plain language.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_shape",
@@ -45,6 +61,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "Is this project simple or complex?",
     helper: "Start with simple or complex. Default to complex when integrations, roles, brownfield code, or broad scope are unclear.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_users",
@@ -53,6 +71,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "Who is it for, and what pain are they bringing?",
     helper: "Name the primary users, not every possible audience.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_core_value",
@@ -61,6 +81,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What must feel clearly better when this ships?",
     helper: "This becomes the north star for later planning tradeoffs.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_antigoals",
@@ -69,6 +91,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What should this not become?",
     helper: "List anything that should stay out of scope.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "project_constraints",
@@ -77,6 +101,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What constraints should shape every decision?",
     helper: "Include time, platform, data, team, budget, compatibility, or migration constraints.",
     loadBearing: true,
+    source: "guided-discuss-project.md",
+    version: 1,
   },
   {
     id: "requirements_capabilities",
@@ -85,6 +111,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What must the first useful version be able to do?",
     helper: "Write capabilities as user-visible behavior, not implementation tasks.",
     loadBearing: true,
+    source: "guided-discuss-requirements.md",
+    version: 1,
   },
   {
     id: "requirements_quality",
@@ -93,6 +121,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What quality bar makes this acceptable?",
     helper: "Call out reliability, speed, UX, accessibility, security, and maintainability expectations.",
     loadBearing: true,
+    source: "guided-discuss-requirements.md",
+    version: 1,
   },
   {
     id: "requirements_integrations",
@@ -101,6 +131,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What systems, files, data, or people does this need to interact with?",
     helper: "Name hard dependencies and any systems that must not be disturbed.",
     loadBearing: true,
+    source: "guided-discuss-requirements.md",
+    version: 1,
   },
   {
     id: "requirements_validation",
@@ -109,6 +141,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "How should we know the requirements are complete enough to plan?",
     helper: "Define what evidence would make the requirements feel settled.",
     loadBearing: true,
+    source: "guided-discuss-requirements.md",
+    version: 1,
   },
   {
     id: "milestone_first_outcome",
@@ -117,14 +151,18 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What should the first milestone prove end to end?",
     helper: "Pick the smallest meaningful outcome, not a setup-only checkpoint.",
     loadBearing: true,
+    source: "guided-discuss-milestone.md",
+    version: 1,
   },
   {
     id: "milestone_sequence",
     stage: "milestone",
     label: "Sequence",
-    prompt: "What major phases or slices do you expect?",
-    helper: "Rough order is enough; the PLAN phase will turn this into structure.",
+    prompt: "What major milestones or slices do you expect?",
+    helper: "Rough order is enough; the Plan stage will turn this into structure.",
     loadBearing: true,
+    source: "guided-discuss-milestone.md",
+    version: 1,
   },
   {
     id: "milestone_risks",
@@ -133,6 +171,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What could block execution or force the plan to change?",
     helper: "Include unknowns, dependency risk, migration risk, and decision points.",
     loadBearing: true,
+    source: "guided-discuss-milestone.md",
+    version: 1,
   },
   {
     id: "milestone_ship_signal",
@@ -141,6 +181,8 @@ export const discussQuestions: readonly DiscussQuestion[] = [
     prompt: "What would make you comfortable shipping this project?",
     helper: "Describe the verification signal, demo, or acceptance bar.",
     loadBearing: true,
+    source: "guided-discuss-milestone.md",
+    version: 1,
   },
 ];
 
@@ -156,6 +198,28 @@ export function getDiscussQuestion(questionId: string): DiscussQuestion | undefi
   return discussQuestions.find((question) => question.id === questionId);
 }
 
+export function buildDiscussQuestionFrameSnapshots(): readonly Omit<QuestionFrameSnapshotRecord, "capturedAt">[] {
+  return discussQuestions.map((question) => ({
+    id: question.id,
+    questionId: question.id,
+    stage: question.stage,
+    label: question.label,
+    prompt: question.prompt,
+    helper: question.helper,
+    loadBearing: question.loadBearing,
+    optional: question.optional ?? false,
+    source: question.source,
+    version: question.version,
+  }));
+}
+
+export function getQuestionFrameSnapshot(
+  snapshot: PlanSnapshot | undefined,
+  questionId: string,
+): QuestionFrameSnapshotRecord | undefined {
+  return snapshot?.questionFrameSnapshots.find((frame) => frame.questionId === questionId);
+}
+
 export function getNextDiscussStage(stage: DiscussStage): DiscussStage | undefined {
   const index = discussStageOrder.indexOf(stage);
   return discussStageOrder[index + 1];
@@ -167,6 +231,17 @@ export function getLatestAnswersByQuestion(snapshot: PlanSnapshot | undefined): 
     latest.set(answer.questionId, answer);
   }
   return latest;
+}
+
+export function getSkippedQuestionIds(snapshot: PlanSnapshot | undefined): Set<string> {
+  return new Set((snapshot?.skippedQuestions ?? []).map((question) => question.questionId));
+}
+
+export function getQuestionState(
+  snapshot: PlanSnapshot | undefined,
+  questionId: string,
+): QuestionStateRecord | undefined {
+  return snapshot?.questionStates.find((question) => question.questionId === questionId);
 }
 
 export function getLatestDiscussAnswers(snapshot: PlanSnapshot | undefined): readonly AnswerRecord[] {
@@ -181,22 +256,37 @@ export function getDiscussStageProgress(
 ): DiscussStageProgress {
   const questions = getDiscussQuestionsForStage(stage);
   const latest = getLatestAnswersByQuestion(snapshot);
+  const skippedQuestionIds = getSkippedQuestionIds(snapshot);
+  const needsReview = questions.filter((question) => getQuestionState(snapshot, question.id)?.status === "needs-review")
+    .length;
   const answered = questions.filter((question) => {
     const answer = latest.get(question.id);
     return Boolean(answer?.loadBearing && answer.answer.trim());
   }).length;
+  const skipped = questions.filter((question) => skippedQuestionIds.has(question.id)).length;
   const stageState = snapshot?.stages.find((entry) => entry.stage === stage);
   return {
     stage,
     total: questions.length,
     answered,
-    readyForReview: answered === questions.length,
+    skipped,
+    needsReview,
+    readyForReview: needsReview === 0 && answered + skipped === questions.length,
     depthConfirmed: Boolean(stageState?.depthConfirmedAt),
   };
 }
 
 export function getActiveDiscussQuestion(snapshot: PlanSnapshot | undefined): DiscussQuestion | undefined {
-  if (!snapshot || !isDiscussStage(snapshot.activeStage)) {
+  if (!snapshot) {
+    return undefined;
+  }
+  const needsReviewQuestion = discussQuestions.find(
+    (question) => getQuestionState(snapshot, question.id)?.status === "needs-review",
+  );
+  if (needsReviewQuestion) {
+    return needsReviewQuestion;
+  }
+  if (!isDiscussStage(snapshot.activeStage)) {
     return undefined;
   }
   const stageState = snapshot.stages.find((entry) => entry.stage === snapshot.activeStage);
@@ -214,9 +304,11 @@ export function getNextUnansweredQuestion(
   stage: DiscussStage,
 ): DiscussQuestion | undefined {
   const latest = getLatestAnswersByQuestion(snapshot);
+  const skippedQuestionIds = getSkippedQuestionIds(snapshot);
   return getDiscussQuestionsForStage(stage).find((question) => {
     const answer = latest.get(question.id);
-    return !answer?.loadBearing || !answer.answer.trim();
+    const state = getQuestionState(snapshot, question.id);
+    return state?.status === "needs-review" || (!skippedQuestionIds.has(question.id) && (!answer?.loadBearing || !answer.answer.trim()));
   });
 }
 

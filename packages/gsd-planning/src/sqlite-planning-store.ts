@@ -11,6 +11,7 @@ import type {
   ChangeProposalActivityRecord,
   ChangeProposalRecord,
   CreatePlanInput,
+  DecisionRecord,
   GeneratedOutputRecord,
   HiddenPlanItemRecord,
   LegacyReferenceRecord,
@@ -21,14 +22,22 @@ import type {
   PlanListEntry,
   PlanningStore,
   PlanPhase,
+  PlanRevisionRecord,
   PlanSnapshot,
   PlanStage,
   PlanStatus,
   ProjectSummary,
+  QuestionFrameSnapshotRecord,
+  QuestionStateRecord,
   RequirementRecord,
+  RiskAcceptanceRecord,
+  RiskRecord,
   RunActivityRecord,
   RunRecoverySummaryRecord,
   ShipSummaryRecord,
+  SliceFocusRecord,
+  SkippedStageRecord,
+  SkippedQuestionRecord,
   StageStateRecord,
   StageStatus,
   TaskEvidenceRecord,
@@ -290,12 +299,21 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     constraints: [],
   };
   const answers: AnswerRecord[] = [];
+  const skippedQuestions: SkippedQuestionRecord[] = [];
+  const questionFrameSnapshots = new Map<string, QuestionFrameSnapshotRecord>();
+  const questionStates = new Map<string, QuestionStateRecord>();
+  const skippedStages: SkippedStageRecord[] = [];
   const requirements = new Map<string, RequirementRecord>();
+  const decisions = new Map<string, DecisionRecord>();
+  const risks = new Map<string, RiskRecord>();
   const stages = new Map<PlanStage, MutableStageStateRecord>();
   const generatedOutputs = new Map<string, GeneratedOutputRecord>();
+  const planRevisions: PlanRevisionRecord[] = [];
   const taskSessionLinks = new Map<string, TaskSessionLinkRecord>();
+  const sliceFocus = new Map<string, SliceFocusRecord>();
   const taskExecutions = new Map<string, MutableTaskExecutionRecord>();
   const taskVerifications = new Map<string, TaskVerificationRecord>();
+  const riskAcceptances: RiskAcceptanceRecord[] = [];
   const shipSummaries: ShipSummaryRecord[] = [];
   const legacyReferences = new Map<string, LegacyReferenceRecord>();
   let runRecoverySummary: RunRecoverySummaryRecord | undefined;
@@ -336,11 +354,36 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "stage.skipped": {
+        const current = ensureStage(stages, payload.stage);
+        current.status = "skipped";
+        current.activeQuestionId = "";
+        skippedStages.push({
+          id: event.id,
+          stage: payload.stage,
+          reason: payload.reason,
+          createdAt: event.createdAt,
+        });
+        break;
+      }
+      case "question-frames.snapshotted":
+        for (const frame of payload.frames) {
+          questionFrameSnapshots.set(frame.questionId, {
+            ...frame,
+            capturedAt: event.createdAt,
+          });
+        }
+        break;
       case "answer.recorded": {
         answers.push({
           id: payload.answer.id ?? event.id,
           stage: payload.answer.stage,
           questionId: payload.answer.questionId,
+          ...(payload.answer.questionFrameId ? { questionFrameId: payload.answer.questionFrameId } : {}),
+          ...(payload.answer.questionFrameVersion
+            ? { questionFrameVersion: payload.answer.questionFrameVersion }
+            : {}),
+          ...(payload.answer.questionFrameSource ? { questionFrameSource: payload.answer.questionFrameSource } : {}),
           prompt: payload.answer.prompt,
           answer: payload.answer.answer,
           loadBearing: payload.answer.loadBearing,
@@ -368,8 +411,40 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "answer.skipped":
+        skippedQuestions.push({
+          id: payload.skip.id ?? event.id,
+          stage: payload.skip.stage,
+          questionId: payload.skip.questionId,
+          ...(payload.skip.questionFrameId ? { questionFrameId: payload.skip.questionFrameId } : {}),
+          ...(payload.skip.questionFrameVersion ? { questionFrameVersion: payload.skip.questionFrameVersion } : {}),
+          ...(payload.skip.questionFrameSource ? { questionFrameSource: payload.skip.questionFrameSource } : {}),
+          prompt: payload.skip.prompt,
+          reasonType: payload.skip.reasonType,
+          reason: payload.skip.reason,
+          createsOpenQuestion: payload.skip.createsOpenQuestion,
+          createdAt: event.createdAt,
+        });
+        break;
+      case "question.state-updated":
+        questionStates.set(payload.question.questionId, {
+          id: payload.question.id ?? event.id,
+          questionId: payload.question.questionId,
+          stage: payload.question.stage,
+          status: payload.question.status,
+          optional: payload.question.optional,
+          ...(payload.question.reason ? { reason: payload.question.reason } : {}),
+          updatedAt: event.createdAt,
+        });
+        break;
       case "requirement.upserted":
         requirements.set(payload.requirement.id, payload.requirement);
+        break;
+      case "decision.upserted":
+        decisions.set(payload.decision.id, payload.decision);
+        break;
+      case "risk.upserted":
+        risks.set(payload.risk.id, payload.risk);
         break;
       case "generated-output.proposed": {
         const now = event.createdAt;
@@ -395,6 +470,17 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         }
         break;
       }
+      case "plan.revision-created":
+        planRevisions.push({
+          id: payload.revision.id ?? event.id,
+          revisionNumber: payload.revision.revisionNumber,
+          sourceType: payload.revision.sourceType,
+          sourceId: payload.revision.sourceId,
+          title: payload.revision.title,
+          acceptedOutputId: payload.revision.acceptedOutputId,
+          createdAt: event.createdAt,
+        });
+        break;
       case "task.session-linked":
         taskSessionLinks.set(payload.link.taskId, {
           id: payload.link.id ?? event.id,
@@ -404,6 +490,23 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           sessionId: payload.link.sessionId,
           title: payload.link.title,
           ...(payload.link.executionModel ? { executionModel: payload.link.executionModel } : {}),
+          createdAt: event.createdAt,
+        });
+        break;
+      case "slice.focus-updated":
+        sliceFocus.set(payload.focus.slicePath, {
+          id: payload.focus.id ?? event.id,
+          milestoneId: payload.focus.milestoneId,
+          milestoneTitle: payload.focus.milestoneTitle,
+          sliceId: payload.focus.sliceId,
+          slicePath: payload.focus.slicePath,
+          sliceTitle: payload.focus.sliceTitle,
+          taskId: payload.focus.taskId,
+          taskPath: payload.focus.taskPath,
+          taskTitle: payload.focus.taskTitle,
+          workspaceId: payload.focus.workspaceId,
+          sessionId: payload.focus.sessionId,
+          sessionTitle: payload.focus.sessionTitle,
           createdAt: event.createdAt,
         });
         break;
@@ -447,6 +550,17 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
           acceptance: payload.verification.acceptance,
           status: payload.verification.status,
           note: payload.verification.note,
+          createdAt: event.createdAt,
+        });
+        break;
+      case "risk.accepted":
+        riskAcceptances.push({
+          id: payload.acceptance.id ?? event.id,
+          ...(payload.acceptance.riskId ? { riskId: payload.acceptance.riskId } : {}),
+          taskId: payload.acceptance.taskId,
+          taskPath: payload.acceptance.taskPath,
+          acceptance: payload.acceptance.acceptance,
+          rationale: payload.acceptance.rationale,
           createdAt: event.createdAt,
         });
         break;
@@ -506,6 +620,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
         parkedItems.set(payload.item.id ?? event.id, {
           id: payload.item.id ?? event.id,
           sourceType: payload.item.sourceType,
+          destination: payload.item.destination ?? "backlog",
           ...(payload.item.sourceAnswerId ? { sourceAnswerId: payload.item.sourceAnswerId } : {}),
           sourceStage: payload.item.sourceStage,
           sourceQuestionId: payload.item.sourceQuestionId,
@@ -571,7 +686,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
               current,
               buildProposalActivity(event, payload.proposalId, {
                 type: "withdrawn",
-                summary: "Deleted draft",
+                summary: "Rejected draft",
               }),
             ),
             updatedAt: event.createdAt,
@@ -628,7 +743,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
               current,
               buildProposalActivity(event, payload.proposalId, {
                 type: "approved",
-                summary: `Approved as new task ${injection.taskPath}`,
+                summary: `Accepted as new task ${injection.taskPath}`,
                 targetPath: injection.taskPath,
                 acceptedOutputId: injection.acceptedOutputId,
               }),
@@ -670,7 +785,7 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
               current,
               buildProposalActivity(event, payload.proposalId, {
                 type: "task-modified",
-                summary: `Approved task modification ${modification.taskPath}`,
+                summary: `Accepted task modification ${modification.taskPath}`,
                 targetPath: modification.taskPath,
                 acceptedOutputId: modification.acceptedOutputId,
               }),
@@ -734,12 +849,23 @@ function replaySnapshot(plan: PlanListEntry, events: readonly PersistedPlanEvent
     ...plan,
     project,
     requirements: [...requirements.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    decisions: [...decisions.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    risks: [...risks.values()].sort((left, right) => left.id.localeCompare(right.id)),
     answers,
+    skippedQuestions,
     stages: [...stages.values()].sort((left, right) => left.stage.localeCompare(right.stage)),
+    skippedStages: skippedStages.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    questionFrameSnapshots: [...questionFrameSnapshots.values()].sort((left, right) =>
+      left.questionId.localeCompare(right.questionId),
+    ),
+    questionStates: [...questionStates.values()].sort((left, right) => left.questionId.localeCompare(right.questionId)),
     generatedOutputs: [...generatedOutputs.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    planRevisions: planRevisions.sort((left, right) => left.revisionNumber - right.revisionNumber),
     taskSessionLinks: [...taskSessionLinks.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    sliceFocus: [...sliceFocus.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     taskExecutions: [...taskExecutions.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
     taskVerifications: [...taskVerifications.values()].sort((left, right) => left.taskPath.localeCompare(right.taskPath)),
+    riskAcceptances: riskAcceptances.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     shipSummaries: shipSummaries.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     legacyReferences: [...legacyReferences.values()].sort((left, right) => left.path.localeCompare(right.path)),
     ...(runRecoverySummary ? { runRecoverySummary } : {}),
@@ -836,19 +962,31 @@ function phaseStageFromEvent(event: PlanEvent): { readonly phase: PlanPhase; rea
       return { phase: "discuss", stage: "project" };
     case "requirement.upserted":
       return { phase: "discuss", stage: "requirements" };
+    case "decision.upserted":
+      return { phase: "discuss", stage: "project" };
+    case "risk.upserted":
+      return { phase: "discuss", stage: "milestone" };
     case "stage.updated":
     case "stage.depth-confirmed":
+      return { phase: phaseForStage(event.stage), stage: event.stage };
+    case "stage.skipped":
       return { phase: phaseForStage(event.stage), stage: event.stage };
     case "answer.recorded":
       return { phase: phaseForStage(event.answer.stage), stage: event.answer.stage };
     case "generated-output.proposed":
       return { phase: phaseForStage(event.output.stage), stage: event.output.stage };
     case "generated-output.reviewed":
+    case "question-frames.snapshotted":
+    case "plan.revision-created":
     case "answer.revised":
+    case "answer.skipped":
+    case "question.state-updated":
     case "task.session-linked":
+    case "slice.focus-updated":
     case "task.status-updated":
     case "task.evidence-recorded":
     case "task.verification-recorded":
+    case "risk.accepted":
     case "ship.summary-recorded":
     case "workflow.preferences-updated":
     case "legacy-reference.discovered":

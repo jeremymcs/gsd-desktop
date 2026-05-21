@@ -167,14 +167,14 @@ export function ModelSelector({
             disabled={disabled}
             onClick={() => setOpen(open === "thinking" ? "none" : "thinking")}
           >
-            {`think/${thinkingLevel}`}
+            {`reasoning/${thinkingLevel}`}
           </button>
           {open === "thinking" ? (
             <div
               className={`model-selector__dropdown ${dropdownPlacement === "below" ? "model-selector__dropdown--below" : ""}`}
               onWheel={(event) => event.stopPropagation()}
             >
-              <div className="model-selector__group-title">Thinking Level</div>
+              <div className="model-selector__group-title">Reasoning</div>
               {THINKING_OPTIONS.map((option) => {
                 const isActive = option.value === thinkingLevel;
                 return (

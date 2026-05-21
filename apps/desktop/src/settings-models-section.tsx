@@ -117,12 +117,12 @@ export function SettingsModelsSection({
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Planning Phase Defaults" description="Choose team defaults for each planning phase.">
+      <SettingsGroup title="Workflow Stage Defaults" description="Choose app defaults for each workflow stage.">
         {planningPhaseModelOptions.map((phase) => (
           <SettingsRow
             key={phase.id}
             title={phase.label}
-            description="Used by new plans unless the project overrides this phase."
+            description="Used by new plans unless the project overrides this workflow stage."
           >
             <select
               className="settings-phase-select"

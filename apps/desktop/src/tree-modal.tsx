@@ -77,17 +77,26 @@ export function TreeModal({
     setAutoScrollRequest((value) => value + 1);
   }, [tree]);
 
-  useEffect(() => {
-    if (step === "select") {
+  useLayoutEffect(() => {
+    const focusSearch = () => {
       searchRef.current?.focus();
-      return;
+    };
+    if (step === "select") {
+      focusSearch();
+      const frame = window.requestAnimationFrame(focusSearch);
+      const timeout = window.setTimeout(focusSearch, 30);
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.clearTimeout(timeout);
+      };
     }
     if (summaryMode === "custom") {
       customInstructionsRef.current?.focus();
-      return;
+      return undefined;
     }
     dialogRef.current?.querySelector<HTMLButtonElement>("[data-tree-summary-confirm='true']")?.focus();
-  }, [step, summaryMode]);
+    return undefined;
+  }, [loading, step, summaryMode, tree]);
 
   const displayRows = useMemo(
     () => (tree ? buildVisibleRows(tree.roots, expandedIds, search, tree.leafId) : []),

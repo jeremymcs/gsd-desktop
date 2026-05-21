@@ -30,23 +30,18 @@ export function buildPlanProposalDraft(
     version: 1,
     boundaryMap: `Use accepted research to protect persistence, UI, and verification boundaries. Research: ${researchSummary}`,
     ideaPool: "Park follow-up slices, dependency risks, and scope changes here until they are promoted into a milestone.",
-    phases: [
-      {
-        id: "P1",
-        title: "First delivery phase",
-        goal: firstLine(firstOutcome),
-      },
-    ],
+    phases: [],
     milestones: [
       {
         id: "M1",
         title: firstLine(firstOutcome),
-        phase: "P1",
+        phase: "",
         outcome: firstOutcome,
         slices: [
           {
             id: "S1",
             title: "Plan Builder vertical slice",
+            scope: "required",
             goal: firstCapability,
             boundary: "Desktop Plan Builder UI, planning IPC, and .gsd/gsd.db event persistence.",
             tasks: [
@@ -105,10 +100,6 @@ export function validatePlanProposal(
     issues.push(issue("milestones", "Milestones", "At least one milestone is required."));
   }
 
-  if (proposal.phases.length === 0) {
-    issues.push(issue("phases", "Phases", "At least one phase is required."));
-  }
-
   const phaseIds = new Set<string>();
   for (const [phaseIndex, phase] of proposal.phases.entries()) {
     const phasePath = `Phase ${phaseIndex + 1}`;
@@ -136,9 +127,7 @@ export function validatePlanProposal(
     if (!milestone.title.trim()) {
       issues.push(issue(`milestone-${milestoneIndex}-title`, milestonePath, "Milestone title is required."));
     }
-    if (!milestone.phase.trim()) {
-      issues.push(issue(`milestone-${milestoneIndex}-phase`, milestonePath, "Milestone phase is required."));
-    } else if (!phaseIds.has(milestone.phase.trim())) {
+    if (milestone.phase.trim() && !phaseIds.has(milestone.phase.trim())) {
       issues.push(
         issue(
           `milestone-${milestoneIndex}-phase-reference`,
@@ -295,25 +284,22 @@ function derivePhasesFromMilestones(milestones: readonly PlanningMilestoneDraft[
       goal: `Group milestones assigned to ${phaseId}.`,
     });
   }
-  return phases.length > 0
-    ? phases
-    : [
-        {
-          id: "P1",
-          title: "First delivery phase",
-          goal: "Group the accepted milestones into an executable order.",
-        },
-      ];
+  return phases;
 }
 
 function normalizeSlice(value: Partial<PlanningSliceDraft>): PlanningSliceDraft {
   return {
     id: typeof value.id === "string" ? value.id : "",
     title: typeof value.title === "string" ? value.title : "",
+    scope: normalizeSliceScope(value.scope),
     goal: typeof value.goal === "string" ? value.goal : "",
     boundary: typeof value.boundary === "string" ? value.boundary : "",
     tasks: Array.isArray(value.tasks) ? value.tasks.map(normalizeTask) : [],
   };
+}
+
+function normalizeSliceScope(value: unknown): PlanningSliceDraft["scope"] {
+  return value === "optional" || value === "stretch" ? value : "required";
 }
 
 function normalizeTask(value: Partial<PlanningTaskDraft>): PlanningTaskDraft {

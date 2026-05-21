@@ -7,8 +7,13 @@ import type {
   PlanSnapshot,
   PlanStage,
   ParkedItemReviewStatus,
+  ParkedItemDestination,
   ProjectSummary,
+  DecisionRecord,
   RequirementRecord,
+  RiskRecord,
+  QuestionStateStatus,
+  SkippedQuestionReasonType,
   TaskExecutionStatus,
   TaskVerificationStatus,
   WorkflowPhaseModelPreferences,
@@ -23,6 +28,7 @@ export type AppView =
   | "threads"
   | "new-thread"
   | "backlog"
+  | "worktrees"
   | "plans"
   | "project-preferences"
   | "skills"
@@ -49,6 +55,22 @@ export interface NotificationPreferences {
 
 export interface GlobalPlanningPreferences {
   readonly phaseModels: WorkflowPhaseModelPreferences;
+}
+
+export interface ProjectPreferenceRecord {
+  readonly defaultWorktreeId?: string;
+  readonly updatedAt?: string;
+}
+
+export interface PreferenceChangeRecord {
+  readonly id: string;
+  readonly scope: "settings" | "project-preferences";
+  readonly field: string;
+  readonly from: string;
+  readonly to: string;
+  readonly reason?: string;
+  readonly changedBy: "user";
+  readonly changedAt: string;
 }
 
 export interface ComposerImageAttachment {
@@ -100,7 +122,8 @@ export interface SelectedTranscriptRecord {
   readonly transcript: readonly TranscriptMessage[];
 }
 
-export type ProjectBacklogItemStatus = "open" | "started" | "promoted" | "dismissed" | "removed";
+export type ProjectBacklogItemCategory = "idea" | "question" | "bug" | "risk" | "follow-up" | "decision" | "task";
+export type ProjectBacklogItemStatus = "open" | "in-discussion" | "promoted" | "dismissed" | "done" | "removed";
 
 export interface ProjectBacklogItemSource {
   readonly workspaceId: string;
@@ -119,7 +142,9 @@ export interface ProjectBacklogItem {
   readonly id: string;
   readonly workspaceId: string;
   readonly text: string;
+  readonly category: ProjectBacklogItemCategory;
   readonly status: ProjectBacklogItemStatus;
+  readonly discussionThread?: WorkspaceSessionTarget;
   readonly source: ProjectBacklogItemSource;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -128,6 +153,7 @@ export interface ProjectBacklogItem {
 export interface CaptureBacklogItemInput {
   readonly workspaceId: string;
   readonly text: string;
+  readonly category?: ProjectBacklogItemCategory;
   readonly source: ProjectBacklogItemSource;
 }
 
@@ -203,6 +229,8 @@ export interface CreateWorktreeInput {
 export type StartThreadInput = {
   readonly rootWorkspaceId: string;
   readonly environment: NewThreadEnvironment;
+  readonly targetWorktreeId?: string;
+  readonly sourceBacklogItemId?: string;
   readonly prompt?: string;
   readonly attachments?: readonly ComposerAttachment[];
   readonly provider?: string;
@@ -298,6 +326,7 @@ export interface RecordPlanningAnswerInput {
   readonly prompt: string;
   readonly answer: string;
   readonly loadBearing: boolean;
+  readonly parkDestination?: ParkedItemDestination;
   readonly discretionRationale?: string;
   readonly projectPatch?: Partial<ProjectSummary>;
 }
@@ -310,7 +339,20 @@ export interface ParkPlanningIdeaInput {
   readonly sourceQuestionId: string;
   readonly sourcePrompt: string;
   readonly text: string;
+  readonly destination: ParkedItemDestination;
   readonly rationale?: string;
+}
+
+export interface SkipPlanningQuestionInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly stage: PlanStage;
+  readonly questionId: string;
+  readonly prompt: string;
+  readonly reasonType: SkippedQuestionReasonType;
+  readonly reason: string;
+  readonly createsOpenQuestion: boolean;
 }
 
 export interface RevisePlanningAnswerInput {
@@ -323,11 +365,28 @@ export interface RevisePlanningAnswerInput {
   readonly projectPatch?: Partial<ProjectSummary>;
 }
 
+export interface UpdatePlanningQuestionStateInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly questionId: string;
+  readonly status: QuestionStateStatus;
+  readonly reason?: string;
+}
+
 export interface UpsertPlanningRequirementsInput {
   readonly workspaceId: string;
   readonly planId: string;
   readonly expectedRevision: number;
   readonly requirements: readonly RequirementRecord[];
+}
+
+export interface UpsertPlanningContextRecordsInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly decisions: readonly DecisionRecord[];
+  readonly risks: readonly RiskRecord[];
 }
 
 export interface ReviewPlanningIdeaInput {
@@ -426,6 +485,14 @@ export interface StartPlanningResearchInput {
   readonly expectedRevision: number;
 }
 
+export interface SkipPlanningStageInput {
+  readonly workspaceId: string;
+  readonly planId: string;
+  readonly expectedRevision: number;
+  readonly stage: PlanStage;
+  readonly reason: string;
+}
+
 export interface ProposePlanningResearchInput {
   readonly workspaceId: string;
   readonly planId: string;
@@ -459,6 +526,7 @@ export interface PlanningPhaseDraft {
 export interface PlanningSliceDraft {
   readonly id: string;
   readonly title: string;
+  readonly scope: "required" | "optional" | "stretch";
   readonly goal: string;
   readonly boundary: string;
   readonly tasks: readonly PlanningTaskDraft[];
@@ -539,6 +607,7 @@ export interface StartPlanningShipInput {
   readonly workspaceId: string;
   readonly planId: string;
   readonly expectedRevision: number;
+  readonly riskAcceptanceRationale?: string;
 }
 
 export interface RecordPlanningShipSummaryInput {
@@ -546,6 +615,7 @@ export interface RecordPlanningShipSummaryInput {
   readonly planId: string;
   readonly expectedRevision: number;
   readonly summary: string;
+  readonly followUps?: readonly string[];
 }
 
 export interface ProposePlanningPlanInput {
@@ -572,6 +642,8 @@ export interface RegeneratePlanningProjectionsInput {
 export interface DesktopAppState {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly worktreesByWorkspace: Readonly<Record<string, readonly WorktreeRecord[]>>;
+  readonly projectPreferencesByWorkspace: Readonly<Record<string, ProjectPreferenceRecord>>;
+  readonly preferenceChangesByWorkspace: Readonly<Record<string, readonly PreferenceChangeRecord[]>>;
   readonly planningByWorkspace: Readonly<Record<string, WorkspacePlanningState>>;
   readonly backlogByWorkspace: Readonly<Record<string, readonly ProjectBacklogItem[]>>;
   readonly selectedWorkspaceId: string;
@@ -609,10 +681,17 @@ export interface WorkspaceSessionTarget {
   readonly sessionId: string;
 }
 
+export interface SetProjectDefaultWorktreeInput {
+  readonly workspaceId: string;
+  readonly worktreeId?: string;
+}
+
 export function createEmptyDesktopAppState(): DesktopAppState {
   return {
     workspaces: [],
     worktreesByWorkspace: {},
+    projectPreferencesByWorkspace: {},
+    preferenceChangesByWorkspace: {},
     planningByWorkspace: {},
     backlogByWorkspace: {},
     selectedWorkspaceId: "",

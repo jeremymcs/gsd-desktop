@@ -34,8 +34,10 @@ import { SettingsView, type SettingsSection } from "./settings-view";
 import { NewThreadView } from "./new-thread-view";
 import { ProjectHomeView } from "./project-home-view";
 import { ProjectBacklogView } from "./project-backlog-view";
+import { ProjectWorktreesView } from "./project-worktrees-view";
+import { ProjectThreadsView } from "./project-threads-view";
 import { PlanBuilderView, ProjectPreferencesView } from "./plan-builder-view";
-import { buildThreadGroups } from "./thread-groups";
+import { buildThreadGroups, type ThreadGroup } from "./thread-groups";
 import { Sidebar } from "./sidebar";
 import { SidebarToggleButton } from "./sidebar-toggle-button";
 import { Topbar } from "./topbar";
@@ -56,6 +58,7 @@ import {
 } from "./composer-attachments";
 
 const BACKLOG_NOTICE_TIMEOUT_MS = 3500;
+const APP_DEFAULTS_PREFERENCE_KEY = "__app_defaults__";
 
 function useDesktopAppState() {
   const [snapshot, setSnapshot] = useState<DesktopAppState | null>(null);
@@ -119,6 +122,7 @@ function canTogglePrimarySidebar(view: AppView | undefined): boolean {
     view === "threads" ||
     view === "new-thread" ||
     view === "backlog" ||
+    view === "worktrees" ||
     view === "plans" ||
     view === "project-preferences" ||
     view === "skills" ||
@@ -182,6 +186,14 @@ export default function App() {
   const [newThreadModelId, setNewThreadModelId] = useState<string | undefined>();
   const [newThreadThinkingLevel, setNewThreadThinkingLevel] = useState<string | undefined>();
   const [newThreadComposerError, setNewThreadComposerError] = useState<string | undefined>();
+  const [newThreadSourceBacklogItem, setNewThreadSourceBacklogItem] = useState<{
+    readonly workspaceId: string;
+    readonly itemId: string;
+  } | null>(null);
+  const [threadsIndexOpen, setThreadsIndexOpen] = useState(false);
+  const [projectSearchOpen, setProjectSearchOpen] = useState(false);
+  const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [projectSearchScope, setProjectSearchScope] = useState<"project" | "all">("project");
   const [backlogNotice, setBacklogNotice] = useState<{ readonly workspaceId: string; readonly itemId: string } | null>(null);
   const [themeMode, setThemeMode] = useState<"system" | "light" | "dark">("system");
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
@@ -389,6 +401,8 @@ export default function App() {
       ? rootWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "backlog"
         ? rootWorkspace ?? rootWorkspaceOptions[0]
+      : snapshot?.activeView === "worktrees"
+        ? rootWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "plans"
       ? plansWorkspace ?? rootWorkspaceOptions[0]
       : snapshot?.activeView === "project-preferences"
@@ -404,6 +418,12 @@ export default function App() {
               : rootWorkspace ?? rootWorkspaceOptions[0];
   const newThreadRuntime = snapshot ? getEffectiveModelRuntime(snapshot, newThreadWorkspace) : undefined;
   const backlogItems = activeWorkspaceForView ? snapshot?.backlogByWorkspace[activeWorkspaceForView.id] ?? [] : [];
+  const newThreadDefaultWorktreeId = newThreadWorkspace
+    ? snapshot?.projectPreferencesByWorkspace[newThreadWorkspace.id]?.defaultWorktreeId
+    : undefined;
+  const newThreadDefaultWorktree = newThreadWorkspace && newThreadDefaultWorktreeId
+    ? snapshot?.worktreesByWorkspace[newThreadWorkspace.id]?.find((worktree) => worktree.id === newThreadDefaultWorktreeId)
+    : undefined;
   const newThreadDefaultEnabled = buildModelOptions(newThreadRuntime).some(
     (m) => m.providerId === newThreadRuntime?.settings.defaultProvider && m.modelId === newThreadRuntime?.settings.defaultModelId,
   );
@@ -478,8 +498,15 @@ export default function App() {
   const persistedComposerDraft = snapshot?.composerDraft ?? "";
   const threadGroups = useMemo(
     () => (snapshot ? buildThreadGroups(snapshot) : []),
-    [snapshot?.workspaces, snapshot?.worktreesByWorkspace, snapshot?.workspaceOrder],
+    [
+      snapshot?.backlogByWorkspace,
+      snapshot?.planningByWorkspace,
+      snapshot?.workspaces,
+      snapshot?.worktreesByWorkspace,
+      snapshot?.workspaceOrder,
+    ],
   );
+  const activeThreadGroup = threadGroups.find((group) => group.rootWorkspace.id === activeWorkspaceForView?.id);
   const focusComposer = () => {
     window.requestAnimationFrame(() => {
       composerRef.current?.focus();
@@ -1041,6 +1068,7 @@ export default function App() {
     setNewThreadModelId(undefined);
     setNewThreadThinkingLevel(undefined);
     setNewThreadComposerError(undefined);
+    setNewThreadSourceBacklogItem(null);
   };
 
   const primarySidebarToggleVisible = canTogglePrimarySidebar(snapshot?.activeView);
@@ -1458,9 +1486,11 @@ export default function App() {
   ) : null;
   const activeSurfaceTitle =
     snapshot.activeView === "home"
-      ? "Home"
+      ? "Project Overview"
       : snapshot.activeView === "backlog"
         ? "Backlog"
+      : snapshot.activeView === "worktrees"
+        ? "Worktrees"
       : snapshot.activeView === "new-thread"
       ? "New Thread"
       : snapshot.activeView === "plans"
@@ -1482,6 +1512,7 @@ export default function App() {
   };
 
   const openWorkspaceSessions = (workspaceId?: string) => {
+    setThreadsIndexOpen(true);
     const nextWorkspaceId =
       workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
         ? workspaceId
@@ -1491,7 +1522,9 @@ export default function App() {
         setActiveView("threads");
         return;
       }
-      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId));
+      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId)).then(() => {
+        setActiveView("threads");
+      });
       return;
     }
     setActiveView("threads");
@@ -1523,6 +1556,20 @@ export default function App() {
     setActiveView("backlog");
   };
 
+  const openWorktrees = (workspaceId?: string) => {
+    const nextWorkspaceId =
+      workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
+        ? workspaceId
+        : activeWorkspaceForView?.id || rootWorkspaceOptions[0]?.id || "";
+    if (nextWorkspaceId && snapshot.selectedWorkspaceId !== nextWorkspaceId) {
+      void updateSnapshot(api, setSnapshot, () => api.selectWorkspace(nextWorkspaceId)).then(() => {
+        setActiveView("worktrees");
+      });
+      return;
+    }
+    setActiveView("worktrees");
+  };
+
   const openSkills = (workspaceId?: string) => {
     const nextWorkspaceId =
       workspaceId && rootWorkspaceOptions.some((workspace) => workspace.id === workspaceId)
@@ -1552,7 +1599,9 @@ export default function App() {
         : plansWorkspace?.id || rootWorkspaceOptions[0]?.id || "";
     if (nextWorkspaceId) {
       setPlansWorkspaceId(nextWorkspaceId);
-      void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(nextWorkspaceId));
+      void updateSnapshot(api, setSnapshot, () => api.loadPlanningWorkspace(nextWorkspaceId)).then(() => {
+        setActiveView("plans");
+      });
       return;
     }
     setActiveView("plans");
@@ -1580,6 +1629,7 @@ export default function App() {
   };
 
   const openNewThreadSurface = (workspaceId?: string) => {
+    setThreadsIndexOpen(false);
     setPendingNewThreadWorkspaceId("");
     resetNewThreadSurface(workspaceId);
     setActiveView("new-thread");
@@ -1948,6 +1998,7 @@ export default function App() {
   };
 
   const handleSelectSession = (target: { workspaceId: string; sessionId: string }) => {
+    setThreadsIndexOpen(false);
     void updateSnapshot(api, setSnapshot, () => api.selectSession(target)).then(() => {
       focusComposer();
     });
@@ -2011,6 +2062,12 @@ export default function App() {
     const input: StartThreadInput = {
       rootWorkspaceId: newThreadRootWorkspaceId,
       environment: newThreadEnvironment,
+      ...(newThreadEnvironment === "local" && newThreadDefaultWorktree?.status === "ready"
+        ? { targetWorktreeId: newThreadDefaultWorktree.id }
+        : {}),
+      ...(newThreadSourceBacklogItem?.workspaceId === newThreadRootWorkspaceId
+        ? { sourceBacklogItemId: newThreadSourceBacklogItem.itemId }
+        : {}),
       ...modelConfig,
     };
     wsMenu.expandWorkspace(newThreadRootWorkspaceId);
@@ -2023,6 +2080,7 @@ export default function App() {
       setNewThreadModelId(undefined);
       setNewThreadThinkingLevel(undefined);
       setNewThreadEnvironment("local");
+      setNewThreadSourceBacklogItem(null);
     });
   };
 
@@ -2068,13 +2126,17 @@ export default function App() {
     });
   };
 
+  const handleCompleteBacklogItem = (item: ProjectBacklogItem) => {
+    void updateSnapshot(api, setSnapshot, () =>
+      api.updateBacklogItem({ workspaceId: item.workspaceId, itemId: item.id, status: "done" }),
+    );
+  };
+
   const handleStartBacklogThread = (item: ProjectBacklogItem) => {
     resetNewThreadSurface(item.workspaceId);
+    setNewThreadSourceBacklogItem({ workspaceId: item.workspaceId, itemId: item.id });
     setNewThreadPrompt(`Follow up on this saved backlog item:\n\n${item.text}`);
     setActiveView("new-thread");
-    void updateSnapshot(api, setSnapshot, () =>
-      api.updateBacklogItem({ workspaceId: item.workspaceId, itemId: item.id, status: "started" }),
-    );
   };
 
   const handleUndoBacklogCapture = () => {
@@ -2208,6 +2270,10 @@ export default function App() {
           void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
         }}
         onToggleTerminal={toggleTerminal}
+        onOpenSearch={() => {
+          setProjectSearchScope("project");
+          setProjectSearchOpen(true);
+        }}
         showDiffPanel={showDiffPanel}
         onToggleDiffPanel={toggleDiffPanel}
       />
@@ -2222,6 +2288,7 @@ export default function App() {
           api={api}
           onOpenHome={openHome}
           onOpenBacklog={openBacklog}
+          onOpenWorktrees={openWorktrees}
           onNewThread={openNewThreadSurface}
           onOpenSessions={openWorkspaceSessions}
           onOpenPlans={openPlans}
@@ -2243,10 +2310,11 @@ export default function App() {
             {snapshot.activeView === "home" ? (
               <ProjectHomeView
                 workspace={activeWorkspaceForView}
-                threadGroup={threadGroups.find((group) => group.rootWorkspace.id === activeWorkspaceForView?.id)}
+                threadGroup={activeThreadGroup}
                 planningState={
                   activeWorkspaceForView ? snapshot.planningByWorkspace[activeWorkspaceForView.id] : undefined
                 }
+                backlogItems={activeWorkspaceForView ? snapshot.backlogByWorkspace[activeWorkspaceForView.id] ?? [] : []}
                 runtime={activeWorkspaceForView ? getEffectiveModelRuntime(snapshot, activeWorkspaceForView) : undefined}
                 worktrees={activeWorkspaceForView ? snapshot.worktreesByWorkspace[activeWorkspaceForView.id] ?? [] : []}
                 globalPlanningPreferences={snapshot.globalPlanningPreferences}
@@ -2254,6 +2322,37 @@ export default function App() {
                 onOpenProjectPreferences={openProjectPreferences}
                 onOpenNewThread={openNewThreadSurface}
                 onOpenThread={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
+                onCaptureAdHocTask={(thread) => {
+                  const rootWorkspace = activeWorkspaceForView;
+                  if (!rootWorkspace) {
+                    return;
+                  }
+                  void updateSnapshot(api, setSnapshot, () =>
+                    api.captureBacklogItem({
+                      workspaceId: rootWorkspace.id,
+                      text: `Reconcile ad hoc task from ${thread.session.title}`,
+                      category: "task",
+                      source: {
+                        workspaceId: thread.workspaceId,
+                        sessionId: thread.session.id,
+                        messageId: `thread:${thread.session.id}`,
+                        role: "thread",
+                        createdAt: thread.session.updatedAt,
+                        label: `Ad hoc task · ${thread.session.title}`,
+                      },
+                    }),
+                  ).then((nextState) => {
+                    const item = nextState.backlogByWorkspace[rootWorkspace.id]?.find(
+                      (entry) =>
+                        entry.source.sessionId === thread.session.id &&
+                        entry.source.messageId === `thread:${thread.session.id}` &&
+                        entry.status === "open",
+                    );
+                    if (item) {
+                      setBacklogNotice({ workspaceId: rootWorkspace.id, itemId: item.id });
+                    }
+                  });
+                }}
                 onOpenProject={() => {
                   void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
                 }}
@@ -2265,7 +2364,22 @@ export default function App() {
                 onStartThread={handleStartBacklogThread}
                 onPromoteToPlan={handlePromoteBacklogItem}
                 onDismiss={handleDismissBacklogItem}
+                onMarkDone={handleCompleteBacklogItem}
+                onOpenThread={handleSelectSession}
                 onOpenPlans={openPlans}
+              />
+            ) : snapshot.activeView === "worktrees" ? (
+              <ProjectWorktreesView
+                workspace={activeWorkspaceForView}
+                worktrees={activeWorkspaceForView ? snapshot.worktreesByWorkspace[activeWorkspaceForView.id] ?? [] : []}
+                onCreateWorktree={(workspaceId) => {
+                  void updateSnapshot(api, setSnapshot, () => api.createWorktree({ workspaceId }));
+                }}
+                onRemoveWorktree={(worktree) => {
+                  void updateSnapshot(api, setSnapshot, () =>
+                    api.removeWorktree({ workspaceId: worktree.rootWorkspaceId, worktreeId: worktree.id }),
+                  );
+                }}
               />
             ) : snapshot.activeView === "settings" ? (
               <SettingsView
@@ -2300,6 +2414,7 @@ export default function App() {
                 modelSettingsScopeMode={snapshot.modelSettingsScopeMode}
                 integratedTerminalShell={snapshot.integratedTerminalShell}
                 themeMode={themeMode}
+                preferenceChanges={snapshot.preferenceChangesByWorkspace[APP_DEFAULTS_PREFERENCE_KEY] ?? []}
                 onSelectSection={setSettingsSection}
                 onLoginProvider={handleLoginProvider}
                 onLogoutProvider={handleLogoutProvider}
@@ -2322,6 +2437,16 @@ export default function App() {
                 <ProjectPreferencesView
                   workspaces={rootWorkspaceOptions}
                   selectedWorkspaceId={projectPreferencesWorkspace?.id ?? rootWorkspaceOptions[0]?.id ?? ""}
+                  projectPreferences={
+                    projectPreferencesWorkspace
+                      ? snapshot.projectPreferencesByWorkspace[projectPreferencesWorkspace.id]
+                      : undefined
+                  }
+                  preferenceChanges={
+                    projectPreferencesWorkspace
+                      ? snapshot.preferenceChangesByWorkspace[projectPreferencesWorkspace.id] ?? []
+                      : []
+                  }
                   runtime={projectPreferencesModelRuntime}
                   globalPlanningPreferences={snapshot.globalPlanningPreferences}
                   planningState={
@@ -2329,8 +2454,16 @@ export default function App() {
                       ? snapshot.planningByWorkspace[projectPreferencesWorkspace.id]
                       : undefined
                   }
+                  worktrees={
+                    projectPreferencesWorkspace
+                      ? snapshot.worktreesByWorkspace[projectPreferencesWorkspace.id] ?? []
+                      : []
+                  }
                   lastError={snapshot.lastError}
                   onSelectWorkspace={openProjectPreferences}
+                  onSetDefaultWorktree={(workspaceId, worktreeId) =>
+                    updateSnapshot(api, setSnapshot, () => api.setProjectDefaultWorktree({ workspaceId, worktreeId }))
+                  }
                   onApplyWorkflowPreferences={(input) =>
                     updateSnapshot(api, setSnapshot, () => api.applyPlanningWorkflowPreferences(input))
                   }
@@ -2364,9 +2497,16 @@ export default function App() {
               }
               onRecordAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.recordPlanningAnswer(input))}
               onParkIdea={(input) => updateSnapshot(api, setSnapshot, () => api.parkPlanningIdea(input))}
+              onSkipQuestion={(input) => updateSnapshot(api, setSnapshot, () => api.skipPlanningQuestion(input))}
               onReviseAnswer={(input) => updateSnapshot(api, setSnapshot, () => api.revisePlanningAnswer(input))}
+              onUpdateQuestionState={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.updatePlanningQuestionState(input))
+              }
               onUpsertRequirements={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.upsertPlanningRequirements(input))
+              }
+              onUpsertContextRecords={(input) =>
+                updateSnapshot(api, setSnapshot, () => api.upsertPlanningContextRecords(input))
               }
               onReviewIdea={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningIdea(input))}
               onUpdateIdea={(input) => updateSnapshot(api, setSnapshot, () => api.updatePlanningIdea(input))}
@@ -2391,6 +2531,7 @@ export default function App() {
               }
               onConfirmStage={(input) => updateSnapshot(api, setSnapshot, () => api.confirmPlanningStage(input))}
               onStartResearch={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningResearch(input))}
+              onSkipStage={(input) => updateSnapshot(api, setSnapshot, () => api.skipPlanningStage(input))}
               onProposeResearch={(input) => updateSnapshot(api, setSnapshot, () => api.proposePlanningResearch(input))}
               onReviewResearch={(input) => updateSnapshot(api, setSnapshot, () => api.reviewPlanningResearch(input))}
               onStartPlan={(input) => updateSnapshot(api, setSnapshot, () => api.startPlanningPlan(input))}
@@ -2411,6 +2552,7 @@ export default function App() {
               onRecordShipSummary={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.recordPlanningShipSummary(input))
               }
+              onBacklogNotice={(workspaceId, itemId) => setBacklogNotice({ workspaceId, itemId })}
               onOpenTaskSession={(target) => updateSnapshot(api, setSnapshot, () => api.selectSession(target))}
               onRegenerateProjections={(input) =>
                 updateSnapshot(api, setSnapshot, () => api.regeneratePlanningProjections(input))
@@ -2566,6 +2708,18 @@ export default function App() {
 	            }}
 	            onToggleExtension={handleToggleExtension}
 	          />
+	        ) : snapshot.activeView === "threads" && threadsIndexOpen ? (
+	          <ProjectThreadsView
+	            workspace={activeWorkspaceForView}
+	            threadGroup={activeThreadGroup}
+	            onArchiveThread={handleArchiveSession}
+	            onNewThread={openNewThreadSurface}
+	            onOpenProject={() => {
+	              void updateSnapshot(api, setSnapshot, () => api.pickWorkspace());
+	            }}
+	            onOpenThread={handleSelectSession}
+	            onRestoreThread={handleUnarchiveSession}
+	          />
 	        ) : selectedWorkspace && selectedSession ? (
 	          <>
             <section className="canvas canvas--thread">
@@ -2614,6 +2768,11 @@ export default function App() {
               provider={resolvedSessionProvider}
               modelId={resolvedSessionModelId}
               thinkingLevel={resolvedSessionThinkingLevel}
+              environmentLabel={
+                selectedWorkspace.kind === "worktree"
+                  ? selectedWorktree?.name ?? selectedWorkspace.branchName ?? "Worktree"
+                  : "Local"
+              }
               onClearSlashCommand={slashMenu.resetSlashUi}
               onComposerKeyDown={handleComposerKeyDown}
               onComposerPaste={handleComposerPaste}
@@ -2741,6 +2900,30 @@ export default function App() {
           </button>
         </div>
       ) : null}
+      {projectSearchOpen ? (
+        <ProjectSearchPanel
+          activeWorkspaceId={activeWorkspaceForView?.id}
+          query={projectSearchQuery}
+          scope={projectSearchScope}
+          snapshot={snapshot}
+          threadGroups={threadGroups}
+          onClose={() => setProjectSearchOpen(false)}
+          onOpenBacklog={(workspaceId) => {
+            setProjectSearchOpen(false);
+            openBacklog(workspaceId);
+          }}
+          onOpenPlans={(workspaceId) => {
+            setProjectSearchOpen(false);
+            openPlans(workspaceId);
+          }}
+          onOpenThread={(target) => {
+            setProjectSearchOpen(false);
+            handleSelectSession(target);
+          }}
+          onQueryChange={setProjectSearchQuery}
+          onScopeChange={setProjectSearchScope}
+        />
+      ) : null}
     </div>
   );
 }
@@ -2748,6 +2931,207 @@ export default function App() {
 function buildTranscriptChangeMarker(sessionKey: string, transcript: SelectedTranscriptRecord["transcript"]): string {
   const lastItem = transcript.at(-1);
   return `${sessionKey}:${transcript.length}:${lastItem ? JSON.stringify(lastItem) : ""}`;
+}
+
+type ProjectSearchScope = "project" | "all";
+
+interface ProjectSearchResult {
+  readonly id: string;
+  readonly kind: "thread" | "backlog" | "plan" | "project-context";
+  readonly title: string;
+  readonly detail: string;
+  readonly workspaceId: string;
+  readonly sessionId?: string;
+}
+
+function ProjectSearchPanel({
+  activeWorkspaceId,
+  query,
+  scope,
+  snapshot,
+  threadGroups,
+  onClose,
+  onOpenBacklog,
+  onOpenPlans,
+  onOpenThread,
+  onQueryChange,
+  onScopeChange,
+}: {
+  readonly activeWorkspaceId: string | undefined;
+  readonly query: string;
+  readonly scope: ProjectSearchScope;
+  readonly snapshot: DesktopAppState;
+  readonly threadGroups: readonly ThreadGroup[];
+  readonly onClose: () => void;
+  readonly onOpenBacklog: (workspaceId: string) => void;
+  readonly onOpenPlans: (workspaceId: string) => void;
+  readonly onOpenThread: (target: { readonly workspaceId: string; readonly sessionId: string }) => void;
+  readonly onQueryChange: (query: string) => void;
+  readonly onScopeChange: (scope: ProjectSearchScope) => void;
+}) {
+  const results = buildProjectSearchResults(snapshot, threadGroups, activeWorkspaceId, scope, query);
+  return (
+    <div className="modal-backdrop" data-testid="project-search-panel" role="dialog" aria-modal="true">
+      <div className="plan-change-draft project-search-panel">
+        <div className="plan-memory__item-header">
+          <span>Search</span>
+          <button className="plan-inline-button" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <label className="surface-toolbar__field">
+          <span>Search Scope</span>
+          <select
+            data-testid="project-search-scope"
+            value={scope}
+            onChange={(event) => onScopeChange(event.target.value as ProjectSearchScope)}
+          >
+            <option value="project">Current Project</option>
+            <option value="all">All Projects</option>
+          </select>
+        </label>
+        <input
+          autoFocus
+          className="thread-search-bar__input"
+          data-testid="project-search-input"
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search Threads, Plans, Project Context, and Backlog"
+          value={query}
+        />
+        <div className="project-backlog__list" data-testid="project-search-results">
+          {results.length > 0 ? (
+            results.map((result) => (
+              <button
+                className="project-home__thread"
+                key={result.id}
+                type="button"
+                onClick={() =>
+                  result.kind === "thread" && result.sessionId
+                    ? onOpenThread({ workspaceId: result.workspaceId, sessionId: result.sessionId })
+                    : result.kind === "backlog"
+                      ? onOpenBacklog(result.workspaceId)
+                      : onOpenPlans(result.workspaceId)
+                }
+              >
+                <span className="project-home__thread-body">
+                  <strong>{result.title}</strong>
+                  <small className="project-home__thread-preview">{result.detail}</small>
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="project-home__empty">{query.trim() ? "No results." : "Search defaults to the current Project."}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildProjectSearchResults(
+  snapshot: DesktopAppState,
+  threadGroups: readonly ThreadGroup[],
+  activeWorkspaceId: string | undefined,
+  scope: ProjectSearchScope,
+  query: string,
+): readonly ProjectSearchResult[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return [];
+  }
+  const workspaceIds = new Set(
+    scope === "all"
+      ? snapshot.workspaces.filter((workspace) => workspace.kind === "primary").map((workspace) => workspace.id)
+      : activeWorkspaceId
+        ? [activeWorkspaceId]
+        : [],
+  );
+  const threadResults = threadGroups
+    .filter((group) => workspaceIds.has(group.rootWorkspace.id))
+    .flatMap((group) => [...group.threads, ...group.archivedThreads])
+    .filter((thread) => `${thread.session.title} ${thread.session.preview}`.toLowerCase().includes(normalizedQuery))
+    .map((thread): ProjectSearchResult => ({
+      id: `thread:${thread.workspaceId}:${thread.session.id}`,
+      kind: "thread",
+      title: thread.session.title,
+      detail: `Thread · ${thread.environment.label}`,
+      workspaceId: thread.workspaceId,
+      sessionId: thread.session.id,
+    }));
+  const backlogResults = Object.entries(snapshot.backlogByWorkspace)
+    .filter(([workspaceId]) => workspaceIds.has(workspaceId))
+    .flatMap(([workspaceId, items]) =>
+      items
+        .filter((item) => item.status !== "removed" && item.text.toLowerCase().includes(normalizedQuery))
+        .map((item): ProjectSearchResult => ({
+          id: `backlog:${workspaceId}:${item.id}`,
+          kind: "backlog",
+          title: item.text,
+          detail: "Backlog",
+          workspaceId,
+        })),
+    );
+  const planningEntries = Object.entries(snapshot.planningByWorkspace);
+  const planningResults = planningEntries
+    .filter(([workspaceId]) => workspaceIds.has(workspaceId) || (scope === "project" && planningEntries.length === 1))
+    .flatMap(([workspaceId, planning]) => buildPlanningSearchResults(workspaceId, planning, normalizedQuery));
+  return [...threadResults, ...backlogResults, ...planningResults].slice(0, 20);
+}
+
+function buildPlanningSearchResults(
+  workspaceId: string,
+  planning: DesktopAppState["planningByWorkspace"][string],
+  normalizedQuery: string,
+): readonly ProjectSearchResult[] {
+  const planResults = planning.plans
+    .filter((plan) => `${plan.name} ${plan.readableId} ${plan.status}`.toLowerCase().includes(normalizedQuery))
+    .map((plan): ProjectSearchResult => ({
+      id: `plan:${workspaceId}:${plan.id}`,
+      kind: "plan",
+      title: plan.name,
+      detail: `Plan · ${plan.readableId}`,
+      workspaceId,
+    }));
+  const selectedPlan = planning.selectedPlan;
+  if (!selectedPlan) {
+    return planResults;
+  }
+  const projectContextFields = [
+    ["Outcome", selectedPlan.project.vision],
+    ["Users", selectedPlan.project.users],
+    ["Value", selectedPlan.project.coreValue],
+    ["Anti-goals", selectedPlan.project.antiGoals.join("\n")],
+    ["Constraints", selectedPlan.project.constraints.join("\n")],
+    ["Shape", selectedPlan.project.shape?.rationale],
+  ] as const;
+  const projectContextResults = projectContextFields
+    .filter(([, value]) => value?.toLowerCase().includes(normalizedQuery))
+    .map(([section, value]): ProjectSearchResult => ({
+      id: `project-context:${workspaceId}:${section}`,
+      kind: "project-context",
+      title: section,
+      detail: `Project Context · ${value}`,
+      workspaceId,
+    }));
+  const answerResults = selectedPlan.answers
+    .filter((answer) => `${answer.prompt} ${answer.answer}`.toLowerCase().includes(normalizedQuery))
+    .map((answer): ProjectSearchResult => ({
+      id: `answer:${workspaceId}:${answer.id}`,
+      kind: "project-context",
+      title: answer.prompt,
+      detail: "Answer · Project Context",
+      workspaceId,
+    }));
+  const openQuestionResults = selectedPlan.parkedItems
+    .filter((item) => item.destination === "open-question" && `${item.sourcePrompt} ${item.text}`.toLowerCase().includes(normalizedQuery))
+    .map((item): ProjectSearchResult => ({
+      id: `open-question:${workspaceId}:${item.id}`,
+      kind: "project-context",
+      title: item.text,
+      detail: "Open Question · Project Context",
+      workspaceId,
+    }));
+  return [...planResults, ...projectContextResults, ...answerResults, ...openQuestionResults];
 }
 
 function compareWorkspaceTabOrder(

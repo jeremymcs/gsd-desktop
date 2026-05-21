@@ -57,6 +57,12 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
       "placeholder",
       "Ask GSD to inspect the project, make a change, or continue this thread...",
     );
+    await expect(window.getByTestId("composer-context-row")).toContainText("Mode");
+    await expect(window.getByTestId("composer-context-row")).toContainText("Ask");
+    await expect(window.getByTestId("composer-context-row")).toContainText("Model");
+    await expect(window.getByTestId("composer-context-row")).toContainText("Reasoning");
+    await expect(window.getByTestId("composer-context-row")).toContainText("Worktree");
+    await expect(window.getByTestId("composer-context-row")).toContainText("Local");
 
     await window.keyboard.press(desktopShortcut(","));
     await expect(window.getByTestId("settings-surface")).toBeVisible();
@@ -93,7 +99,7 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     await expect(slashMenu).toHaveCount(0);
     await expect(composer).toHaveValue("Need a quick check /status");
 
-    await composer.fill("/thinking");
+    await composer.fill("/reasoning");
     const optionsMenu = window.getByTestId("slash-options-menu");
     await expect(optionsMenu).toBeVisible();
     await expect(optionsMenu).toContainText("Low");
@@ -102,15 +108,15 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     await composer.press("ArrowDown");
     await composer.press("Enter");
     await expect(optionsMenu).toHaveCount(0);
-    await expect(window.getByTestId("transcript")).toContainText("Thinking set to high");
+    await expect(window.getByTestId("transcript")).toContainText("Reasoning set to high");
     await expect(window.locator(".composer__hint")).toContainText("high");
 
-    await composer.fill("Keep the draft /thinking");
+    await composer.fill("Keep the draft /reasoning");
     await expect(optionsMenu).toBeVisible();
     await composer.press("ArrowDown");
     await composer.press("Enter");
     await expect(optionsMenu).toHaveCount(0);
-    await expect(composer).toHaveValue("Keep the draft /thinking medium");
+    await expect(composer).toHaveValue("Keep the draft /reasoning medium");
 
     const selectedWorkspaceId = (await getDesktopState(window)).selectedWorkspaceId;
     expect(selectedWorkspaceId).toBeTruthy();
@@ -138,6 +144,7 @@ test("supports keyboard shortcuts, slash menus, and topbar controls through the 
     await expect(window.getByTestId("settings-surface")).toBeVisible();
     await expect(window.locator(".view-header__title")).toHaveText("Models");
     await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await selectSession(window, "Controls session");
     await expect(window.getByTestId("send")).toBeDisabled();
 
     const appRegions = await window.evaluate(() => {

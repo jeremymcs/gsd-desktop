@@ -82,9 +82,10 @@ const INCOMPLETE_COMMAND_MESSAGES: Readonly<Record<string, string>> = {
   "/logout": "Choose a connected provider from the slash menu before sending /logout.",
   "/model": "Choose a provider and model from the slash menu before sending /model.",
   "/name": "Add a thread title after /name.",
+  "/reasoning": "Choose a reasoning level from the slash menu before sending /reasoning.",
   "/scoped-models": "Open Enabled Models from the slash menu or Settings.",
   "/settings": "Open Settings from the slash menu or Cmd+,.",
-  "/thinking": "Choose a reasoning level from the slash menu before sending /thinking.",
+  "/thinking": "Choose a reasoning level from the slash menu before sending /reasoning.",
 } as const;
 
 const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
@@ -101,8 +102,8 @@ const HOST_ACTION_SLASH_COMMANDS: readonly ComposerSlashCommand[] = [
   {
     id: "host:thinking",
     kind: "thinking",
-    command: "/thinking",
-    template: "/thinking",
+    command: "/reasoning",
+    template: "/reasoning",
     title: "Reasoning",
     description: "Set the reasoning level for this thread",
     submitMode: "pick-option",
@@ -618,7 +619,7 @@ export function parseComposerCommand(value: string): ParsedComposerCommand | und
     const title = rest.join(" ").trim();
     return title ? { type: "name", title } : undefined;
   }
-  if (command === "/thinking") {
+  if (command === "/reasoning" || command === "/thinking") {
     const thinkingLevel = rest[0]?.trim();
     if (!thinkingLevel) {
       return undefined;

@@ -135,7 +135,7 @@ test("shows queued messages while running and preserves attachments through inli
     await expect(queuedCard.locator(".queued-composer-message__mode")).toHaveCount(0);
     await expect(queuedCard.locator(".queued-composer-message__header .queued-composer-message__text")).toContainText("Inspect the queued screenshot");
     await queuedCard.getByRole("button", { name: "Edit" }).click();
-    await expect(window.getByTestId("queued-composer-editing")).toContainText("Editing queued message");
+    await expect(window.getByTestId("queued-composer-editing")).toContainText("Editing Queued Message");
     await expect(composer).toHaveValue("Inspect the queued screenshot");
     await expect(window.locator(".composer-attachment__name")).toContainText("queued-image.png");
 

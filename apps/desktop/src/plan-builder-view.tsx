@@ -6,8 +6,10 @@ import { computeNextWorkQueue, type NextWorkQueue, type NextWorkQueueItem } from
 import type {
   AnswerRecord,
   ChangeProposalRecord,
+  DecisionRecord,
   GeneratedOutputRecord,
   LegacyReferenceRecord,
+  ParkedItemDestination,
   ParkedItemReviewStatus,
   ParkedItemRecord,
   PlanPhase,
@@ -15,9 +17,12 @@ import type {
   PlanSnapshot,
   PlanStage,
   RequirementRecord,
+  RiskAcceptanceRecord,
+  RiskRecord,
   RunActivityRecord,
   RunRecoverySummaryRecord,
   ShipSummaryRecord,
+  SliceFocusRecord,
   StageStatus,
   TaskEvidenceRecord,
   TaskExecutionRecord,
@@ -45,6 +50,8 @@ import type {
   PlanningPhaseDraft,
   PlanningPlanProposalDraft,
   PlanningProjectionSummary,
+  PreferenceChangeRecord,
+  ProjectPreferenceRecord,
   PlanningSliceDraft,
   PlanningTaskDraft,
   PlanningValidationIssue,
@@ -54,6 +61,7 @@ import type {
   RecordPlanningShipSummaryInput,
   RecordPlanningTaskVerificationInput,
   RegeneratePlanningProjectionsInput,
+  UpsertPlanningContextRecordsInput,
   UpsertPlanningRequirementsInput,
   ReviewPlanningIdeaInput,
   ReviewPlanningPlanInput,
@@ -61,6 +69,8 @@ import type {
   RestorePlanningTaskInput,
   RevisePlanningAnswerInput,
   SelectPlanningPlanInput,
+  SkipPlanningQuestionInput,
+  SkipPlanningStageInput,
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
@@ -69,15 +79,18 @@ import type {
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
   UpdatePlanningPlanStatusInput,
+  UpdatePlanningQuestionStateInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
   WorkspacePlanningState,
   WorkspaceRecord,
   WorkspaceSessionTarget,
+  WorktreeRecord,
   WithdrawPlanningChangeProposalInput,
 } from "./desktop-state";
 import { buildModelOptions, type ComposerModelOption } from "./composer-commands";
 import { ArrowUpIcon, PlanIcon } from "./icons";
+import { formatRelativeTime } from "./string-utils";
 import {
   buildAdaptiveFollowUpForAnswer,
   buildAdaptiveFollowUpForDraft,
@@ -92,6 +105,7 @@ import {
   validatePlanProposal,
 } from "./plan-builder-plan";
 import { buildRequirementDrafts } from "./plan-builder-requirements";
+import { buildDecisionDrafts, buildRiskDrafts } from "./plan-builder-context-records";
 import {
   promptSourceForDiscussStage,
   workflowPromptSources,
@@ -148,8 +162,11 @@ interface PlanBuilderViewProps {
   readonly onUpdatePlanStatus: (input: UpdatePlanningPlanStatusInput) => Promise<DesktopAppState>;
   readonly onRecordAnswer: (input: RecordPlanningAnswerInput) => Promise<DesktopAppState>;
   readonly onParkIdea: (input: ParkPlanningIdeaInput) => Promise<DesktopAppState>;
+  readonly onSkipQuestion: (input: SkipPlanningQuestionInput) => Promise<DesktopAppState>;
   readonly onReviseAnswer: (input: RevisePlanningAnswerInput) => Promise<DesktopAppState>;
+  readonly onUpdateQuestionState: (input: UpdatePlanningQuestionStateInput) => Promise<DesktopAppState>;
   readonly onUpsertRequirements: (input: UpsertPlanningRequirementsInput) => Promise<DesktopAppState>;
+  readonly onUpsertContextRecords: (input: UpsertPlanningContextRecordsInput) => Promise<DesktopAppState>;
   readonly onReviewIdea: (input: ReviewPlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onUpdateIdea: (input: UpdatePlanningIdeaInput) => Promise<DesktopAppState>;
   readonly onDraftChangeProposal: (input: DraftPlanningChangeProposalInput) => Promise<DesktopAppState>;
@@ -161,6 +178,7 @@ interface PlanBuilderViewProps {
   readonly onRestorePlanningTask: (input: RestorePlanningTaskInput) => Promise<DesktopAppState>;
   readonly onConfirmStage: (input: ConfirmPlanningStageInput) => Promise<DesktopAppState>;
   readonly onStartResearch: (input: StartPlanningResearchInput) => Promise<DesktopAppState>;
+  readonly onSkipStage: (input: SkipPlanningStageInput) => Promise<DesktopAppState>;
   readonly onProposeResearch: (input: ProposePlanningResearchInput) => Promise<DesktopAppState>;
   readonly onReviewResearch: (input: ReviewPlanningResearchInput) => Promise<DesktopAppState>;
   readonly onStartPlan: (input: StartPlanningPlanInput) => Promise<DesktopAppState>;
@@ -173,6 +191,7 @@ interface PlanBuilderViewProps {
   readonly onRecordTaskVerification: (input: RecordPlanningTaskVerificationInput) => Promise<DesktopAppState>;
   readonly onStartShip: (input: StartPlanningShipInput) => Promise<DesktopAppState>;
   readonly onRecordShipSummary: (input: RecordPlanningShipSummaryInput) => Promise<DesktopAppState>;
+  readonly onBacklogNotice?: (workspaceId: string, itemId: string) => void;
   readonly onOpenTaskSession: (target: WorkspaceSessionTarget) => Promise<DesktopAppState>;
   readonly onRegenerateProjections: (input: RegeneratePlanningProjectionsInput) => Promise<DesktopAppState>;
 }
@@ -206,8 +225,11 @@ export function PlanBuilderView({
   onUpdatePlanStatus,
   onRecordAnswer,
   onParkIdea,
+  onSkipQuestion,
   onReviseAnswer,
+  onUpdateQuestionState,
   onUpsertRequirements,
+  onUpsertContextRecords,
   onReviewIdea,
   onUpdateIdea,
   onDraftChangeProposal,
@@ -219,6 +241,7 @@ export function PlanBuilderView({
   onRestorePlanningTask,
   onConfirmStage,
   onStartResearch,
+  onSkipStage,
   onProposeResearch,
   onReviewResearch,
   onStartPlan,
@@ -231,6 +254,7 @@ export function PlanBuilderView({
   onRecordTaskVerification,
   onStartShip,
   onRecordShipSummary,
+  onBacklogNotice,
   onOpenTaskSession,
   onRegenerateProjections,
 }: PlanBuilderViewProps) {
@@ -249,6 +273,11 @@ export function PlanBuilderView({
   const [editingIdeaId, setEditingIdeaId] = useState("");
   const [ideaTextDraft, setIdeaTextDraft] = useState("");
   const [composerReviewItemId, setComposerReviewItemId] = useState("");
+  const [parkDestinationPrompt, setParkDestinationPrompt] = useState<"answer" | "composer" | null>(null);
+  const [skipQuestionPromptOpen, setSkipQuestionPromptOpen] = useState(false);
+  const [skipReasonDraft, setSkipReasonDraft] = useState("");
+  const [skipReasonType, setSkipReasonType] = useState<"not-applicable" | "unknown" | "undecided" | "later">("unknown");
+  const [highImpactConfirmPending, setHighImpactConfirmPending] = useState(false);
   const [proposalFocusRequest, setProposalFocusRequest] = useState<
     { readonly proposalId: string; readonly token: number } | undefined
   >();
@@ -256,6 +285,7 @@ export function PlanBuilderView({
   const [changeProposalSummaryDraft, setChangeProposalSummaryDraft] = useState("");
   const [changeProposalImpactDraft, setChangeProposalImpactDraft] = useState("");
   const [researchReadinessAcknowledged, setResearchReadinessAcknowledged] = useState(false);
+  const [skipResearchReason, setSkipResearchReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const changeDraftTitleInputRef = useRef<HTMLInputElement | null>(null);
@@ -271,7 +301,7 @@ export function PlanBuilderView({
   const activeQuestion = getActiveDiscussQuestion(snapshot);
   const activePlanStage: PlanStage = snapshot?.activeStage ?? "project";
   const activeDiscussStage: DiscussStage =
-    snapshot && isDiscussStage(snapshot.activeStage) ? snapshot.activeStage : "project";
+    activeQuestion?.stage ?? (snapshot && isDiscussStage(snapshot.activeStage) ? snapshot.activeStage : "project");
   const stageProgress = useMemo(
     () => discussStageOrder.map((stage) => getDiscussStageProgress(snapshot, stage)),
     [snapshot],
@@ -285,6 +315,10 @@ export function PlanBuilderView({
   const requirementDrafts = useMemo(() => buildRequirementDrafts(snapshot), [snapshot]);
   const savedRequirements = snapshot?.requirements ?? [];
   const requirementRows = savedRequirements.length > 0 ? savedRequirements : requirementDrafts;
+  const decisionDrafts = useMemo(() => buildDecisionDrafts(snapshot), [snapshot]);
+  const riskDrafts = useMemo(() => buildRiskDrafts(snapshot), [snapshot]);
+  const decisionRows = snapshot?.decisions.length ? snapshot.decisions : decisionDrafts;
+  const riskRows = snapshot?.risks.length ? snapshot.risks : riskDrafts;
   const activeFollowUp = useMemo(
     () => buildAdaptiveFollowUpForDraft(activeQuestion, answerDraft, { requirements: requirementRows }),
     [activeQuestion, answerDraft, requirementRows],
@@ -308,7 +342,7 @@ export function PlanBuilderView({
     .join("|");
   const researchReadinessRequiresOverride = guidanceRollup.some((item) => item.high > 0);
   const currentProgress = stageProgress.find((progress) => progress.stage === activeDiscussStage) ?? stageProgress[0];
-  const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed);
+  const allDiscussConfirmed = stageProgress.every((progress) => progress.depthConfirmed && progress.readyForReview);
   const researchOutputs = useMemo(
     () => (snapshot?.generatedOutputs ?? []).filter((output) => output.stage === "research"),
     [snapshot],
@@ -319,6 +353,7 @@ export function PlanBuilderView({
   const acceptedResearchOutputs = researchOutputs.filter((output) => output.status === "accepted");
   const rejectedResearchOutputs = researchOutputs.filter((output) => output.status === "rejected");
   const researchStage = snapshot?.stages.find((stage) => stage.stage === "research");
+  const researchSkipped = Boolean(snapshot?.skippedStages.some((stage) => stage.stage === "research"));
   const researchStarted = Boolean(
     snapshot && (snapshot.activePhase === "research" || researchStage || researchOutputs.length > 0),
   );
@@ -388,15 +423,28 @@ export function PlanBuilderView({
       ),
     [snapshot],
   );
+  const openQuestionItems = useMemo(
+    () => (snapshot?.parkedItems ?? []).filter((item) => item.destination === "open-question"),
+    [snapshot?.parkedItems],
+  );
+  const backlogParkedItems = useMemo(
+    () => (snapshot?.parkedItems ?? []).filter((item) => item.destination === "backlog"),
+    [snapshot?.parkedItems],
+  );
   const composerReviewItem = snapshot?.parkedItems.find(
     (item) => item.id === composerReviewItemId && item.sourceType === "composer",
   );
   const composerReviewProposal = composerReviewItem ? changeProposalsBySource.get(composerReviewItem.id) : undefined;
   const answerActionDisabled = !activeQuestion || !answerDraft.trim() || submitting;
+  const skipQuestionDisabled = !activeQuestion || submitting;
 
   useEffect(() => {
     const existingAnswer = activeQuestion ? latestAnswersByQuestion.get(activeQuestion.id) : undefined;
     setAnswerDraft(existingAnswer?.loadBearing ? existingAnswer.answer : "");
+    setSkipQuestionPromptOpen(false);
+    setSkipReasonDraft("");
+    setSkipReasonType("unknown");
+    setHighImpactConfirmPending(false);
   }, [activeQuestion?.id, latestAnswersByQuestion, snapshot?.id]);
 
   useEffect(() => {
@@ -507,12 +555,16 @@ export function PlanBuilderView({
     });
   };
 
-  const recordAnswer = (loadBearing: boolean) => {
+  const recordAnswer = (loadBearing: boolean, parkDestination?: ParkedItemDestination, forceHighImpact = false) => {
     if (!snapshot || !activeQuestion || submitting) {
       return;
     }
     const answer = answerDraft.trim();
     if (!answer) {
+      return;
+    }
+    if (loadBearing && activeFollowUp?.severity === "high" && !forceHighImpact) {
+      setHighImpactConfirmPending(true);
       return;
     }
     setSubmitting(true);
@@ -525,10 +577,17 @@ export function PlanBuilderView({
       prompt: activeQuestion.prompt,
       answer,
       loadBearing,
-      ...(loadBearing ? {} : { discretionRationale: "Parked for later review" }),
+      ...(parkDestination ? { parkDestination } : {}),
+      ...(loadBearing
+        ? highImpactConfirmPending
+          ? { discretionRationale: "High-impact answer saved after confirmation" }
+          : {}
+        : { discretionRationale: "Parked for later review" }),
       ...(loadBearing ? { projectPatch: buildProjectPatch(activeQuestion.id, answer) } : {}),
     })
       .then(() => {
+        setParkDestinationPrompt(null);
+        setHighImpactConfirmPending(false);
         if (!loadBearing) {
           setAnswerDraft("");
         }
@@ -541,7 +600,41 @@ export function PlanBuilderView({
       });
   };
 
-  const parkComposerIdea = () => {
+  const skipQuestion = () => {
+    if (!snapshot || !activeQuestion || submitting) {
+      return;
+    }
+    const reason = skipReasonDraft.trim();
+    if (!reason) {
+      return;
+    }
+    const createsOpenQuestion = skipReasonType !== "not-applicable";
+    setSubmitting(true);
+    void onSkipQuestion({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      stage: activeQuestion.stage,
+      questionId: activeQuestion.id,
+      prompt: activeQuestion.prompt,
+      reasonType: skipReasonType,
+      reason,
+      createsOpenQuestion,
+    })
+      .then(() => {
+        setSkipQuestionPromptOpen(false);
+        setSkipReasonDraft("");
+        setSkipReasonType("unknown");
+        requestAnimationFrame(() => {
+          composerTextareaRef.current?.focus();
+        });
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
+  };
+
+  const parkComposerIdea = (destination: ParkedItemDestination) => {
     if (!snapshot || submitting) {
       return;
     }
@@ -559,9 +652,11 @@ export function PlanBuilderView({
       sourceQuestionId: `composer_${snapshot.activePhase}`,
       sourcePrompt: `Composer note captured during ${phaseLabel}`,
       text,
+      destination,
       rationale: `Parked during ${phaseLabel}`,
     })
       .then((nextState) => {
+        setParkDestinationPrompt(null);
         const parkedItems = nextState.planningByWorkspace[workspace.id]?.selectedPlan?.parkedItems ?? [];
         const parkedItem = [...parkedItems]
           .reverse()
@@ -594,6 +689,7 @@ export function PlanBuilderView({
       sourceQuestionId: "legacy_reference",
       sourcePrompt: `Legacy reference: ${reference.path}`,
       text,
+      destination: "backlog",
       rationale: `Promoted from legacy Markdown reference ${reference.path}`,
     }).finally(() => {
       setSubmitting(false);
@@ -655,6 +751,23 @@ export function PlanBuilderView({
     setRevisionDraft(answer.answer);
   };
 
+  const updateQuestionState = (answer: AnswerRecord, status: UpdatePlanningQuestionStateInput["status"]) => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpdateQuestionState({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      questionId: answer.questionId,
+      status,
+      ...(status === "needs-review" ? { reason: "Marked for review from Project Context" } : {}),
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
   const saveRequirementsContract = () => {
     if (!snapshot || requirementDrafts.length === 0 || submitting) {
       return;
@@ -665,6 +778,22 @@ export function PlanBuilderView({
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
       requirements: requirementDrafts,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const saveContextRecords = () => {
+    if (!snapshot || decisionDrafts.length + riskDrafts.length === 0 || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onUpsertContextRecords({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      decisions: decisionDrafts,
+      risks: riskDrafts,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -895,6 +1024,26 @@ export function PlanBuilderView({
       workspaceId: workspace.id,
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
+    }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const skipResearch = () => {
+    if (!snapshot || submitting) {
+      return;
+    }
+    const reason = skipResearchReason.trim();
+    if (!reason) {
+      return;
+    }
+    setSubmitting(true);
+    void onSkipStage({
+      workspaceId: workspace.id,
+      planId: snapshot.id,
+      expectedRevision: snapshot.revision,
+      stage: "research",
+      reason,
     }).finally(() => {
       setSubmitting(false);
     });
@@ -1132,7 +1281,7 @@ export function PlanBuilderView({
     });
   };
 
-  const startShip = () => {
+  const startShip = (riskAcceptanceRationale?: string) => {
     if (!snapshot || submitting) {
       return;
     }
@@ -1141,12 +1290,16 @@ export function PlanBuilderView({
       workspaceId: workspace.id,
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
+      ...(riskAcceptanceRationale ? { riskAcceptanceRationale } : {}),
     }).finally(() => {
       setSubmitting(false);
     });
   };
 
-  const recordShipSummary = (summary: string, options?: { readonly clearComposer?: boolean }) => {
+  const recordShipSummary = (
+    summary: string,
+    options?: { readonly clearComposer?: boolean; readonly followUps?: readonly string[] },
+  ) => {
     if (!snapshot || submitting) {
       return;
     }
@@ -1160,8 +1313,18 @@ export function PlanBuilderView({
       planId: snapshot.id,
       expectedRevision: snapshot.revision,
       summary: trimmed,
+      ...(options?.followUps?.length ? { followUps: options.followUps } : {}),
     })
-      .then(() => {
+      .then((nextState) => {
+        const followUps = options?.followUps ?? [];
+        if (followUps.length > 0) {
+          const item = nextState.backlogByWorkspace[workspace.id]?.find(
+            (entry) => entry.source.role === "ship" && entry.text === followUps[0],
+          );
+          if (item) {
+            onBacklogNotice?.(workspace.id, item.id);
+          }
+        }
         if (options?.clearComposer) {
           setAnswerDraft("");
           requestAnimationFrame(() => {
@@ -1199,8 +1362,8 @@ export function PlanBuilderView({
           ...current.phases,
           {
             id: phaseId,
-            title: "New phase",
-            goal: "Define this phase goal.",
+            title: "New optional phase",
+            goal: "Define this optional grouping goal.",
           },
         ],
       };
@@ -1209,17 +1372,13 @@ export function PlanBuilderView({
 
   const removePhase = (phaseIndex: number) => {
     setPlanProposal((current) => {
-      if (current.phases.length <= 1) {
-        return current;
-      }
       const removedPhase = current.phases[phaseIndex];
       const phases = current.phases.filter((_phase, index) => index !== phaseIndex);
-      const fallbackPhaseId = phases[0]?.id ?? "";
       return {
         ...current,
         phases,
         milestones: current.milestones.map((milestone) =>
-          milestone.phase === removedPhase?.id ? { ...milestone, phase: fallbackPhaseId } : milestone,
+          milestone.phase === removedPhase?.id ? { ...milestone, phase: "" } : milestone,
         ),
       };
     });
@@ -1285,12 +1444,13 @@ export function PlanBuilderView({
           {
             id: milestoneId,
             title: "New milestone",
-            phase: current.phases[0]?.id ?? "P1",
+            phase: current.phases[0]?.id ?? "",
             outcome: "Define the milestone outcome.",
             slices: [
               {
                 id: "S1",
                 title: "New slice",
+                scope: "required",
                 goal: "Define the slice goal.",
                 boundary: "Name the touched boundary.",
                 tasks: [
@@ -1332,6 +1492,7 @@ export function PlanBuilderView({
             {
               id: sliceId,
               title: "New slice",
+              scope: "required",
               goal: "Define the slice goal.",
               boundary: "Name the touched boundary.",
               tasks: [],
@@ -1420,7 +1581,7 @@ export function PlanBuilderView({
     ? activeQuestion.prompt
     : shipStarted
       ? latestShipSummary
-        ? "The ship summary is saved. Add an update here if the handoff changes."
+        ? "The Ship Handoff is saved. Add an update here if it changes."
         : "Write the final handoff summary here."
     : verifyStarted
       ? verificationReadyForShip
@@ -1482,6 +1643,11 @@ export function PlanBuilderView({
     : composerHasDraft
       ? "Park a planning note or change request"
       : composerStatus);
+  const composerAnswerLabel = activeQuestion
+    ? getGuidedAnswerLabel(activeQuestion.id)
+    : composerCanRecordShipSummary
+      ? "Ship handoff"
+      : "Planning note";
   const composerPlaceholder = activeQuestion
     ? activeQuestion.helper
     : composerCanRecordShipSummary
@@ -1497,7 +1663,7 @@ export function PlanBuilderView({
   const composerSubmitLabel = activeQuestion
     ? "Save Answer"
     : composerCanRecordShipSummary
-      ? "Save Summary"
+      ? "Save Handoff"
       : composerCanParkIdea && composerHasDraft
         ? "Park Note"
         : "Continue";
@@ -1511,7 +1677,7 @@ export function PlanBuilderView({
       return;
     }
     if (composerCanParkIdea && composerHasDraft) {
-      parkComposerIdea();
+      setParkDestinationPrompt("composer");
       return;
     }
     composerPhaseAction?.run();
@@ -1640,8 +1806,25 @@ export function PlanBuilderView({
                 >
                   Start Research
                 </button>
+                <label className="plan-execution-task-editor__field">
+                  <span>Skip Research reason</span>
+                  <textarea
+                    data-testid="skip-research-reason-textarea"
+                    onChange={(event) => setSkipResearchReason(event.target.value)}
+                    value={skipResearchReason}
+                  />
+                </label>
+                <button
+                  className="plan-secondary-button"
+                  data-testid="skip-research-button"
+                  disabled={submitting || !skipResearchReason.trim()}
+                  onClick={skipResearch}
+                  type="button"
+                >
+                  Skip Research
+                </button>
               </div>
-            ) : allDiscussConfirmed && researchStarted && acceptedResearchOutputs.length === 0 ? (
+            ) : allDiscussConfirmed && researchStarted && !researchSkipped && acceptedResearchOutputs.length === 0 ? (
               <div className="plan-research" data-testid="plan-research-panel">
                 <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-discuss-complete">
                   <div className="plan-depth-card__eyebrow">RESEARCH {formatStageStatus(researchStage?.status)}</div>
@@ -1722,11 +1905,15 @@ export function PlanBuilderView({
                   </div>
                 ) : null}
               </div>
-            ) : allDiscussConfirmed && acceptedResearchOutputs.length > 0 && !planStarted ? (
+            ) : allDiscussConfirmed && (acceptedResearchOutputs.length > 0 || researchSkipped) && !planStarted ? (
               <div className="plan-depth-card plan-depth-card--complete" data-testid="plan-ready-card">
-                <div className="plan-depth-card__eyebrow">RESEARCH approved</div>
+                <div className="plan-depth-card__eyebrow">RESEARCH {researchSkipped ? "skipped" : "approved"}</div>
                 <h2>Shape the work</h2>
-                <p>Use the accepted findings to define milestones, slices, tasks, dependencies, and boundaries.</p>
+                <p>
+                  {researchSkipped
+                    ? "Research was skipped with a recorded reason. Shape the plan from confirmed Project Context."
+                    : "Use the accepted findings to define milestones, slices, tasks, dependencies, and boundaries."}
+                </p>
                 {guidanceRollup.length > 0 ? <ReadinessWarning items={guidanceRollup} /> : null}
                 <button className="plan-action-button" disabled={submitting} onClick={startPlan} type="button">
                   Start Plan
@@ -1809,13 +1996,39 @@ export function PlanBuilderView({
             ) : activeQuestion && activeFollowUp ? (
               <div className="plan-question-feedback" data-testid="plan-question-feedback">
                 <AdaptiveFollowUpCard followUp={activeFollowUp} />
+                {highImpactConfirmPending && activeFollowUp.severity === "high" ? (
+                  <div className="plan-composer-review" data-testid="high-impact-answer-route">
+                    <div>
+                      <div className="plan-composer-review__eyebrow">High-impact answer</div>
+                      <p>This answer looks unresolved. Refine it now, or save it with a review note before it steers later stages.</p>
+                    </div>
+                    <div className="plan-composer-review__actions">
+                      <button
+                        className="plan-inline-button"
+                        disabled={submitting}
+                        onClick={() => setHighImpactConfirmPending(false)}
+                        type="button"
+                      >
+                        Refine Answer
+                      </button>
+                      <button
+                        className="plan-inline-button"
+                        disabled={submitting}
+                        onClick={() => recordAnswer(true, undefined, true)}
+                        type="button"
+                      >
+                        Save With Review Note
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : currentProgress?.readyForReview && !currentProgress.depthConfirmed ? (
               <div className="plan-depth-card" data-testid="plan-depth-gate">
                 <div className="plan-depth-card__eyebrow">{stageLabel(currentProgress.stage)} answers saved</div>
                 <h2>Confirm this section is clear enough</h2>
                 <p>
-                  {currentProgress.answered} of {currentProgress.total} important answers are saved.
+                  {formatQuestionProgress(currentProgress)}.
                 </p>
                 <button className="plan-action-button" disabled={submitting} onClick={confirmStage} type="button">
                   Confirm {stageLabel(currentProgress.stage)}
@@ -1827,12 +2040,15 @@ export function PlanBuilderView({
           {composerReviewItem ? (
             <div className="plan-composer-review" data-testid="plan-composer-parked-review">
               <div>
-                <div className="plan-composer-review__eyebrow">Parked Idea</div>
+                <div className="plan-composer-review__eyebrow">
+                  {composerReviewItem.destination === "open-question" ? "Open Question" : "Backlog Item"}
+                </div>
                 <p>{composerReviewItem.text}</p>
               </div>
               <small data-testid="plan-composer-parked-review-status">
                 {formatIdeaReviewStatus(composerReviewItem.reviewStatus)}
               </small>
+              <small data-testid="plan-composer-parked-destination">{formatParkDestination(composerReviewItem.destination)}</small>
               <div className="plan-composer-review__actions">
                 {composerReviewItem.reviewStatus === "dismissed" ? (
                   <button
@@ -1915,7 +2131,7 @@ export function PlanBuilderView({
                   </div>
                 </div>
                 <label className="plan-composer__answer-frame plan-composer__answer-frame--sheet" data-testid="plan-composer-answer-frame">
-                  <span className="plan-composer__label">Your answer</span>
+                  <span className="plan-composer__label">{composerAnswerLabel}</span>
                   <textarea
                     aria-label={
                       activeQuestion
@@ -1925,7 +2141,10 @@ export function PlanBuilderView({
                           : "Park planning note"
                     }
                     data-testid="plan-composer-textarea"
-                    onChange={(event) => setAnswerDraft(event.target.value)}
+                    onChange={(event) => {
+                      setAnswerDraft(event.target.value);
+                      setHighImpactConfirmPending(false);
+                    }}
                     onKeyDown={submitComposerFromKeyboard}
                     placeholder={composerPlaceholder}
                     ref={composerTextareaRef}
@@ -1943,7 +2162,7 @@ export function PlanBuilderView({
                         activeQuestion
                           ? "Save Answer"
                           : composerCanRecordShipSummary
-                            ? "Save Summary"
+                            ? "Save Handoff"
                             : composerCanParkIdea && composerHasDraft
                               ? "Park Note"
                               : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
@@ -1958,9 +2177,20 @@ export function PlanBuilderView({
                         type="button"
                         disabled={answerActionDisabled}
                         aria-label="Park for Later"
-                        onClick={() => recordAnswer(false)}
+                        onClick={() => setParkDestinationPrompt("answer")}
                       >
                         Park for Later
+                      </button>
+                    ) : null}
+                    {activeQuestion ? (
+                      <button
+                        className="plan-composer__park"
+                        type="button"
+                        disabled={skipQuestionDisabled}
+                        aria-label="Skip Question"
+                        onClick={() => setSkipQuestionPromptOpen(true)}
+                      >
+                        Skip Question
                       </button>
                     ) : null}
                   </div>
@@ -1980,7 +2210,7 @@ export function PlanBuilderView({
                       activeQuestion
                         ? "Save Answer"
                         : composerCanRecordShipSummary
-                          ? "Save Summary"
+                          ? "Save Handoff"
                           : composerCanParkIdea && composerHasDraft
                             ? "Park Note"
                             : (composerPhaseAction?.ariaLabel ?? "Plan composer action")
@@ -1995,15 +2225,57 @@ export function PlanBuilderView({
                       type="button"
                       disabled={answerActionDisabled}
                       aria-label="Park for Later"
-                      onClick={() => recordAnswer(false)}
+                      onClick={() => setParkDestinationPrompt("answer")}
                     >
                       Park for Later
+                    </button>
+                  ) : null}
+                  {activeQuestion ? (
+                    <button
+                      className="plan-composer__park"
+                      type="button"
+                      disabled={skipQuestionDisabled}
+                      aria-label="Skip Question"
+                      onClick={() => setSkipQuestionPromptOpen(true)}
+                    >
+                      Skip Question
                     </button>
                   ) : null}
                 </div>
               </>
             )}
           </form>
+          {skipQuestionPromptOpen && activeQuestion ? (
+            <SkipQuestionPrompt
+              disabled={submitting}
+              prompt={activeQuestion.prompt}
+              reason={skipReasonDraft}
+              reasonType={skipReasonType}
+              onCancel={() => {
+                setSkipQuestionPromptOpen(false);
+                requestAnimationFrame(() => composerTextareaRef.current?.focus());
+              }}
+              onReasonChange={setSkipReasonDraft}
+              onReasonTypeChange={setSkipReasonType}
+              onSubmit={skipQuestion}
+            />
+          ) : null}
+          {parkDestinationPrompt ? (
+            <ParkDestinationPrompt
+              disabled={submitting}
+              onCancel={() => {
+                setParkDestinationPrompt(null);
+                requestAnimationFrame(() => composerTextareaRef.current?.focus());
+              }}
+              onSelect={(destination) => {
+                if (parkDestinationPrompt === "answer") {
+                  recordAnswer(false, destination);
+                  return;
+                }
+                parkComposerIdea(destination);
+              }}
+            />
+          ) : null}
         </div>
 
         <aside className="plan-workbench__pane plan-workbench__pane--side">
@@ -2089,9 +2361,28 @@ export function PlanBuilderView({
                 {snapshot?.name ?? "No plan selected"}
               </div>
               <div className="plan-outline-card__meta">
-                {snapshot ? `${snapshot.readableId} · ${stageLabel(activePlanStage)}` : "DISCUSS is ready to start"}
+                {snapshot
+                  ? `${snapshot.readableId} · ${stageLabel(activePlanStage)}${
+                      snapshot.planRevisions.at(-1) ? ` · Revision ${snapshot.planRevisions.at(-1)?.revisionNumber}` : ""
+                    }`
+                  : "DISCUSS is ready to start"}
               </div>
             </div>
+
+            {snapshot?.planRevisions.length ? (
+              <div className="plan-memory" data-testid="plan-revision-history">
+                <div className="plan-memory__title">Plan Revision History</div>
+                {snapshot.planRevisions.map((revision) => (
+                  <article className="plan-memory__item" data-testid="plan-revision-row" key={revision.id}>
+                    <div className="plan-memory__item-header">
+                      <span>Revision {revision.revisionNumber}: {revision.title}</span>
+                      <small>{revision.sourceType === "accepted-plan" ? "Accepted Plan" : "Accepted Plan Change"}</small>
+                    </div>
+                    <p className="plan-memory__note">Output: {revision.acceptedOutputId}</p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
 
             <div className="plan-outline-grid">
               {outlineStats.map((stat) => (
@@ -2112,11 +2403,13 @@ export function PlanBuilderView({
                 >
                   <span>{stageLabel(progress.stage)}</span>
                   <small>
-                    {progress.depthConfirmed
+                    {progress.needsReview > 0
+                      ? "Needs review"
+                      : progress.depthConfirmed
                       ? "Confirmed"
                       : progress.readyForReview
                         ? "Review"
-                        : `${progress.answered}/${progress.total}`}
+                        : formatQuestionProgress(progress)}
                   </small>
                 </div>
               ))}
@@ -2172,16 +2465,22 @@ export function PlanBuilderView({
 
             {latestAnswers.length > 0 ? (
               <div className="plan-memory" data-testid="plan-answer-history">
-                <div className="plan-memory__title">Discussion Memory</div>
+                <div className="plan-memory__title">Project Context</div>
+                <div className="plan-memory__note">Editable sections derived from saved answers.</div>
                 {latestAnswers.map((answer) => {
                   const question = getDiscussQuestion(answer.questionId);
                   const prompt = answer.prompt || question?.prompt;
                   const isEditing = editingAnswerId === answer.id;
                   const followUp = followUpsByAnswerId.get(answer.id);
+                  const contextSection = getProjectContextSection(answer.questionId);
+                  const questionState = snapshot?.questionStates.find((entry) => entry.questionId === answer.questionId);
                   return (
-                    <article className="plan-memory__item" key={answer.id}>
+                    <article className="plan-memory__item" data-testid="project-context-entry" key={answer.id}>
                       <div className="plan-memory__item-header">
-                        <span>{question?.label ?? answer.questionId}</span>
+                        <span>{contextSection}: {question?.label ?? answer.questionId}</span>
+                        <small>
+                          {questionState?.status === "needs-review" ? "Needs review" : "Source: guided answer"}
+                        </small>
                         <button
                           className="plan-inline-button"
                           onClick={() => startAnswerRevision(answer)}
@@ -2189,6 +2488,25 @@ export function PlanBuilderView({
                         >
                           Edit
                         </button>
+                        {questionState?.status === "needs-review" ? (
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting}
+                            onClick={() => updateQuestionState(answer, "answered")}
+                            type="button"
+                          >
+                            Mark Reviewed
+                          </button>
+                        ) : (
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting}
+                            onClick={() => updateQuestionState(answer, "needs-review")}
+                            type="button"
+                          >
+                            Needs Review
+                          </button>
+                        )}
                       </div>
                       {prompt ? (
                         <p className="plan-memory__question" data-testid="plan-memory-question">
@@ -2250,13 +2568,123 @@ export function PlanBuilderView({
               />
             ) : null}
 
-            {snapshot?.parkedItems?.length ? (
-              <div className="plan-memory" data-testid="plan-idea-pool">
-                <div className="plan-memory__title">Idea Pool</div>
-                {snapshot.parkedItems.map((item) => {
+            {decisionRows.length + riskRows.length > 0 ? (
+              <ContextRecordsCard
+                decisions={decisionRows}
+                risks={riskRows}
+                saved={Boolean(snapshot?.decisions.length || snapshot?.risks.length)}
+                submitting={submitting}
+                onSave={saveContextRecords}
+              />
+            ) : null}
+
+            {openQuestionItems.length > 0 ? (
+              <div className="plan-memory" data-testid="plan-open-questions">
+                <div className="plan-memory__title">Open Questions</div>
+                {openQuestionItems.map((item) => {
                   const question = getDiscussQuestion(item.sourceQuestionId);
                   const sourceLabel =
-                    question?.label ?? (item.sourceType === "composer" ? item.sourcePrompt : item.sourceQuestionId);
+                    question?.label ?? (item.sourceType === "answer" ? item.sourceQuestionId : item.sourcePrompt);
+                  const isEditingIdea = editingIdeaId === item.id;
+                  return (
+                    <article
+                      className="plan-memory__item plan-memory__item--parked"
+                      data-testid="plan-open-question-item"
+                      key={item.id}
+                    >
+                      <div className="plan-memory__item-header">
+                        <span>{sourceLabel}</span>
+                        <small data-testid="plan-open-question-status">
+                          {formatIdeaReviewStatus(item.reviewStatus)}
+                        </small>
+                      </div>
+                      {isEditingIdea ? (
+                        <div className="plan-change-draft" data-testid="plan-idea-edit-form">
+                          <label>
+                            <span>Open question</span>
+                            <textarea
+                              data-testid="plan-idea-text-textarea"
+                              onChange={(event) => setIdeaTextDraft(event.target.value)}
+                              value={ideaTextDraft}
+                            />
+                          </label>
+                          <div className="plan-memory__editor-actions">
+                            <button
+                              className="plan-action-button plan-action-button--compact"
+                              disabled={submitting || !ideaTextDraft.trim()}
+                              onClick={() => saveIdeaEdit(item)}
+                              type="button"
+                            >
+                              Save Question
+                            </button>
+                            <button
+                              className="plan-secondary-button plan-secondary-button--compact"
+                              disabled={submitting}
+                              onClick={cancelIdeaEdit}
+                              type="button"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p>{item.text}</p>
+                      )}
+                      {item.reviewNote ? <p className="plan-memory__note">{item.reviewNote}</p> : null}
+                      {!isEditingIdea ? (
+                        <div className="plan-idea-actions">
+                          <button
+                            className="plan-inline-button"
+                            disabled={submitting}
+                            onClick={() => startIdeaEdit(item)}
+                            type="button"
+                          >
+                            Edit Question
+                          </button>
+                          {item.reviewStatus === "dismissed" ? (
+                            <button
+                              className="plan-inline-button"
+                              disabled={submitting}
+                              onClick={() => reviewIdea(item.id, "parked")}
+                              type="button"
+                            >
+                              Restore
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting || item.reviewStatus === "kept"}
+                                onClick={() => reviewIdea(item.id, "kept")}
+                                type="button"
+                              >
+                                Keep
+                              </button>
+                              <button
+                                className="plan-inline-button"
+                                disabled={submitting}
+                                onClick={() => reviewIdea(item.id, "dismissed")}
+                                type="button"
+                              >
+                                Dismiss
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {backlogParkedItems.length > 0 ? (
+              <div className="plan-memory" data-testid="plan-idea-pool">
+                <div className="plan-memory__title">Backlog</div>
+                {backlogParkedItems.map((item) => {
+                  const question = getDiscussQuestion(item.sourceQuestionId);
+                  const sourceLabel =
+                    question?.label ?? (item.sourceType === "answer" ? item.sourceQuestionId : item.sourcePrompt);
                   const proposal = changeProposalsBySource.get(item.id);
                   const isDraftingProposal = draftingIdeaId === item.id;
                   const isEditingIdea = editingIdeaId === item.id;
@@ -2268,7 +2696,10 @@ export function PlanBuilderView({
                     >
                       <div className="plan-memory__item-header">
                         <span>{sourceLabel}</span>
-                        <small data-testid="plan-idea-status">{formatIdeaReviewStatus(item.reviewStatus)}</small>
+                        <small data-testid="plan-idea-status">
+                          {formatIdeaReviewStatus(item.reviewStatus)}
+                        </small>
+                        <small data-testid="plan-idea-destination">{formatParkDestination(item.destination)}</small>
                       </div>
                       {isEditingIdea ? (
                         <div className="plan-change-draft" data-testid="plan-idea-edit-form">
@@ -2460,11 +2891,15 @@ export function PlanBuilderView({
 interface ProjectPreferencesViewProps {
   readonly workspaces: readonly WorkspaceRecord[];
   readonly selectedWorkspaceId: string;
+  readonly projectPreferences: ProjectPreferenceRecord | undefined;
+  readonly preferenceChanges: readonly PreferenceChangeRecord[];
   readonly runtime?: RuntimeSnapshot;
   readonly globalPlanningPreferences: GlobalPlanningPreferences;
   readonly planningState: WorkspacePlanningState | undefined;
+  readonly worktrees: readonly WorktreeRecord[];
   readonly lastError?: string;
   readonly onSelectWorkspace: (workspaceId: string) => void;
+  readonly onSetDefaultWorktree: (workspaceId: string, worktreeId?: string) => Promise<DesktopAppState>;
   readonly onApplyWorkflowPreferences: (input: ApplyPlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
   readonly onUpdateWorkflowPreferences: (input: UpdatePlanningWorkflowPreferencesInput) => Promise<DesktopAppState>;
 }
@@ -2472,11 +2907,15 @@ interface ProjectPreferencesViewProps {
 export function ProjectPreferencesView({
   workspaces,
   selectedWorkspaceId,
+  projectPreferences,
+  preferenceChanges,
   runtime,
   globalPlanningPreferences,
   planningState,
+  worktrees,
   lastError,
   onSelectWorkspace,
+  onSetDefaultWorktree,
   onApplyWorkflowPreferences,
   onUpdateWorkflowPreferences,
 }: ProjectPreferencesViewProps) {
@@ -2511,6 +2950,16 @@ export function ProjectPreferencesView({
       expectedRevision: snapshot.revision,
       preferences: buildWorkflowPreferenceUpdate(snapshot.workflowPreferences, phaseOverrides),
     }).finally(() => {
+      setSubmitting(false);
+    });
+  };
+
+  const updateDefaultWorktree = (worktreeId: string) => {
+    if (!workspace || submitting) {
+      return;
+    }
+    setSubmitting(true);
+    void onSetDefaultWorktree(workspace.id, worktreeId || undefined).finally(() => {
       setSubmitting(false);
     });
   };
@@ -2555,6 +3004,45 @@ export function ProjectPreferencesView({
         </header>
 
         {lastError ? <div className="error-banner">{lastError}</div> : null}
+
+        <div className="plan-status-card" data-testid="project-default-worktree-card">
+          <strong>Default Worktree</strong>
+          <span>New threads use this worktree unless the thread chooses a different environment.</span>
+          <label className="surface-toolbar__field">
+            <span>Worktree</span>
+            <select
+              data-testid="project-default-worktree-select"
+              disabled={submitting}
+              onChange={(event) => updateDefaultWorktree(event.target.value)}
+              value={projectPreferences?.defaultWorktreeId ?? ""}
+            >
+              <option value="">Local workspace</option>
+              {worktrees.map((worktree) => (
+                <option disabled={worktree.status !== "ready" || !worktree.linkedWorkspaceId} key={worktree.id} value={worktree.id}>
+                  {worktree.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {preferenceChanges.length > 0 ? (
+          <div className="plan-memory" data-testid="preference-change-log">
+            <div className="plan-memory__title">Preference Changes</div>
+            {preferenceChanges.slice(0, 5).map((change) => (
+              <article className="plan-memory__item" key={change.id}>
+                <div className="plan-memory__item-header">
+                  <span>{formatPreferenceField(change.field)}</span>
+                  <small>{formatRelativeTime(change.changedAt)}</small>
+                </div>
+                <p>
+                  {change.from} → {change.to}
+                </p>
+                {change.reason ? <p className="plan-memory__note">{change.reason}</p> : null}
+              </article>
+            ))}
+          </div>
+        ) : null}
 
         {!planningState ? (
           <div className="empty-panel empty-panel--compact">
@@ -2646,8 +3134,8 @@ function GuidanceRollupCard({ items }: { readonly items: readonly GuidanceRollup
         </div>
         <p>
           {high > 0
-            ? `${high} high-signal answer${high === 1 ? "" : "s"} should be revised before later phases trust them.`
-            : "Medium-signal answers should be tightened before later phases trust them."}
+            ? `${high} high-signal answer${high === 1 ? "" : "s"} should be revised before later workflow stages trust them.`
+            : "Medium-signal answers should be tightened before later workflow stages trust them."}
         </p>
       </article>
       {items.map((item) => (
@@ -2693,8 +3181,8 @@ function ReadinessWarning({
       <strong>{total} unresolved guidance item{total === 1 ? "" : "s"}</strong>
       <p>
         {high > 0
-          ? "High-signal answers should be revised before later phases rely on them."
-          : "Review or revise weak DISCUSS answers before later phases rely on them."}
+          ? "High-signal answers should be revised before later workflow stages rely on them."
+          : "Review or revise weak DISCUSS answers before later workflow stages rely on them."}
       </p>
       <div className="plan-follow-up__signals" data-testid="plan-readiness-warning-stages">
         {items.map((item) => (
@@ -2762,6 +3250,66 @@ function RequirementsContractCard({
           </div>
           <p>{requirement.description}</p>
           <p className="plan-memory__note">{requirement.why}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function ContextRecordsCard({
+  decisions,
+  risks,
+  saved,
+  submitting,
+  onSave,
+}: {
+  readonly decisions: readonly DecisionRecord[];
+  readonly risks: readonly RiskRecord[];
+  readonly saved: boolean;
+  readonly submitting: boolean;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="plan-memory" data-testid="context-records">
+      <div className="plan-requirements-contract__header">
+        <div>
+          <div className="plan-memory__title">Decisions and Risks</div>
+          <p>{saved ? "Decision and risk records saved." : "Drafted from Project Context answers."}</p>
+        </div>
+        <button
+          className="plan-inline-button"
+          data-testid="save-context-records-button"
+          disabled={submitting || decisions.length + risks.length === 0}
+          onClick={onSave}
+          type="button"
+        >
+          {saved ? "Update" : "Save"}
+        </button>
+      </div>
+      {decisions.map((decision) => (
+        <article className="plan-memory__item" data-testid="decision-row" key={decision.id}>
+          <div className="plan-memory__item-header">
+            <span>{decision.id}: {decision.choice}</span>
+            <small>Decision</small>
+          </div>
+          <p>{decision.rationale}</p>
+          {decision.alternatives.length > 0 ? (
+            <p className="plan-memory__note">Alternatives: {decision.alternatives.join(", ")}</p>
+          ) : null}
+        </article>
+      ))}
+      {risks.map((risk) => (
+        <article className="plan-memory__item" data-testid="risk-row" key={risk.id}>
+          <div className="plan-memory__item-header">
+            <span>{risk.id}: {risk.title}</span>
+            <small>{formatRiskStatus(risk.status)}</small>
+          </div>
+          <div className="plan-requirement-row__meta">
+            <span>Impact: {formatRiskSignal(risk.impact)}</span>
+            <span>Likelihood: {formatRiskSignal(risk.likelihood)}</span>
+            <span>{risk.owner}</span>
+          </div>
+          <p>{risk.mitigation}</p>
         </article>
       ))}
     </div>
@@ -3074,7 +3622,7 @@ function PlanProposalEditor({
 }) {
   const projectionStatus = projectionSummary
     ? formatProjectionSummary(projectionSummary)
-    : "Ready to refresh saved planning files";
+    : "Ready to refresh generated files";
   const hasProjectionConflict = hasProjectionConflicts(projectionSummary);
 
   return (
@@ -3082,7 +3630,7 @@ function PlanProposalEditor({
       <div className="plan-depth-card plan-depth-card--complete">
         <div className="plan-depth-card__eyebrow">PLAN {formatStageStatus(roadmapStatus)}</div>
         <h2>Build the execution plan</h2>
-        <p>Structure phases, milestones, slices, tasks, dependencies, and boundaries before approval.</p>
+        <p>Structure milestones, slices, tasks, dependencies, boundaries, and optional phase groupings before approval.</p>
       </div>
 
       {acceptedPlanOutputs.length > 0 ? (
@@ -3094,7 +3642,7 @@ function PlanProposalEditor({
             data-testid="projection-summary"
           >
             <div>
-              <strong>Saved Files</strong>
+              <strong>Generated Files</strong>
               <span>{projectionStatus}</span>
             </div>
             <ProjectionRepairControls
@@ -3139,7 +3687,7 @@ function PlanProposalEditor({
         <section className="plan-roadmap-list" data-testid="plan-phase-editor">
           <div className="plan-roadmap-card">
             <div className="plan-roadmap-card__header">
-              <span>Phases</span>
+              <span>Optional Phases</span>
               <button
                 className="plan-inline-button"
                 data-testid="add-plan-phase-button"
@@ -3156,7 +3704,6 @@ function PlanProposalEditor({
                   <button
                     className="plan-inline-button"
                     data-testid="delete-plan-phase-button"
-                    disabled={planProposal.phases.length <= 1}
                     onClick={() => onRemovePhase(phaseIndex)}
                     type="button"
                   >
@@ -3217,12 +3764,13 @@ function PlanProposalEditor({
                   />
                 </label>
                 <label className="plan-roadmap-form__field">
-                  <span>Phase</span>
+                  <span>Optional Phase</span>
                   <select
                     data-testid={milestoneIndex === 0 ? "plan-milestone-phase-select" : undefined}
                     onChange={(event) => onUpdateMilestone(milestoneIndex, { phase: event.target.value })}
                     value={milestone.phase}
                   >
+                    <option value="">Ungrouped</option>
                     {planProposal.phases.some((phase) => phase.id === milestone.phase) || !milestone.phase ? null : (
                       <option value={milestone.phase}>Unknown: {milestone.phase}</option>
                     )}
@@ -3254,14 +3802,32 @@ function PlanProposalEditor({
                       Delete Slice
                     </button>
                   </div>
-                  <label className="plan-roadmap-form__field">
-                    <span>Slice Title</span>
-                    <input
-                      data-testid={milestoneIndex === 0 && sliceIndex === 0 ? "plan-slice-title-input" : undefined}
-                      onChange={(event) => onUpdateSlice(milestoneIndex, sliceIndex, { title: event.target.value })}
-                      value={slice.title}
-                    />
-                  </label>
+                  <div className="plan-roadmap-grid">
+                    <label className="plan-roadmap-form__field">
+                      <span>Slice Title</span>
+                      <input
+                        data-testid={milestoneIndex === 0 && sliceIndex === 0 ? "plan-slice-title-input" : undefined}
+                        onChange={(event) => onUpdateSlice(milestoneIndex, sliceIndex, { title: event.target.value })}
+                        value={slice.title}
+                      />
+                    </label>
+                    <label className="plan-roadmap-form__field">
+                      <span>Slice Scope</span>
+                      <select
+                        data-testid={milestoneIndex === 0 && sliceIndex === 0 ? "plan-slice-scope-select" : undefined}
+                        onChange={(event) =>
+                          onUpdateSlice(milestoneIndex, sliceIndex, {
+                            scope: event.target.value as PlanningSliceDraft["scope"],
+                          })
+                        }
+                        value={slice.scope}
+                      >
+                        <option value="required">Required</option>
+                        <option value="optional">Optional</option>
+                        <option value="stretch">Stretch</option>
+                      </select>
+                    </label>
+                  </div>
                   <label className="plan-roadmap-form__field">
                     <span>Goal</span>
                     <textarea
@@ -3518,9 +4084,9 @@ function buildWorkflowGuidance({
   if (shipStarted) {
     return {
       banner: "Ship",
-      title: "Prepare the handoff",
+      title: "Prepare the Ship Handoff",
       nextAction: "Summarize what changed, what passed verification, and what the next thread should know.",
-      artifact: "Ship summary",
+      artifact: "Ship Handoff",
       frame: "Closeout",
       promptSource: workflowPromptSources.shipCloseout,
     };
@@ -3600,7 +4166,7 @@ function buildWorkflowGuidance({
     return {
       banner: `${stageLabel(currentProgress.stage)} check`,
       title: "Confirm this section is clear enough",
-      nextAction: `${currentProgress.answered}/${currentProgress.total} important answers are saved. Confirm when this section is ready for the next step.`,
+      nextAction: `${formatQuestionProgress(currentProgress)}. Confirm when this section is ready for the next step.`,
       artifact: stageArtifact(currentProgress.stage),
       frame: stagePromptFrame(currentProgress.stage),
       promptSource: promptSourceForDiscussStage(currentProgress.stage),
@@ -3703,18 +4269,18 @@ function GsdSourceProofPanel() {
           <span>Plan Source</span>
           <strong>The plan stays grounded in source</strong>
         </div>
-        <small>{".gsd/gsd.db -> saved planning files"}</small>
+        <small>{".gsd/gsd.db -> generated files"}</small>
       </div>
       <div className="gsd-source-proof__windows">
         <GsdSourceWindow
           badge="source"
           path=".gsd/gsd.db"
-          title="DISCUSS memory"
+          title="Project Context"
           lines={[
             "project: durable planning record",
             "decision: database remains canonical",
-            "memory: questions, answers, revisions",
-            "status: ready for RESEARCH",
+            "context: questions, answers, revisions",
+            "status: ready for Research",
           ]}
         />
         <GsdSourceWindow
@@ -3722,9 +4288,9 @@ function GsdSourceProofPanel() {
           path=".gsd/NEXT.md"
           title="Next work"
           lines={[
-            "queue: milestones -> phases -> slices -> tasks",
+            "queue: milestones -> slices -> tasks",
             "review stops: before ambiguous scope",
-            "evidence: required before VERIFY",
+            "evidence: required before Verify",
             "ship: summary from durable records",
           ]}
         />
@@ -3765,6 +4331,99 @@ function GsdSourceWindow({
         <pre>{lines.join("\n")}</pre>
       </div>
     </article>
+  );
+}
+
+function ParkDestinationPrompt({
+  disabled,
+  onCancel,
+  onSelect,
+}: {
+  readonly disabled: boolean;
+  readonly onCancel: () => void;
+  readonly onSelect: (destination: ParkedItemDestination) => void;
+}) {
+  return (
+    <div className="plan-composer-review" data-testid="plan-park-destination">
+      <div>
+        <div className="plan-composer-review__eyebrow">Park for Later</div>
+        <p>Choose where this should live before saving it.</p>
+      </div>
+      <div className="plan-composer-review__actions">
+        <button className="plan-inline-button" disabled={disabled} onClick={() => onSelect("backlog")} type="button">
+          Save to Backlog
+        </button>
+        <button className="plan-inline-button" disabled={disabled} onClick={() => onSelect("open-question")} type="button">
+          Save as Open Question
+        </button>
+        <button className="plan-inline-button" disabled={disabled} onClick={onCancel} type="button">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SkipQuestionPrompt({
+  disabled,
+  prompt,
+  reason,
+  reasonType,
+  onCancel,
+  onReasonChange,
+  onReasonTypeChange,
+  onSubmit,
+}: {
+  readonly disabled: boolean;
+  readonly prompt: string;
+  readonly reason: string;
+  readonly reasonType: "not-applicable" | "unknown" | "undecided" | "later";
+  readonly onCancel: () => void;
+  readonly onReasonChange: (value: string) => void;
+  readonly onReasonTypeChange: (value: "not-applicable" | "unknown" | "undecided" | "later") => void;
+  readonly onSubmit: () => void;
+}) {
+  return (
+    <div className="plan-composer-review" data-testid="plan-skip-question">
+      <div>
+        <div className="plan-composer-review__eyebrow">Skip Question</div>
+        <p>{prompt}</p>
+      </div>
+      <label className="plan-composer__answer-frame">
+        <span className="plan-composer__label">Skip reason</span>
+        <textarea
+          aria-label="Skip reason"
+          data-testid="plan-skip-question-reason"
+          onChange={(event) => onReasonChange(event.target.value)}
+          placeholder="Explain why this answer is not needed right now."
+          value={reason}
+        />
+      </label>
+      <label className="settings-field">
+        <span>Reason type</span>
+        <select
+          aria-label="Skip reason type"
+          data-testid="plan-skip-question-reason-type"
+          onChange={(event) =>
+            onReasonTypeChange(event.target.value as "not-applicable" | "unknown" | "undecided" | "later")
+          }
+          value={reasonType}
+        >
+          <option value="unknown">Unknown</option>
+          <option value="undecided">Undecided</option>
+          <option value="later">Needs later resolution</option>
+          <option value="not-applicable">Not applicable</option>
+        </select>
+      </label>
+      <div className="plan-composer-review__actions">
+        <button className="plan-inline-button" disabled={disabled || !reason.trim()} onClick={onSubmit} type="button">
+          Save Skip
+        </button>
+        <button className="plan-inline-button" disabled={disabled} onClick={onCancel} type="button">
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -3829,15 +4488,30 @@ function ProjectionRepairControls({
 }) {
   if (hasProjectionConflicts(projectionSummary)) {
     return (
-      <button
-        className="plan-secondary-button plan-secondary-button--compact"
-        data-testid={overwriteTestId}
-        disabled={submitting}
-        onClick={() => onRegenerateProjections(true)}
-        type="button"
-      >
-        Replace Imported Files
-      </button>
+      <div className="plan-projection-import" data-testid="projection-import-review">
+        <div>
+          <strong>Import Flow</strong>
+          <span>Review imported Generated Files before replacing or applying database-backed changes.</span>
+        </div>
+        {projectionSummary?.conflicts.map((path) => (
+          <article className="plan-memory__item" data-testid="projection-import-row" key={path}>
+            <div className="plan-memory__item-header">
+              <span>{path}</span>
+              <small>{path.includes("REQUIREMENTS") ? "Project Context candidate" : "Plan Change candidate"}</small>
+            </div>
+            <p className="plan-memory__note">Imported content is preserved until you choose how to handle it.</p>
+          </article>
+        ))}
+        <button
+          className="plan-secondary-button plan-secondary-button--compact"
+          data-testid={overwriteTestId}
+          disabled={submitting}
+          onClick={() => onRegenerateProjections(true)}
+          type="button"
+        >
+          Replace Imported Files
+        </button>
+      </div>
     );
   }
 
@@ -3849,7 +4523,7 @@ function ProjectionRepairControls({
       onClick={() => onRegenerateProjections()}
       type="button"
     >
-      {hasProjectionDrift(projectionSummary) ? "Repair Saved Files" : "Refresh Saved Files"}
+      {hasProjectionDrift(projectionSummary) ? "Repair Generated Files" : "Refresh Generated Files"}
     </button>
   );
 }
@@ -3928,8 +4602,8 @@ function WorkflowPreferencesCard({
   const projectOverrideCount = planningPhaseModelOptions.filter((phase) => phaseOverrides[phase.id]).length;
   const projectModelSummary =
     projectOverrideCount > 0
-      ? `${projectOverrideCount} phase${projectOverrideCount === 1 ? "" : "s"} use project-specific models.`
-      : "All phases use team defaults unless you choose a project model.";
+      ? `${projectOverrideCount} workflow stage${projectOverrideCount === 1 ? "" : "s"} use project-specific models.`
+      : "All workflow stages use app defaults unless you choose a project model.";
   const sessionDefault =
     runtime?.settings.defaultProvider && runtime.settings.defaultModelId
       ? { providerId: runtime.settings.defaultProvider, modelId: runtime.settings.defaultModelId }
@@ -3993,7 +4667,7 @@ function WorkflowPreferencesCard({
         ) : null}
         {showExpandedControls ? (
           <p className="plan-workflow-preferences__help">
-            Choose a model for each phase, or keep the team default from Settings.
+            Choose a model for each workflow stage, or keep the app default from Settings.
           </p>
         ) : null}
         {showExpandedControls ? (
@@ -4016,10 +4690,10 @@ function WorkflowPreferencesCard({
                   <span>
                     <strong>{phase.label}</strong>
                     <small data-testid={`phase-model-global-${phase.id}`}>
-                      Team default: {formatPhaseModelPreference(globalPreference, modelOptions, "Not set")}
+                      App default: {formatPhaseModelPreference(globalPreference, modelOptions, "Not set")}
                     </small>
                     <small data-testid={`phase-model-project-${phase.id}`}>
-                      This project: {formatPhaseModelPreference(overridePreference, modelOptions, "Use team default")}
+                      This project: {formatPhaseModelPreference(overridePreference, modelOptions, "Use app default")}
                     </small>
                     <small
                       className={resolvedModel.source === "not-configured" ? "plan-phase-model-row__missing" : ""}
@@ -4041,7 +4715,7 @@ function WorkflowPreferencesCard({
                       });
                     }}
                   >
-                    <option value="">Use Team Default</option>
+                    <option value="">Use App Default</option>
                     {modelOptions.map((model) => (
                       <option key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}:${model.modelId}`}>
                         {model.label}
@@ -4341,6 +5015,8 @@ function PlanExecutionQueue({
       </div>
 
       <PhaseModelRoutingCard rows={phaseModelRouting} />
+
+      <ActiveSlicesCard sliceFocus={plan.sliceFocus ?? []} />
 
       <GuardrailWarningsCard
         runRecoverySummary={runRecoverySummary}
@@ -4707,7 +5383,7 @@ function GuardrailWarningAction({
         onClick={() => onRegenerateProjections()}
         type="button"
       >
-        Repair Saved Files
+        Repair Generated Files
       </button>
     );
   }
@@ -4764,11 +5440,11 @@ function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRou
   return (
     <section className="plan-projection-card plan-model-routing" data-testid="phase-model-routing-summary">
       <div className="plan-model-routing__header">
-        <strong>Phase model routing</strong>
+        <strong>Workflow stage model routing</strong>
         <span>
           {missingCount > 0
-            ? `${missingCount} phase${missingCount === 1 ? "" : "s"} not configured`
-            : "All phases have a resolved model"}
+            ? `${missingCount} workflow stage${missingCount === 1 ? "" : "s"} not configured`
+            : "All workflow stages have a resolved model"}
         </span>
       </div>
       <div className="plan-model-routing__rows">
@@ -4778,12 +5454,40 @@ function PhaseModelRoutingCard({ rows }: { readonly rows: readonly PhaseModelRou
             <strong>{workflowPhaseModelValueLabel(row.model)}</strong>
             <small className={row.model.source === "not-configured" ? "plan-model-routing__missing" : ""}>
               {row.model.source === "not-configured"
-                ? "Choose a model for this phase here or in Settings"
+                ? "Choose a model for this workflow stage here or in Settings"
                 : workflowPhaseModelSourceLabel(row.model.source)}
             </small>
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function ActiveSlicesCard({ sliceFocus }: { readonly sliceFocus: readonly SliceFocusRecord[] }) {
+  return (
+    <section className="plan-projection-card plan-active-slices" data-testid="active-slices-card">
+      <div>
+        <strong>Active slices</strong>
+        <span>
+          {sliceFocus.length > 0
+            ? `${sliceFocus.length} slice${sliceFocus.length === 1 ? "" : "s"} linked to execution threads`
+            : "No slice threads linked yet"}
+        </span>
+      </div>
+      {sliceFocus.length > 0 ? (
+        <div className="plan-model-routing__rows">
+          {sliceFocus.map((focus) => (
+            <article className="plan-model-routing__row" data-testid="active-slice-row" key={focus.slicePath}>
+              <span>{focus.slicePath}</span>
+              <strong>{focus.sliceTitle}</strong>
+              <small>
+                Current task: {focus.taskPath} · {focus.sessionTitle}
+              </small>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -5106,9 +5810,10 @@ function PlanVerifyGate({
     taskPath: string,
     draft: TaskVerificationDraft,
   ) => void;
-  readonly onStartShip: () => void;
+  readonly onStartShip: (riskAcceptanceRationale?: string) => void;
 }) {
   const [verificationDrafts, setVerificationDrafts] = useState<Record<string, TaskVerificationDraft>>({});
+  const [riskAcceptanceDraft, setRiskAcceptanceDraft] = useState("");
   const planTasks = useMemo(
     () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
     [acceptedPlanProposal],
@@ -5132,6 +5837,7 @@ function PlanVerifyGate({
   );
   const passedCount = planTasks.filter(({ task }) => taskVerificationMap.get(task.id)?.status === "passed").length;
   const allPassed = planTasks.length > 0 && passedCount === planTasks.length;
+  const blockedCount = Math.max(planTasks.length - passedCount, 0);
 
   const getDraft = (taskId: string, verification: TaskVerificationRecord | undefined): TaskVerificationDraft =>
     verificationDrafts[taskId] ?? {
@@ -5180,10 +5886,39 @@ function PlanVerifyGate({
             className="plan-action-button plan-action-button--compact"
             data-testid="start-ship-button"
             disabled={submitting}
-            onClick={onStartShip}
+            onClick={() => onStartShip()}
             type="button"
           >
             Start Ship
+          </button>
+        </div>
+      ) : null}
+
+      {!allPassed && acceptedPlanProposal ? (
+        <div className="plan-projection-card" data-testid="risk-acceptance-card">
+          <div>
+            <strong>Risk Acceptance</strong>
+            <span>
+              {blockedCount} task{blockedCount === 1 ? "" : "s"} still need passed verification. Record why shipping with
+              that gap is acceptable before Ship.
+            </span>
+          </div>
+          <label className="plan-execution-task-editor__field">
+            <span>Risk Acceptance rationale</span>
+            <textarea
+              data-testid="risk-acceptance-rationale-textarea"
+              onChange={(event) => setRiskAcceptanceDraft(event.target.value)}
+              value={riskAcceptanceDraft}
+            />
+          </label>
+          <button
+            className="plan-action-button plan-action-button--compact"
+            data-testid="risk-acceptance-start-ship-button"
+            disabled={submitting || !riskAcceptanceDraft.trim()}
+            onClick={() => onStartShip(riskAcceptanceDraft)}
+            type="button"
+          >
+            Accept Risk and Start Ship
           </button>
         </div>
       ) : null}
@@ -5325,7 +6060,7 @@ function PlanShipGate({
   readonly submitting: boolean;
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
-  readonly onRecordShipSummary: (summary: string) => void;
+  readonly onRecordShipSummary: (summary: string, options?: { readonly followUps?: readonly string[] }) => void;
 }) {
   const planTasks = useMemo(
     () => (acceptedPlanProposal ? getPlanTaskEntries(acceptedPlanProposal) : []),
@@ -5350,8 +6085,8 @@ function PlanShipGate({
   );
   const latestSummary = shipSummaries[shipSummaries.length - 1];
   const defaultSummary = useMemo(
-    () => buildShipSummaryDraft(acceptedPlanProposal, taskExecutions, taskVerifications),
-    [acceptedPlanProposal, taskExecutions, taskVerifications],
+    () => buildShipSummaryDraft(acceptedPlanProposal, taskExecutions, taskVerifications, plan.riskAcceptances),
+    [acceptedPlanProposal, plan.riskAcceptances, taskExecutions, taskVerifications],
   );
   const overnightReportText = useMemo(
     () =>
@@ -5363,6 +6098,11 @@ function PlanShipGate({
     [acceptedPlanProposal, plan, projectionSummary],
   );
   const [summaryDraft, setSummaryDraft] = useState("");
+  const [followUpDraft, setFollowUpDraft] = useState("");
+  const followUpProposals = useMemo(
+    () => followUpDraft.split("\n").map((entry) => entry.trim()).filter(Boolean),
+    [followUpDraft],
+  );
 
   useEffect(() => {
     setSummaryDraft(latestSummary?.summary ?? defaultSummary);
@@ -5383,7 +6123,7 @@ function PlanShipGate({
       {latestSummary ? (
         <div className="plan-projection-card" data-testid="ship-summary-recorded">
           <div>
-            <strong>Ship summary saved</strong>
+            <strong>Ship Handoff saved</strong>
             <span>{latestSummary.summary}</span>
           </div>
         </div>
@@ -5391,23 +6131,49 @@ function PlanShipGate({
 
       <PlanOvernightReportCard reportText={overnightReportText} />
 
+      {plan.riskAcceptances.length > 0 ? (
+        <div className="plan-projection-card" data-testid="ship-risk-acceptances">
+          <div>
+            <strong>Accepted Risks</strong>
+            <span>{plan.riskAcceptances.length} verification gap accepted for this handoff.</span>
+          </div>
+          {plan.riskAcceptances.map((acceptance) => (
+            <p key={acceptance.id}>
+              {acceptance.taskPath}: {acceptance.rationale}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       <div className="plan-ship-summary">
         <label className="plan-execution-task-editor__field">
-          <span>Handoff summary</span>
+          <span>Ship Handoff</span>
           <textarea
             data-testid="ship-summary-textarea"
             onChange={(event) => setSummaryDraft(event.target.value)}
             value={summaryDraft}
           />
         </label>
+        <label className="plan-execution-task-editor__field">
+          <span>Follow-up proposals</span>
+          <textarea
+            data-testid="ship-follow-up-textarea"
+            onChange={(event) => setFollowUpDraft(event.target.value)}
+            placeholder="One Backlog follow-up per line"
+            value={followUpDraft}
+          />
+        </label>
         <button
           className="plan-action-button plan-action-button--compact"
           data-testid="record-ship-summary-button"
           disabled={submitting || !summaryDraft.trim()}
-          onClick={() => onRecordShipSummary(summaryDraft)}
+          onClick={() => {
+            onRecordShipSummary(summaryDraft, { followUps: followUpProposals });
+            setFollowUpDraft("");
+          }}
           type="button"
         >
-          Save ship summary
+          {followUpProposals.length > 0 ? "Save Ship Handoff + Follow-ups" : "Save Ship Handoff"}
         </button>
       </div>
 
@@ -5899,12 +6665,12 @@ function ChangeProposalCard({
             onClick={() => onWithdraw(proposal)}
             type="button"
           >
-            Delete draft
+            Reject draft
           </button>
         </div>
       ) : null}
       {proposal.status === "draft" && !acceptedPlanProposal ? (
-        <p className="plan-memory__note">Accept a plan before approving this change.</p>
+        <p className="plan-memory__note">Accept a plan before accepting this change.</p>
       ) : null}
       {proposal.status === "draft" && acceptedPlanProposal && !editingDetails ? (
         <form className="plan-change-draft" data-testid="plan-injection-form" onSubmit={submitApproval}>
@@ -5958,7 +6724,7 @@ function ChangeProposalCard({
           </label>
           <div className="plan-memory__editor-actions">
             <button className="plan-action-button plan-action-button--compact" disabled={!canApprove} type="submit">
-              Approve injection
+              Accept as new task
             </button>
           </div>
         </form>
@@ -6010,7 +6776,7 @@ function ChangeProposalCard({
               disabled={!canApproveModification}
               type="submit"
             >
-              Approve modification
+              Accept task edit
             </button>
           </div>
         </form>
@@ -6047,9 +6813,9 @@ function formatProposalActivityLabel(activity: ChangeProposalRecord["activity"][
     case "updated":
       return "Edited";
     case "withdrawn":
-      return "Deleted";
+      return "Rejected";
     case "approved":
-      return "Approved";
+      return "Accepted";
     case "task-modified":
       return "Modified";
     case "task-hidden":
@@ -6124,7 +6890,7 @@ function buildPlanHandoffBundle({
     "# Handoff Bundle",
     "",
     `Active plan: ${plan.readableId} - ${plan.name}`,
-    `Phase: ${formatPlanningPhase(plan.activePhase)}`,
+    `Workflow Stage: ${formatPlanningPhase(plan.activePhase)}`,
     `Revision: ${plan.revision}`,
     "",
     "## Projection References",
@@ -6207,7 +6973,7 @@ function buildOvernightRunReport({
     "# Overnight Run Report",
     "",
     `Plan: ${plan.readableId} - ${plan.name}`,
-    `Phase: ${formatPlanningPhase(plan.activePhase)}`,
+    `Workflow Stage: ${formatPlanningPhase(plan.activePhase)}`,
     `Revision: ${plan.revision}`,
     "",
     "## Summary",
@@ -6497,20 +7263,26 @@ function buildShipSummaryDraft(
   proposal: PlanningPlanProposalDraft | undefined,
   taskExecutions: readonly TaskExecutionRecord[],
   taskVerifications: readonly TaskVerificationRecord[],
+  riskAcceptances: readonly RiskAcceptanceRecord[],
 ): string {
   if (!proposal) {
     return "";
   }
   const executionMap = new Map(taskExecutions.map((execution) => [execution.taskId, execution]));
   const verificationMap = new Map(taskVerifications.map((verification) => [verification.taskId, verification]));
-  const lines = ["Ship summary", ""];
+  const riskAcceptanceMap = new Map(riskAcceptances.map((acceptance) => [acceptance.taskId, acceptance]));
+  const lines = ["Ship Handoff", ""];
 
   for (const entry of getPlanTaskEntries(proposal)) {
     const execution = executionMap.get(entry.task.id);
     const verification = verificationMap.get(entry.task.id);
+    const riskAcceptance = riskAcceptanceMap.get(entry.task.id);
     lines.push(`- ${entry.taskPath}: ${entry.task.title}`);
     lines.push(`  Acceptance: ${entry.acceptance}`);
     lines.push(`  Verification: ${formatTaskVerificationStatus(verification?.status)}${verification?.note ? ` - ${verification.note}` : ""}`);
+    if (riskAcceptance) {
+      lines.push(`  Risk Acceptance: ${riskAcceptance.rationale}`);
+    }
     if (execution?.evidence.length) {
       lines.push(`  Evidence: ${execution.evidence.map((evidence) => evidence.text).join("; ")}`);
     }
@@ -6586,6 +7358,23 @@ function formatRequirementValidationStatus(value: RequirementRecord["validationS
   }
 }
 
+function formatRiskStatus(value: RiskRecord["status"]): string {
+  switch (value) {
+    case "open":
+      return "Open";
+    case "mitigating":
+      return "Mitigating";
+    case "accepted":
+      return "Accepted";
+    case "resolved":
+      return "Resolved";
+  }
+}
+
+function formatRiskSignal(value: RiskRecord["impact"] | RiskRecord["likelihood"]): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 function formatStageStatus(status: StageStatus | undefined): string {
   return status ? `· ${formatResearchStatus(status, 0)}` : "";
 }
@@ -6642,7 +7431,7 @@ function formatVerifyStatus(started: boolean, verificationCount: number): string
 
 function formatShipStatus(started: boolean, summaryCount: number): string {
   if (started) {
-    return summaryCount > 0 ? "Summary saved" : "Active";
+    return summaryCount > 0 ? "Handoff saved" : "Active";
   }
   return "Queued";
 }
@@ -6788,6 +7577,72 @@ function formatIdeaReviewStatus(status: ParkedItemReviewStatus): string {
   }
 }
 
+function formatParkDestination(destination: ParkedItemDestination): string {
+  switch (destination) {
+    case "backlog":
+      return "Backlog";
+    case "open-question":
+      return "Open Question";
+  }
+}
+
+function formatPreferenceField(field: string): string {
+  switch (field) {
+    case "defaultWorktree":
+      return "Default Worktree";
+    case "defaultModel":
+      return "Default Model";
+    case "reasoningLevel":
+      return "Reasoning Level";
+    default:
+      return field;
+  }
+}
+
+function getProjectContextSection(questionId: string): string {
+  if (questionId.includes("decision") || questionId.includes("shape") || questionId.includes("ship_signal")) {
+    return "Decisions";
+  }
+  if (questionId.includes("risk")) {
+    return "Risks";
+  }
+  if (questionId.includes("constraint")) {
+    return "Constraints";
+  }
+  if (questionId.includes("antigoal")) {
+    return "Anti-goals";
+  }
+  if (questionId.includes("user")) {
+    return "Users";
+  }
+  if (questionId.includes("value")) {
+    return "Value";
+  }
+  if (questionId.includes("requirement") || questionId.includes("capabilities") || questionId.includes("quality")) {
+    return "Requirements";
+  }
+  if (questionId.includes("milestone")) {
+    return "Requirements";
+  }
+  return "Outcome";
+}
+
+function getGuidedAnswerLabel(questionId: string): string {
+  const section = getProjectContextSection(questionId);
+  switch (section) {
+    case "Requirements":
+      return "Requirement note";
+    case "Risks":
+      return "Risk note";
+    case "Decisions":
+      return "Decision";
+    case "Open Questions":
+      return "Open question";
+    default:
+      return "What we'll remember";
+  }
+}
+
 function reviewIdeaNote(status: ParkedItemReviewStatus): string {
   switch (status) {
     case "parked":
@@ -6806,9 +7661,9 @@ function formatChangeProposalStatus(status: ChangeProposalRecord["status"]): str
     case "draft":
       return "Draft";
     case "approved":
-      return "Approved";
+      return "Accepted";
     case "withdrawn":
-      return "Deleted";
+      return "Rejected";
   }
 }
 
@@ -6853,6 +7708,14 @@ function stageLabel(stage: PlanStage): string {
     case "task":
       return "Task";
   }
+}
+
+function formatQuestionProgress(progress: DiscussStageProgress): string {
+  const answered = `${progress.answered}/${progress.total} answered`;
+  if (progress.skipped === 0) {
+    return answered;
+  }
+  return `${answered}, ${progress.skipped} skipped`;
 }
 
 function parseLatestAcceptedPlanProposal(

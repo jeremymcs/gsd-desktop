@@ -31,6 +31,7 @@ interface SidebarProps {
   readonly api: PiDesktopApi;
   readonly onOpenHome: (workspaceId?: string) => void;
   readonly onOpenBacklog: (workspaceId?: string) => void;
+  readonly onOpenWorktrees: (workspaceId?: string) => void;
   readonly onNewThread: (workspaceId?: string) => void;
   readonly onOpenSessions: (workspaceId?: string) => void;
   readonly onOpenPlans: (workspaceId?: string) => void;
@@ -54,6 +55,7 @@ export function Sidebar(props: SidebarProps) {
     api,
     onOpenHome,
     onOpenBacklog,
+    onOpenWorktrees,
     onNewThread,
     onOpenSessions,
     onOpenPlans,
@@ -93,16 +95,9 @@ export function Sidebar(props: SidebarProps) {
           <WorkspacePageButton
             active={activeView === "home"}
             icon={<HomeIcon />}
-            label="Home"
+            label="Project Overview"
             disabled={!activeWorkspace}
             onClick={() => onOpenHome(activeWorkspace?.id)}
-          />
-          <WorkspacePageButton
-            active={activeView === "plans"}
-            icon={<PlanIcon />}
-            label="Plans"
-            disabled={!activeWorkspace}
-            onClick={() => onOpenPlans(activeWorkspace?.id)}
           />
           <WorkspacePageButton
             active={activeView === "threads"}
@@ -112,11 +107,25 @@ export function Sidebar(props: SidebarProps) {
             onClick={() => onOpenSessions(activeWorkspace?.id)}
           />
           <WorkspacePageButton
+            active={activeView === "plans"}
+            icon={<PlanIcon />}
+            label="Plans"
+            disabled={!activeWorkspace}
+            onClick={() => onOpenPlans(activeWorkspace?.id)}
+          />
+          <WorkspacePageButton
             active={activeView === "backlog"}
             icon={<FeedbackIcon />}
             label="Backlog"
             disabled={!activeWorkspace}
             onClick={() => onOpenBacklog(activeWorkspace?.id)}
+          />
+          <WorkspacePageButton
+            active={activeView === "worktrees"}
+            icon={<WorktreeIcon />}
+            label="Worktrees"
+            disabled={!activeWorkspace}
+            onClick={() => onOpenWorktrees(activeWorkspace?.id)}
           />
           <WorkspacePageButton
             active={activeView === "skills"}
@@ -337,6 +346,32 @@ function ProjectHeader({
           </div>
         ) : null}
       </span>
+      {wsMenu.workspaceRenameId === workspace.id ? (
+        <form
+          className="workspace-rename"
+          ref={wsMenu.workspaceRenamePanelRef}
+          onSubmit={(event) => {
+            event.preventDefault();
+            wsMenu.submitRename(workspace);
+          }}
+        >
+          <input
+            aria-label={`Rename Project ${workspace.name}`}
+            className="workspace-rename__input"
+            ref={wsMenu.workspaceRenameInputRef}
+            value={wsMenu.workspaceRenameDraft}
+            onChange={(event) => wsMenu.setWorkspaceRenameDraft(event.target.value)}
+          />
+          <div className="workspace-rename__actions">
+            <button className="workspace-rename__button" type="button" onClick={wsMenu.cancelRename}>
+              Cancel
+            </button>
+            <button className="workspace-rename__button workspace-rename__button--primary" type="submit">
+              Save
+            </button>
+          </div>
+        </form>
+      ) : null}
     </div>
   );
 }

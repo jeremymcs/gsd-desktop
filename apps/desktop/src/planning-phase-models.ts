@@ -6,12 +6,12 @@ import type {
 } from "@pi-gui/gsd-planning";
 
 export const planningPhaseModelOptions: readonly { readonly id: PlanPhase; readonly label: string }[] = [
-  { id: "discuss", label: "DISCUSS" },
-  { id: "research", label: "RESEARCH" },
-  { id: "plan", label: "PLAN" },
-  { id: "execute", label: "EXECUTE" },
-  { id: "verify", label: "VERIFY" },
-  { id: "ship", label: "SHIP" },
+  { id: "discuss", label: "Discuss" },
+  { id: "research", label: "Research" },
+  { id: "plan", label: "Plan" },
+  { id: "execute", label: "Execute" },
+  { id: "verify", label: "Verify" },
+  { id: "ship", label: "Ship" },
 ] as const;
 
 export function normalizeWorkflowPhaseModelPreferences(value: unknown): WorkflowPhaseModelPreferences {

@@ -8,6 +8,8 @@ interface ProjectBacklogViewProps {
   readonly onStartThread: (item: ProjectBacklogItem) => void;
   readonly onPromoteToPlan: (item: ProjectBacklogItem) => void;
   readonly onDismiss: (item: ProjectBacklogItem) => void;
+  readonly onMarkDone: (item: ProjectBacklogItem) => void;
+  readonly onOpenThread: (target: NonNullable<ProjectBacklogItem["discussionThread"]>) => void;
   readonly onOpenPlans: (workspaceId?: string) => void;
 }
 
@@ -17,6 +19,8 @@ export function ProjectBacklogView({
   onStartThread,
   onPromoteToPlan,
   onDismiss,
+  onMarkDone,
+  onOpenThread,
   onOpenPlans,
 }: ProjectBacklogViewProps) {
   if (!workspace) {
@@ -75,6 +79,16 @@ export function ProjectBacklogView({
               <article className="project-backlog__reviewed-item" key={item.id}>
                 <span>{formatReviewedStatus(item.status)}</span>
                 <p>{item.text}</p>
+                {item.discussionThread ? (
+                  <button className="button button--ghost" type="button" onClick={() => onOpenThread(item.discussionThread!)}>
+                    Open Thread
+                  </button>
+                ) : null}
+                {item.status === "in-discussion" || item.status === "promoted" ? (
+                  <button className="button button--ghost" type="button" onClick={() => onMarkDone(item)}>
+                    Mark Done
+                  </button>
+                ) : null}
               </article>
             ))}
           </section>
@@ -85,11 +99,14 @@ export function ProjectBacklogView({
 }
 
 function formatReviewedStatus(status: ProjectBacklogItem["status"]): string {
-  if (status === "started") {
-    return "Thread started";
+  if (status === "in-discussion") {
+    return "In discussion";
   }
   if (status === "promoted") {
     return "Promoted";
+  }
+  if (status === "done") {
+    return "Done";
   }
   return "Dismissed";
 }
@@ -108,7 +125,9 @@ function BacklogCard({
   return (
     <article className="project-backlog__card" data-testid="project-backlog-item">
       <div className="project-backlog__card-main">
-        <div className="project-backlog__source">{item.source.label}</div>
+        <div className="project-backlog__source">
+          {formatBacklogCategory(item.category)} · {item.source.label}
+        </div>
         <p>{item.text}</p>
         <small>{formatRelativeTime(item.createdAt)}</small>
       </div>
@@ -127,4 +146,23 @@ function BacklogCard({
       </div>
     </article>
   );
+}
+
+function formatBacklogCategory(category: ProjectBacklogItem["category"]): string {
+  switch (category) {
+    case "follow-up":
+      return "Follow-up";
+    case "idea":
+      return "Idea";
+    case "question":
+      return "Question";
+    case "bug":
+      return "Bug";
+    case "risk":
+      return "Risk";
+    case "decision":
+      return "Decision";
+    case "task":
+      return "Task";
+  }
 }

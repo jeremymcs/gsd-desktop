@@ -9,6 +9,7 @@ import { sendMessageToSession } from "./app-store-composer";
 import type { CreateWorktreeOptions } from "./worktree-manager";
 import type { AppStoreInternals } from "./app-store-internals";
 import { NEW_THREAD_PLACEHOLDER_TITLE } from "./thread-title-constants";
+import { makeActivityItem } from "./app-store-utils";
 
 /* ── Public methods ─────────────────────────────────────── */
 
@@ -83,7 +84,19 @@ export async function startThread(store: AppStoreInternals, input: StartThreadIn
 
   return store.withErrorHandling(async () => {
     let targetWorkspace = rootWorkspace;
-    if (input.environment === "worktree") {
+    if (input.targetWorktreeId) {
+      const worktree = (store.state.worktreesByWorkspace[rootWorkspace.workspaceId] ?? []).find(
+        (entry) => entry.id === input.targetWorktreeId,
+      );
+      if (!worktree?.linkedWorkspaceId) {
+        throw new Error(`Default worktree is unavailable: ${input.targetWorktreeId}`);
+      }
+      const linkedWorkspace = store.workspaceRefFromState(worktree.linkedWorkspaceId);
+      if (!linkedWorkspace) {
+        throw new Error(`Default worktree is not linked: ${worktree.name}`);
+      }
+      targetWorkspace = linkedWorkspace;
+    } else if (input.environment === "worktree") {
       const worktreeOptions = buildWorktreeOptions(store, rootWorkspace, undefined, undefined, input.prompt);
       const created = await store.worktreeManager.createWorktree(rootWorkspace, worktreeOptions);
       const synced = await store.driver.syncWorkspace(created.path, created.displayName);
@@ -107,7 +120,39 @@ export async function startThread(store: AppStoreInternals, input: StartThreadIn
     const key = sessionKey(session.ref);
     store.sessionState.transcriptCache.set(key, []);
     store.sessionState.loadedTranscriptKeys.add(key);
+    if (targetWorkspace.workspaceId !== rootWorkspace.workspaceId) {
+      const transcript = store.sessionState.transcriptCache.get(key) ?? [];
+      store.sessionState.transcriptCache.set(key, [
+        ...transcript,
+        makeActivityItem("Environment Change", {
+          detail: `Thread uses ${targetWorkspace.displayName ?? targetWorkspace.path}`,
+          metadata: targetWorkspace.path,
+        }),
+      ]);
+    }
     store.updateSessionConfig(session.ref, session.config);
+    if (input.sourceBacklogItemId) {
+      const items = store.state.backlogByWorkspace[rootWorkspace.workspaceId] ?? [];
+      store.state = {
+        ...store.state,
+        backlogByWorkspace: {
+          ...store.state.backlogByWorkspace,
+          [rootWorkspace.workspaceId]: items.map((item) =>
+            item.id === input.sourceBacklogItemId
+              ? {
+                  ...item,
+                  status: "in-discussion",
+                  discussionThread: {
+                    workspaceId: session.ref.workspaceId,
+                    sessionId: session.ref.sessionId,
+                  },
+                  updatedAt: new Date().toISOString(),
+                }
+              : item,
+          ),
+        },
+      };
+    }
     const autoTitleAbortController = new AbortController();
     const pendingAutoTitle = {
       requestToken: randomUUID(),

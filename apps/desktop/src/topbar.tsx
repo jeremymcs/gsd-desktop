@@ -1,6 +1,6 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { WorkspaceRecord } from "./desktop-state";
-import { DiffIcon, FolderIcon, PlusIcon, TerminalIcon } from "./icons";
+import { DiffIcon, FolderIcon, PlusIcon, SearchIcon, TerminalIcon } from "./icons";
 import { getDesktopShortcutLabel, type PiDesktopApi } from "./ipc";
 
 interface TopbarProps {
@@ -13,6 +13,7 @@ interface TopbarProps {
   readonly onSelectWorkspace: (workspaceId: string) => void;
   readonly onAddWorkspace: () => void;
   readonly onToggleTerminal: () => void;
+  readonly onOpenSearch: () => void;
   readonly showDiffPanel: boolean;
   readonly onToggleDiffPanel: () => void;
 }
@@ -28,6 +29,7 @@ export function Topbar(props: TopbarProps) {
     onSelectWorkspace,
     onAddWorkspace,
     onToggleTerminal,
+    onOpenSearch,
     showDiffPanel,
     onToggleDiffPanel,
   } = props;
@@ -84,6 +86,19 @@ export function Topbar(props: TopbarProps) {
       </nav>
 
       <div className="topbar__actions">
+        <div className="shortcut-tooltip-wrap topbar__tooltip-wrap">
+          <button
+            aria-label="Search"
+            className="icon-button topbar__icon"
+            type="button"
+            onClick={onOpenSearch}
+          >
+            <SearchIcon />
+          </button>
+          <span className="shortcut-tooltip topbar__tooltip" role="tooltip">
+            <span>Search</span>
+          </span>
+        </div>
         <div className="shortcut-tooltip-wrap topbar__tooltip-wrap">
           <button
             aria-label="Toggle Terminal"

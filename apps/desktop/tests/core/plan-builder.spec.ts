@@ -23,7 +23,7 @@ const discussAnswers = [
   ["What systems, files, data, or people does this need to interact with?", ".gsd/gsd.db, generated GSD files, and the desktop workspace shell."],
   ["How should we know the requirements are complete enough to plan?", "All load-bearing answers are captured and the user confirms the depth gate."],
   ["What should the first milestone prove end to end?", "A persisted DISCUSS flow from plan creation through confirmed milestone context."],
-  ["What major phases or slices do you expect?", "DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, SHIP."],
+  ["What major milestones or slices do you expect?", "Discuss, Research, Plan, Execute, Verify, Ship."],
   ["What could block execution or force the plan to change?", "Schema gaps, unclear dependencies, or UI changes that do not persist."],
   ["What would make you comfortable shipping this project?", "Restart persistence passes and the outline matches the saved discussion."],
 ] as const;
@@ -42,6 +42,11 @@ function planDashboardRowByTitle(window: Page, title: string): Locator {
   return window.getByTestId("plan-dashboard-row").filter({
     has: window.locator(".plan-dashboard__row-title").filter({ hasText: title }),
   });
+}
+
+async function confirmParkDestination(window: Page, destination: "Backlog" | "Open Question" = "Backlog"): Promise<void> {
+  await expect(window.getByTestId("plan-park-destination")).toBeVisible();
+  await window.getByRole("button", { name: destination === "Backlog" ? "Save to Backlog" : "Save as Open Question" }).click();
 }
 
 async function expectPhaseStripTextNotClipped(window: Page): Promise<void> {
@@ -89,6 +94,43 @@ async function completeDiscussFromComposer(window: Page): Promise<void> {
   await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
   await window.getByRole("button", { name: "Confirm Milestone" }).click();
   await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+}
+
+async function saveDecisionRiskRecords(window: Page, planName: string): Promise<void> {
+  await expect(window.getByTestId("context-records")).toContainText("Drafted from Project Context answers.");
+  await expect(window.getByTestId("decision-row")).toHaveCount(2);
+  await expect(window.getByTestId("decision-row").filter({ hasText: "D001" })).toContainText(
+    "Project complexity classification",
+  );
+  await expect(window.getByTestId("decision-row").filter({ hasText: "D002" })).toContainText("Ship readiness signal");
+  await expect(window.getByTestId("risk-row")).toHaveCount(1);
+  await expect(window.getByTestId("risk-row").filter({ hasText: "K001" })).toContainText(
+    "Plan-changing execution risk",
+  );
+  await window.getByTestId("save-context-records-button").click();
+  await expect(window.getByTestId("context-records")).toContainText("Decision and risk records saved.");
+  await expect.poll(async () => {
+    const state = await getDesktopState(window);
+    const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === planName)
+      ?.selectedPlan;
+    return {
+      decisionCount: plan?.decisions.length ?? 0,
+      riskCount: plan?.risks.length ?? 0,
+      hasComplexityDecision:
+        plan?.decisions.some(
+          (decision) => decision.id === "D001" && decision.choice === "Project complexity classification",
+        ) ?? false,
+      hasExecutionRisk:
+        plan?.risks.some(
+          (risk) => risk.id === "K001" && risk.title === "Plan-changing execution risk" && risk.status === "open",
+        ) ?? false,
+    };
+  }).toEqual({
+    decisionCount: 2,
+    riskCount: 1,
+    hasComplexityDecision: true,
+    hasExecutionRisk: true,
+  });
 }
 
 async function createAcceptedPlanFromComposer(window: Page, planName: string): Promise<void> {
@@ -310,14 +352,14 @@ test("uses global EXECUTE model when the project has no override", async () => {
     await createAcceptedPlanFromComposer(window, "Global fallback plan");
     await window.getByTestId("start-execution-button").click();
     const routing = window.getByTestId("phase-model-routing-summary");
-    await expect(routing).toContainText("All phases have a resolved model");
+    await expect(routing).toContainText("All workflow stages have a resolved model");
     await expect(routing.getByTestId("phase-model-routing-row").filter({ hasText: "DISCUSS" })).toContainText(
       "thread default",
     );
     const executeRoute = routing.getByTestId("phase-model-routing-row").filter({ hasText: "EXECUTE" });
     await expect(executeRoute).toContainText("openai/gpt-5");
     await expect(executeRoute).toContainText("global default");
-    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/EXECUTE: global default - openai\/gpt-5/);
+    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/Execute: global default - openai\/gpt-5/);
     const task = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
     await task.getByTestId("link-task-session-button").click();
     await expect(task.getByTestId("execution-task-link")).toContainText("Execution model: global default (openai/gpt-5)");
@@ -404,7 +446,7 @@ test("creates a plan from a starter template with editable seeded answers", asyn
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-answer-history")).toContainText("UI, persistence, verification");
     await expect(window.getByTestId("plan-answer-history")).toContainText(
-      "DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, SHIP.",
+      "Discuss, Research, Plan, Execute, Verify, Ship.",
     );
 
     const shapeAnswer = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({
@@ -483,6 +525,9 @@ test("shows next work ordering and updates after dependency completion", async (
     await expect(window.getByTestId("composer")).toHaveValue(/# Execute M1\/S1\/T1: Build foundation/);
     const linkedSessionId = (await getDesktopState(window)).selectedSessionId;
     expect(linkedSessionId).not.toBe("");
+
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await expect(window.getByTestId("project-threads-recent")).toContainText("Execute · Local");
 
     await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(panel.getByTestId("next-work-item").nth(0).getByRole("button", { name: "Open Thread" })).toBeVisible();
@@ -566,7 +611,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await expect(guardrails).toContainText("Projection drift was detected");
     await expect(guardrails).toContainText("Informational · scope-ambiguous");
     await expect(guardrails.getByTestId("guardrail-regenerate-projections-button")).toHaveText(
-      "Repair Saved Files",
+      "Repair Generated Files",
     );
     await expect(guardrails).toContainText("Previous run stopped before clean completion");
     await expect(guardrails).toContainText("Waiting on credentials.");
@@ -630,7 +675,7 @@ test("persists run recovery summary and projects NEXT after partial progress", a
     await writeFile(join(workspacePath, ".gsd", "NEXT.md"), "# Hand-written next work\n", "utf8");
     await window
       .getByTestId("execution-projection-summary")
-      .getByRole("button", { name: "Refresh Saved Files" })
+      .getByRole("button", { name: "Refresh Generated Files" })
       .click();
     await expect(guardrails.getByTestId("guardrail-warning")).toHaveCount(2);
     await expect(guardrails).toContainText("2 blocking / 0 informational");
@@ -1236,6 +1281,8 @@ test("keeps focus in the Plan Builder composer after submit and park", async () 
     await expect(window.getByTestId("plan-composer-textarea")).toBeFocused();
     await window.getByTestId("plan-composer-textarea").fill("Park this composer draft");
     await window.getByRole("button", { name: "Park for Later" }).click();
+    await expect(window.getByTestId("plan-park-destination")).toBeVisible();
+    await window.getByRole("button", { name: "Cancel" }).click();
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
       "What are we building, and what outcome should it create?",
@@ -1446,6 +1493,7 @@ test("parks later-phase idea from the Plan Builder composer", async () => {
     await window.getByTestId("plan-composer-textarea").fill("Consider a post-ship audit task.");
     await expect(window.getByTestId("plan-composer-question")).toHaveText("Park a planning note or change request");
     await window.getByLabel("Park Note").click();
+    await confirmParkDestination(window);
 
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: "Consider a post-ship audit task." });
@@ -1509,10 +1557,12 @@ test("reviews newly parked later-phase idea from the Plan Builder composer", asy
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
     await window.getByLabel("Park Note").click();
+    await confirmParkDestination(window);
 
     const review = window.getByTestId("plan-composer-parked-review");
     await expect(review).toContainText(ideaText);
     await expect(review.getByTestId("plan-composer-parked-review-status")).toHaveText("Parked");
+    await expect(review.getByTestId("plan-composer-parked-destination")).toHaveText("Backlog");
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await idea.getByRole("button", { name: "Edit idea" }).click();
     const editForm = window.getByTestId("plan-idea-edit-form");
@@ -1585,6 +1635,7 @@ test("starts a change draft from a prepared composer idea", async () => {
     await expect(window.getByTestId("plan-execution-panel")).toBeVisible();
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
     await window.getByLabel("Park Note").click();
+    await confirmParkDestination(window);
 
     const review = window.getByTestId("plan-composer-parked-review");
     const originalIdea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
@@ -1618,8 +1669,8 @@ test("starts a change draft from a prepared composer idea", async () => {
       window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" }).getByTestId("plan-injection-target-select"),
     ).toBeFocused();
     const firstProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Retry budget change" });
-    await firstProposal.getByRole("button", { name: "Delete draft" }).click();
-    await expect(firstProposal.getByTestId("plan-change-proposal-status")).toHaveText("Deleted");
+    await firstProposal.getByRole("button", { name: "Reject draft" }).click();
+    await expect(firstProposal.getByTestId("plan-change-proposal-status")).toHaveText("Rejected");
     await idea.getByRole("button", { name: "Edit idea" }).click();
     const replacementEditForm = window.getByTestId("plan-idea-edit-form");
     await replacementEditForm.getByTestId("plan-idea-text-textarea").fill(replacementIdeaText);
@@ -1693,9 +1744,9 @@ test("starts a change draft from a prepared composer idea", async () => {
       window
         .getByTestId("plan-change-proposal")
         .filter({ hasText: "Retry budget change" })
-        .filter({ hasText: "Deleted" })
+        .filter({ hasText: "Rejected" })
         .getByTestId("plan-change-proposal-status"),
-    ).toHaveText("Deleted");
+    ).toHaveText("Rejected");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Retry budget replacement revised");
     await expect(window.getByTestId("plan-change-proposals")).toContainText("Impact: revised retry budget boundaries.");
   } finally {
@@ -1755,6 +1806,50 @@ test("starts VERIFY from the Plan Builder composer handoff", async () => {
   }
 });
 
+test("skips RESEARCH with a reason before planning", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-skip-research");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Skip research plan");
+    await window.getByRole("button", { name: "Create Plan" }).click();
+    await completeDiscussFromComposer(window);
+    await window
+      .getByTestId("skip-research-reason-textarea")
+      .fill("Existing context is enough; no separate research findings are needed.");
+    await window.getByTestId("skip-research-button").click();
+
+    await expect(window.getByTestId("plan-ready-card")).toContainText("RESEARCH skipped");
+    await expect(window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" })).toBeEnabled();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Skip research plan")
+        ?.selectedPlan;
+      return {
+        activeStage: plan?.activeStage ?? "",
+        skippedReason: plan?.skippedStages.find((stage) => stage.stage === "research")?.reason ?? "",
+      };
+    }).toEqual({
+      activeStage: "research",
+      skippedReason: "Existing context is enough; no separate research findings are needed.",
+    });
+
+    await window.getByTestId("plan-ready-card").getByRole("button", { name: "Start Plan" }).click();
+    await expect(window.getByTestId("plan-proposal-panel")).toBeVisible();
+  } finally {
+    await harness.close();
+  }
+});
+
 test("starts SHIP from the Plan Builder composer handoff", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-composer-start-ship");
@@ -1769,6 +1864,7 @@ test("starts SHIP from the Plan Builder composer handoff", async () => {
     await waitForWorkspaceByPath(window, workspacePath);
 
     await createAcceptedPlanFromComposer(window, "Composer ship handoff plan");
+    await expect(window.getByTestId("plan-revision-history")).toContainText("Revision 1: Plan proposal");
     await window.getByTestId("start-execution-button").click();
     await saveDoneExecutionEvidenceForAllTasks(window);
     await window.getByLabel("Start Verify").click();
@@ -1795,10 +1891,61 @@ test("starts SHIP from the Plan Builder composer handoff", async () => {
       return {
         activePhase: plan?.activePhase ?? "",
         activeStage: plan?.activeStage ?? "",
+        revisionCount: plan?.planRevisions.length ?? 0,
       };
     }).toEqual({
       activePhase: "ship",
       activeStage: "task",
+      revisionCount: 1,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("records Risk Acceptance when starting SHIP with verification gaps", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-risk-acceptance-ship");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await createAcceptedPlanFromComposer(window, "Risk acceptance ship plan");
+    await window.getByTestId("start-execution-button").click();
+    await saveDoneExecutionEvidenceForAllTasks(window);
+    await window.getByLabel("Start Verify").click();
+    await expect(window.getByTestId("plan-verify-panel")).toBeVisible();
+    await expect(window.getByTestId("risk-acceptance-card")).toContainText("Risk Acceptance");
+    await expect(window.getByLabel("Start Ship")).toHaveCount(0);
+
+    await window
+      .getByTestId("risk-acceptance-rationale-textarea")
+      .fill("Manual verification is deferred; existing execution evidence is acceptable for this handoff.");
+    await window.getByTestId("risk-acceptance-start-ship-button").click();
+
+    await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
+    await expect(window.getByTestId("ship-risk-acceptances")).toContainText("Manual verification is deferred");
+    await expect(window.getByTestId("ship-summary-textarea")).toHaveValue(/Risk Acceptance: Manual verification is deferred/);
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Risk acceptance ship plan",
+      )?.selectedPlan;
+      return {
+        activePhase: plan?.activePhase ?? "",
+        riskAcceptances: plan?.riskAcceptances.length ?? 0,
+        rationale: plan?.riskAcceptances[0]?.rationale ?? "",
+      };
+    }).toEqual({
+      activePhase: "ship",
+      riskAcceptances: 1,
+      rationale: "Manual verification is deferred; existing execution evidence is acceptable for this handoff.",
     });
   } finally {
     await harness.close();
@@ -1821,7 +1968,7 @@ test("records SHIP summary from the Plan Builder composer", async () => {
     await reachShipFromComposer(window, "Composer ship summary plan");
     await expect(window.getByTestId("plan-composer-question")).toHaveText("Final SHIP handoff summary");
     await window.getByTestId("plan-composer-textarea").fill("Composer closeout saved for the next thread.");
-    await window.getByLabel("Save Summary").click();
+    await window.getByLabel("Save Handoff").click();
 
     await expect(window.getByTestId("ship-summary-recorded")).toContainText(
       "Composer closeout saved for the next thread.",
@@ -1914,10 +2061,12 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
     await window.getByTestId("plan-composer-textarea").fill("Revisit naming after research");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("Revisit naming after research");
     await window.getByRole("button", { name: "Park for Later" }).click();
+    await confirmParkDestination(window, "Open Question");
 
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await expect(window.getByTestId("plan-composer-textarea")).toHaveValue("");
-    await expect(window.getByTestId("plan-idea-pool")).toContainText("Revisit naming after research");
+    await expect(window.getByTestId("plan-open-questions")).toContainText("Revisit naming after research");
+    await expect(window.getByTestId("plan-open-questions")).toContainText("Parked");
     await expect.poll(async () => {
       const state = await getDesktopState(window);
       const plan = Object.values(state.planningByWorkspace).find(
@@ -1929,13 +2078,127 @@ test("parks the active DISCUSS draft from the Plan Builder composer", async () =
         answer: answer?.answer ?? "",
         loadBearing: answer?.loadBearing ?? true,
         parkedText: item?.text ?? "",
+        destination: item?.destination ?? "",
         reviewStatus: item?.reviewStatus ?? "",
       };
     }).toEqual({
       answer: "Revisit naming after research",
       loadBearing: false,
       parkedText: "Revisit naming after research",
+      destination: "open-question",
       reviewStatus: "parked",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("skips a guided question with a reason and records an open question", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-skip-question");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Skip question plan");
+    await window.getByRole("button", { name: "Create Plan" }).click();
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await expect(window.getByTestId("plan-composer-answer-frame")).toContainText("What we'll remember");
+
+    await window.getByRole("button", { name: "Skip Question" }).click();
+    await expect(window.getByTestId("plan-skip-question")).toBeVisible();
+    await window.getByTestId("plan-skip-question-reason").fill("Naming depends on stakeholder review.");
+    await window.getByTestId("plan-skip-question-reason-type").selectOption("later");
+    await window.getByRole("button", { name: "Save Skip" }).click();
+
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await expect(window.getByTestId("plan-open-questions")).toContainText("Naming depends on stakeholder review.");
+    await expect(window.getByTestId("plan-open-questions")).toContainText("Open Question");
+    await window.getByRole("button", { name: "Search" }).click();
+    await expect(window.getByTestId("project-search-scope")).toHaveValue("project");
+    await window.getByTestId("project-search-input").fill("stakeholder review");
+    await expect(window.getByTestId("project-search-results")).toContainText("Open Question");
+    await window.getByRole("button", { name: "Close" }).click();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "Skip question plan",
+      )?.selectedPlan;
+      const skipped = plan?.skippedQuestions.find((entry) => entry.questionId === "project_title");
+      const openQuestion = plan?.parkedItems.find((entry) => entry.sourceType === "skipped-question");
+      return {
+        reasonType: skipped?.reasonType ?? "",
+        reason: skipped?.reason ?? "",
+        createsOpenQuestion: skipped?.createsOpenQuestion ?? false,
+        destination: openQuestion?.destination ?? "",
+        text: openQuestion?.text ?? "",
+        activeQuestionId: plan?.stages.find((entry) => entry.stage === "project")?.activeQuestionId ?? "",
+      };
+    }).toEqual({
+      reasonType: "later",
+      reason: "Naming depends on stakeholder review.",
+      createsOpenQuestion: true,
+      destination: "open-question",
+      text: "Naming depends on stakeholder review.",
+      activeQuestionId: "project_vision",
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
+test("routes uncertain high-impact answers through confirmation before saving", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-high-impact-answer");
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("High impact answer plan");
+    await window.getByRole("button", { name: "Create Plan" }).click();
+    await window.getByTestId("plan-composer-textarea").fill("High Impact");
+    await window.getByLabel("Save Answer").click();
+
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await window.getByTestId("plan-composer-textarea").fill("TBD after stakeholder review");
+    await window.getByLabel("Save Answer").click();
+    await expect(window.getByTestId("high-impact-answer-route")).toContainText("High-impact answer");
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText(
+      "What are we building, and what outcome should it create?",
+    );
+    await window.getByRole("button", { name: "Save With Review Note" }).click();
+
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("Is this project simple or complex?");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find(
+        (entry) => entry.selectedPlan?.name === "High impact answer plan",
+      )?.selectedPlan;
+      const answer = plan?.answers.find((entry) => entry.questionId === "project_vision");
+      return {
+        answer: answer?.answer ?? "",
+        rationale: answer?.discretionRationale ?? "",
+      };
+    }).toEqual({
+      answer: "TBD after stakeholder review",
+      rationale: "High-impact answer saved after confirmation",
     });
   } finally {
     await harness.close();
@@ -1961,6 +2224,7 @@ test("restores a dismissed composer draft idea after restart", async () => {
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
     await window.getByTestId("plan-composer-textarea").fill(ideaText);
     await window.getByRole("button", { name: "Park for Later" }).click();
+    await confirmParkDestination(window);
 
     const idea = window.getByTestId("plan-idea-item").filter({ hasText: ideaText });
     await expect(idea.getByTestId("plan-idea-status")).toHaveText("Parked");
@@ -2035,6 +2299,7 @@ test("restores composer-submitted answers and parked drafts across restart", asy
     );
     await window.getByTestId("plan-composer-textarea").fill("Park restart-risk cleanup for later");
     await window.getByRole("button", { name: "Park for Later" }).click();
+    await confirmParkDestination(window);
     await expect(window.getByTestId("plan-idea-pool")).toContainText("Park restart-risk cleanup for later");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
@@ -2186,7 +2451,7 @@ test("requires research override and repeats unresolved guidance before planning
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
     await expect(window.getByTestId("plan-readiness-warning")).toContainText("1 unresolved guidance item");
     await expect(window.getByTestId("plan-readiness-warning")).toContainText(
-      "High-signal answers should be revised before later phases rely on them.",
+      "High-signal answers should be revised before later workflow stages rely on them.",
     );
     await expect(window.getByTestId("plan-readiness-warning-stages")).toContainText("DISCUSS / Project");
     await expect(window.getByTestId("plan-discuss-complete").getByRole("button", { name: "Start Research" })).toBeDisabled();
@@ -2222,7 +2487,51 @@ test("requires research override and repeats unresolved guidance before planning
   }
 });
 
-test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across restart", async () => {
+test("blocks readiness while a required guided answer needs review", async () => {
+  const userDataDir = await makeUserDataDir();
+  const workspacePath = await makeWorkspace("plan-builder-question-needs-review");
+
+  const harness = await launchDesktop(userDataDir, {
+    initialWorkspaces: [workspacePath],
+    testMode: "background",
+  });
+
+  try {
+    const window = await harness.firstWindow();
+    await waitForWorkspaceByPath(window, workspacePath);
+
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
+    await window.getByTestId("plan-name-input").fill("Needs review plan");
+    await window.getByRole("button", { name: "Create Plan" }).click();
+    await completeDiscussFromComposer(window);
+    await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+
+    const nameContext = window.getByTestId("project-context-entry").filter({ hasText: "Outcome: Name" });
+    await nameContext.getByRole("button", { name: "Needs Review" }).click();
+    await expect(nameContext).toContainText("Needs review");
+    await expect(window.getByTestId("plan-discuss-complete")).toHaveCount(0);
+    await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Needs review plan")
+        ?.selectedPlan;
+      return plan?.questionStates.find((question) => question.questionId === "project_title")?.status ?? "";
+    }).toBe("needs-review");
+
+    await nameContext.getByRole("button", { name: "Mark Reviewed" }).click();
+    await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Needs review plan")
+        ?.selectedPlan;
+      return plan?.questionStates.find((question) => question.questionId === "project_title")?.status ?? "";
+    }).toBe("answered");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("persists Project Context plus accepted RESEARCH and PLAN output across restart", async () => {
   const userDataDir = await makeUserDataDir();
   const workspacePath = await makeWorkspace("plan-builder-discuss");
   const workspaceName = basename(workspacePath);
@@ -2278,12 +2587,12 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("phase-model-select-discuss")).toHaveValue("");
     await expect(window.getByTestId("phase-model-select-execute")).toBeVisible();
     await expect(window.getByTestId("phase-model-global-discuss")).toContainText("GPT-5");
-    await expect(window.getByTestId("phase-model-project-discuss")).toHaveText("This project: Use team default");
+    await expect(window.getByTestId("phase-model-project-discuss")).toHaveText("This project: Use app default");
     await expect(window.getByTestId("phase-model-resolved-discuss")).toHaveText(
       "Will use: openai/gpt-5 (Settings)",
     );
-    await expect(window.getByTestId("phase-model-global-plan")).toHaveText("Team default: Not set");
-    await expect(window.getByTestId("phase-model-project-plan")).toHaveText("This project: Use team default");
+    await expect(window.getByTestId("phase-model-global-plan")).toHaveText("App default: Not set");
+    await expect(window.getByTestId("phase-model-project-plan")).toHaveText("This project: Use app default");
     await expect(window.getByTestId("phase-model-resolved-plan")).toContainText("Will use:");
     await expect(window.getByTestId("workflow-preferences-summary")).toContainText("supervised runs");
     await window.getByTestId("phase-model-select-execute").selectOption("openai:gpt-4o");
@@ -2339,6 +2648,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     ]) {
       await window.getByTestId("plan-composer-textarea").fill(idea);
       await window.getByRole("button", { name: "Park for Later" }).click();
+      await confirmParkDestination(window);
       await expect(window.getByTestId("plan-idea-pool")).toContainText(idea);
     }
     await expect(window.getByTestId("plan-composer-prompt")).toHaveText("What should we call this project?");
@@ -2416,6 +2726,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       }
     }
 
+    await saveDecisionRiskRecords(window, "Launch plan");
+
     await expect(window.getByTestId("plan-depth-gate")).toBeVisible();
     await window.getByRole("button", { name: "Confirm Milestone" }).click();
     await expect(window.getByTestId("plan-discuss-complete")).toBeVisible();
@@ -2441,8 +2753,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("workflow-guidance-banner")).toHaveText("Plan");
     await expect(window.getByTestId("workflow-guidance-prompt-source")).toContainText("plan-milestone.md / plan-slice.md");
     const phaseRows = window.getByTestId("plan-phase-row");
+    await expect(phaseRows).toHaveCount(0);
+    await expect(window.getByTestId("plan-milestone-phase-select")).toHaveValue("");
+    await window.getByTestId("add-plan-phase-button").click();
     await expect(phaseRows).toHaveCount(1);
-    await expect(phaseRows.first().getByTestId("delete-plan-phase-button")).toBeDisabled();
     await phaseRows.first().getByTestId("plan-phase-title-input").fill("Build foundation");
     await phaseRows.first().getByTestId("plan-phase-goal-textarea").fill("Establish the database-backed planning loop.");
     await window.getByTestId("add-plan-phase-button").click();
@@ -2482,7 +2796,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await proposedPlan.getByRole("button", { name: "Accept plan" }).click();
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Plan proposal");
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Reqs R001, R002");
-    await expect(window.getByTestId("projection-summary")).toContainText("Saved Files");
+    await expect(window.getByTestId("projection-summary")).toContainText("Generated Files");
     await access(join(workspacePath, ".gsd", "PROJECT.md"));
     await access(join(workspacePath, ".gsd", "REQUIREMENTS.md"));
     await access(join(workspacePath, ".gsd", "STATE.md"));
@@ -2493,8 +2807,8 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await modificationProposal
       .getByTestId("plan-modification-task-acceptance-textarea")
       .fill("No lost answers, projection state, and change-control persistence are verified.");
-    await modificationProposal.getByRole("button", { name: "Approve modification" }).click();
-    await expect(modificationProposal.getByTestId("plan-change-proposal-status")).toHaveText("Approved");
+    await modificationProposal.getByRole("button", { name: "Accept task edit" }).click();
+    await expect(modificationProposal.getByTestId("plan-change-proposal-status")).toHaveText("Accepted");
     await expect(modificationProposal).toContainText("Modified M1/S1/T1");
     await expect(modificationProposal.getByTestId("plan-change-proposal-activity")).toHaveCount(0);
     await expect(modificationProposal.getByTestId("plan-change-proposal-activity-toggle")).toHaveText("History 2");
@@ -2503,7 +2817,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(modificationActivity.getByTestId("plan-change-proposal-activity-entry")).toHaveCount(2);
     await expect(modificationActivity).toContainText("Drafted");
     await expect(modificationActivity).toContainText("Modified");
-    await expect(modificationActivity).toContainText("Approved task modification M1/S1/T1");
+    await expect(modificationActivity).toContainText("Accepted task modification M1/S1/T1");
     await expect(window.getByTestId("plan-output-accepted")).toContainText("Modified task - M1/S1/T1");
     const changeProposal = window.getByTestId("plan-change-proposal").filter({ hasText: "Integration change draft" });
     await expect(changeProposal.getByTestId("plan-injection-form")).toBeVisible();
@@ -2513,10 +2827,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       .getByTestId("plan-injection-task-acceptance-textarea")
       .fill("Integration impact is reviewed before execution.");
     await changeProposal.getByTestId("plan-injection-task-dependencies-input").fill("T1");
-    await changeProposal.getByRole("button", { name: "Approve injection" }).click();
-    await expect(changeProposal.getByTestId("plan-change-proposal-status")).toHaveText("Approved");
+    await changeProposal.getByRole("button", { name: "Accept as new task" }).click();
+    await expect(changeProposal.getByTestId("plan-change-proposal-status")).toHaveText("Accepted");
     await expect(changeProposal).toContainText("Injected as M1/S1/T2");
-    await expect(window.getByTestId("plan-output-accepted")).toContainText("Approved change - Integration change draft");
+    await expect(window.getByTestId("plan-output-accepted")).toContainText("Accepted change - Integration change draft");
     const injectedTaskPath = join(workspacePath, ".gsd", "milestones", "M1", "slices", "S1", "tasks", "T2-PLAN.md");
     await access(injectedTaskPath);
     await changeProposal
@@ -2565,11 +2879,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     const proposalActivity = changeProposal.getByTestId("plan-change-proposal-activity");
     await expect(proposalActivity.getByTestId("plan-change-proposal-activity-entry")).toHaveCount(5);
     await expect(proposalActivity).toContainText("Drafted");
-    await expect(proposalActivity).toContainText("Approved as new task M1/S1/T2");
+    await expect(proposalActivity).toContainText("Accepted as new task M1/S1/T2");
     await expect(proposalActivity).toContainText("Hidden injected task M1/S1/T2");
     await expect(proposalActivity).toContainText("Restored injected task M1/S1/T2");
 
     const nameMemory = window.getByTestId("plan-answer-history").locator(".plan-memory__item").filter({ hasText: "Name" });
+    await expect(nameMemory).toContainText("Outcome: Name");
+    await expect(nameMemory).toContainText("Source: guided answer");
     await expect(nameMemory.getByTestId("plan-memory-question")).toHaveText("What should we call this project?");
     await nameMemory.getByRole("button", { name: "Edit" }).click();
     await window.getByTestId("plan-revision-textarea").fill("Launch Control Revised");
@@ -2587,7 +2903,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("written");
     await expect(window.getByTestId("projection-summary")).toContainText("1 missing / 2 stale");
-    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Repair Saved Files");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Repair Generated Files");
 
     const projectProjection = await readFile(projectProjectionPath, "utf8");
     expect(projectProjection).toContain("pi-gui-plan-builder-generated");
@@ -2598,11 +2914,13 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     );
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("current");
-    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Refresh Saved Files");
+    await expect(window.getByTestId("regenerate-projections-button")).toHaveText("Refresh Generated Files");
     const requirementsProjectionPath = join(workspacePath, ".gsd", "REQUIREMENTS.md");
     await writeFile(requirementsProjectionPath, "# Hand-written requirements\n", "utf8");
     await window.getByTestId("regenerate-projections-button").click();
     await expect(window.getByTestId("projection-summary")).toContainText("1 imported file conflict");
+    await expect(window.getByTestId("projection-import-review")).toContainText("Import Flow");
+    await expect(window.getByTestId("projection-import-row")).toContainText("Project Context candidate");
     await expect(window.getByTestId("regenerate-projections-button")).toHaveCount(0);
     await expect(window.getByTestId("overwrite-legacy-projections-button")).toHaveText("Replace Imported Files");
     await expect(window.getByTestId("start-execution-button")).toBeDisabled();
@@ -2626,9 +2944,10 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     expect(nextProjection).toContain(".gsd/milestones/M1/slices/S1/tasks/T1-PLAN.md");
     const roadmapProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-ROADMAP.md"), "utf8");
     expect(roadmapProjection).toContain("Plan Builder vertical slice");
-    expect(roadmapProjection).toContain("**Phase:** P2 - Hardening");
+    expect(roadmapProjection).toContain("`scope:required`");
+    expect(roadmapProjection).toContain("**Optional Phase Group:** P2 - Hardening");
     expect(roadmapProjection).toContain("`reqs:[R001,R002]`");
-    expect(projectProjection).toContain("## Phase Sequence");
+    expect(projectProjection).toContain("## Optional Phase Groups");
     expect(projectProjection).toContain("P2: Hardening");
     const milestoneContextProjection = await readFile(join(workspacePath, ".gsd", "milestones", "M1", "M1-CONTEXT.md"), "utf8");
     expect(milestoneContextProjection).toContain("P2: Hardening");
@@ -2650,7 +2969,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       .filter({ hasText: "EXECUTE" });
     await expect(executeRoute).toContainText("openai/gpt-4o");
     await expect(executeRoute).toContainText("project override");
-    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/EXECUTE: project override - openai\/gpt-4o/);
+    await expect(window.getByTestId("handoff-bundle-text")).toHaveValue(/Execute: project override - openai\/gpt-4o/);
     const primaryExecutionTask = window.getByTestId("execution-task").filter({ hasText: "Implement and verify the slice" });
     await primaryExecutionTask.getByTestId("link-task-session-button").click();
     await expect(primaryExecutionTask.getByTestId("execution-task-link")).toContainText("Task T1 - Implement and verify the slice");
@@ -2665,6 +2984,20 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
       linkedSessionId = plan?.taskSessionLinks.find((link) => link.taskId === "T1")?.sessionId ?? "";
       return linkedSessionId;
     }).not.toBe("");
+    await expect(window.getByTestId("active-slices-card")).toContainText("1 slice linked to execution threads");
+    await expect(window.getByTestId("active-slice-row")).toContainText("M1/S1");
+    await expect(window.getByTestId("active-slice-row")).toContainText("Plan Builder vertical slice");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const plan = Object.values(state.planningByWorkspace).find((entry) => entry.selectedPlan?.name === "Launch plan")
+        ?.selectedPlan;
+      return plan?.sliceFocus[0];
+    }).toMatchObject({
+      slicePath: "M1/S1",
+      sliceTitle: "Plan Builder vertical slice",
+      taskPath: "M1/S1/T1",
+      taskTitle: "Implement and verify the slice",
+    });
     await window.getByTestId("open-task-session-button").click();
     await expect.poll(async () => (await getDesktopState(window)).activeView).toBe("threads");
     await expect.poll(async () => (await getDesktopState(window)).selectedSessionId).toBe(linkedSessionId);
@@ -2715,8 +3048,19 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-ship-panel")).not.toContainText("Review integration impact");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await window.getByTestId("ship-summary-textarea").fill("Ship handoff: Launch plan verified with persisted evidence.");
+    await window.getByTestId("ship-follow-up-textarea").fill("Schedule post-ship audit\nReview launch telemetry");
     await window.getByTestId("record-ship-summary-button").click();
     await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
+    await expect.poll(async () => {
+      const state = await getDesktopState(window);
+      const workspace = state.workspaces.find((entry) => entry.path === workspacePath);
+      const items = workspace ? state.backlogByWorkspace[workspace.id] ?? [] : [];
+      return items
+        .filter((item) => item.source.role === "ship")
+        .map((item) => item.text)
+        .sort();
+    }).toEqual(["Review launch telemetry", "Schedule post-ship audit"]);
+    await expect(window.getByTestId("backlog-capture-toast")).toContainText("Saved to backlog.");
     await access(join(workspacePath, ".gsd", "gsd.db"));
   } finally {
     await harness.close();
@@ -2745,11 +3089,22 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
     await expect(window.getByTestId("plan-ship-panel")).toBeVisible();
     await expect(window.getByTestId("requirements-contract")).toContainText("Requirements contract saved");
     await expect(window.getByTestId("requirements-contract")).toContainText("R001: First useful version capabilities");
+    await expect(window.getByTestId("context-records")).toContainText("Decision and risk records saved.");
+    await expect(window.getByTestId("decision-row").filter({ hasText: "D001" })).toContainText(
+      "Project complexity classification",
+    );
+    await expect(window.getByTestId("risk-row").filter({ hasText: "K001" })).toContainText(
+      "Plan-changing execution risk",
+    );
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" })).toContainText("Implement and verify the slice");
     await expect(window.getByTestId("plan-ship-panel")).not.toContainText("Review integration impact");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-evidence-list")).toContainText("Linked session created and reopened from EXECUTE.");
     await expect(window.getByTestId("ship-task").filter({ hasText: "Implement and verify the slice" }).getByTestId("ship-verification-note")).toContainText("Acceptance matched the saved evidence.");
     await expect(window.getByTestId("ship-summary-recorded")).toContainText("Ship handoff: Launch plan verified with persisted evidence.");
+    await window.getByRole("button", { name: "Backlog", exact: true }).click();
+    await expect(window.getByTestId("project-backlog-view")).toContainText("Schedule post-ship audit");
+    await expect(window.getByTestId("project-backlog-view")).toContainText("Review launch telemetry");
+    await window.getByRole("button", { name: "Plans", exact: true }).click();
     await expect(
       window.getByTestId("plan-idea-item").filter({ hasText: "Later automation follow-up" }).getByTestId("plan-idea-status"),
     ).toHaveText("Kept");
@@ -2797,6 +3152,24 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
                 requirement.description ===
                   "Create a plan, ask focused questions, save answers, and resume after restart.",
             ) &&
+          entry.selectedPlan.questionFrameSnapshots.some(
+            (frame) =>
+              frame.questionId === "project_title" &&
+              frame.source === "guided-discuss-project.md" &&
+              frame.version === 1,
+          ) &&
+          entry.selectedPlan.answers.some(
+            (answer) =>
+              answer.questionId === "project_title" &&
+              answer.questionFrameSource === "guided-discuss-project.md" &&
+              answer.questionFrameVersion === 1,
+          ) &&
+          entry.selectedPlan.decisions.some(
+            (decision) => decision.id === "D001" && decision.choice === "Project complexity classification",
+          ) &&
+          entry.selectedPlan.risks.some(
+            (risk) => risk.id === "K001" && risk.title === "Plan-changing execution risk" && risk.status === "open",
+          ) &&
           entry.selectedPlan.parkedItems.some(
             (item) => item.text === "Later automation follow-up" && item.reviewStatus === "kept",
           ) &&
@@ -2892,7 +3265,7 @@ test("persists DISCUSS memory plus accepted RESEARCH and PLAN output across rest
             (output) =>
               output.stage === "roadmap" &&
               output.status === "accepted" &&
-              output.title === "Approved change - Integration change draft" &&
+              output.title === "Accepted change - Integration change draft" &&
               output.content.includes("Review integration impact"),
           ) &&
           entry.selectedPlan.generatedOutputs.some(

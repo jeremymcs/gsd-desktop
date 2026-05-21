@@ -34,7 +34,7 @@ export const planningStarterTemplates: readonly PlanningStarterTemplate[] = [
       {
         stage: "project",
         questionId: "project_constraints",
-        answer: "Keep slices independently verifiable.\nPersist user state before generating or exporting artifacts.",
+        answer: "Keep slices independently verifiable.\nPersist user state before generating or exporting outputs.",
       },
       {
         stage: "requirements",
@@ -44,7 +44,7 @@ export const planningStarterTemplates: readonly PlanningStarterTemplate[] = [
       {
         stage: "milestone",
         questionId: "milestone_sequence",
-        answer: "DISCUSS, RESEARCH, PLAN, EXECUTE, VERIFY, SHIP.",
+        answer: "Discuss, Research, Plan, Execute, Verify, Ship.",
       },
     ],
   },

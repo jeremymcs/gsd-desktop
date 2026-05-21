@@ -112,6 +112,14 @@ test("navigates across folders and sessions through the sidebar", async () => {
     await expect(window.locator(".project-header")).toContainText(basename(betaPath));
     await selectSession(window, "Beta session one");
 
+    await window.getByRole("button", { name: "Search" }).click();
+    await expect(window.getByTestId("project-search-scope")).toHaveValue("project");
+    await window.getByTestId("project-search-input").fill("Alpha session one");
+    await expect(window.getByTestId("project-search-results")).toContainText("No results.");
+    await window.getByTestId("project-search-scope").selectOption("all");
+    await expect(window.getByTestId("project-search-results")).toContainText("Alpha session one");
+    await window.getByRole("button", { name: "Close" }).click();
+
     await expect
       .poll(async () => {
         const state = await getDesktopState(window);
@@ -158,7 +166,7 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
     await expect.poll(() => workspaceTabLabels(window)).toEqual([basename(alphaPath), basename(betaPath)]);
 
-    await window.getByRole("button", { name: "Home", exact: true }).click();
+    await window.getByRole("button", { name: "Project Overview", exact: true }).click();
     await expect(window.getByTestId("project-home-view")).toBeVisible();
     await expect(window.getByTestId("new-thread-composer")).toHaveCount(0);
 
@@ -168,8 +176,12 @@ test("workspace tabs keep multiple projects open and workspace page links route 
     await window.getByRole("button", { name: "Backlog", exact: true }).click();
     await expect(window.getByTestId("project-backlog-view")).toBeVisible();
 
+    await window.getByRole("button", { name: "Worktrees", exact: true }).click();
+    await expect(window.getByTestId("project-worktrees-view")).toBeVisible();
+
     await window.getByRole("button", { name: "Threads", exact: true }).click();
-    await expect(window.locator(".project-header")).toContainText(basename(alphaPath));
+    await expect(window.getByTestId("project-threads-view")).toBeVisible();
+    await expect(window.getByTestId("project-threads-recent")).toBeVisible();
 
     await window.getByRole("button", { name: "Skills", exact: true }).click();
     await expect(window.getByTestId("skills-surface")).toBeVisible();
@@ -224,13 +236,52 @@ test("saves highlighted thread text to the project backlog", async () => {
 
     await expect(window.getByTestId("backlog-capture-toast")).toContainText("Saved to backlog.");
     await expect
-      .poll(async () => (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0]?.text)
-      .toBe("Save feature two for later.");
+      .poll(async () => {
+        const item = (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0];
+        return item ? { category: item.category, status: item.status, text: item.text } : undefined;
+      })
+      .toEqual({
+        category: "follow-up",
+        status: "open",
+        text: "Save feature two for later.",
+      });
 
     await expect(window.getByTestId("backlog-capture-toast")).toBeHidden({ timeout: 5_000 });
     await window.getByRole("button", { name: "Backlog", exact: true }).click();
     await expect(window.getByTestId("project-backlog-view")).toBeVisible();
-    await expect(window.getByTestId("project-backlog-item")).toContainText("Save feature two for later.");
+    const backlogItem = window.getByTestId("project-backlog-item");
+    await expect(backlogItem).toContainText("Save feature two for later.");
+    await expect(backlogItem).toContainText("Follow-up");
+
+    await backlogItem.getByRole("button", { name: "Start Thread" }).click();
+    await expect(window.getByTestId("new-thread-composer")).toContainText("Save feature two for later.");
+    await window.getByRole("button", { name: "Start Thread" }).click();
+    await expect
+      .poll(async () => {
+        const item = (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0];
+        return item
+          ? {
+              hasDiscussionThread: Boolean(item.discussionThread?.sessionId),
+              status: item.status,
+            }
+          : undefined;
+      })
+      .toEqual({
+        hasDiscussionThread: true,
+        status: "in-discussion",
+      });
+
+    await window.getByRole("button", { name: "Threads", exact: true }).click();
+    await expect(window.getByTestId("project-threads-view")).toBeVisible();
+    await expect(window.getByTestId("project-threads-follow-ups")).toContainText("Follow-up · Local");
+    await expect(window.getByTestId("project-threads-follow-ups").getByTestId("project-thread-item")).toHaveCount(1);
+
+    await window.getByRole("button", { name: "Backlog", exact: true }).click();
+    await window.getByRole("button", { name: "Mark Done" }).click();
+    await expect
+      .poll(async () => (await getDesktopState(window)).backlogByWorkspace[workspace.id]?.[0]?.status)
+      .toBe("done");
+    await expect(window.getByText("Done")).toBeVisible();
   } finally {
     await harness.close();
   }

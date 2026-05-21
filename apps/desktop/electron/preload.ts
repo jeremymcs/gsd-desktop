@@ -51,6 +51,9 @@ import type {
   RevisePlanningAnswerInput,
   SelectedTranscriptRecord,
   SelectPlanningPlanInput,
+  SetProjectDefaultWorktreeInput,
+  SkipPlanningStageInput,
+  SkipPlanningQuestionInput,
   StartPlanningExecutionInput,
   StartPlanningPlanInput,
   StartPlanningResearchInput,
@@ -61,9 +64,11 @@ import type {
   UpdateBacklogItemInput,
   UpdatePlanningChangeProposalInput,
   UpdatePlanningIdeaInput,
+  UpdatePlanningQuestionStateInput,
   UpdatePlanningPlanStatusInput,
   UpdatePlanningWorkflowPreferencesInput,
   UpdatePlanningTaskExecutionInput,
+  UpsertPlanningContextRecordsInput,
   UpsertPlanningRequirementsInput,
   WithdrawPlanningChangeProposalInput,
   WorkspaceSessionTarget,
@@ -169,6 +174,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.createWorktree, input) as Promise<DesktopAppState>,
   removeWorktree: (input: RemoveWorktreeInput) =>
     ipcRenderer.invoke(desktopIpc.removeWorktree, input) as Promise<DesktopAppState>,
+  setProjectDefaultWorktree: (input: SetProjectDefaultWorktreeInput) =>
+    ipcRenderer.invoke(desktopIpc.setProjectDefaultWorktree, input) as Promise<DesktopAppState>,
   openSkillInFinder: (workspaceId: string, filePath: string) =>
     ipcRenderer.invoke(desktopIpc.openSkillInFinder, workspaceId, filePath) as Promise<void>,
   openExtensionInFinder: (workspaceId: string, filePath: string) =>
@@ -189,10 +196,16 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.recordPlanningAnswer, input) as Promise<DesktopAppState>,
   parkPlanningIdea: (input: ParkPlanningIdeaInput) =>
     ipcRenderer.invoke(desktopIpc.parkPlanningIdea, input) as Promise<DesktopAppState>,
+  skipPlanningQuestion: (input: SkipPlanningQuestionInput) =>
+    ipcRenderer.invoke(desktopIpc.skipPlanningQuestion, input) as Promise<DesktopAppState>,
   revisePlanningAnswer: (input: RevisePlanningAnswerInput) =>
     ipcRenderer.invoke(desktopIpc.revisePlanningAnswer, input) as Promise<DesktopAppState>,
+  updatePlanningQuestionState: (input: UpdatePlanningQuestionStateInput) =>
+    ipcRenderer.invoke(desktopIpc.updatePlanningQuestionState, input) as Promise<DesktopAppState>,
   upsertPlanningRequirements: (input: UpsertPlanningRequirementsInput) =>
     ipcRenderer.invoke(desktopIpc.upsertPlanningRequirements, input) as Promise<DesktopAppState>,
+  upsertPlanningContextRecords: (input: UpsertPlanningContextRecordsInput) =>
+    ipcRenderer.invoke(desktopIpc.upsertPlanningContextRecords, input) as Promise<DesktopAppState>,
   reviewPlanningIdea: (input: ReviewPlanningIdeaInput) =>
     ipcRenderer.invoke(desktopIpc.reviewPlanningIdea, input) as Promise<DesktopAppState>,
   updatePlanningIdea: (input: UpdatePlanningIdeaInput) =>
@@ -215,6 +228,8 @@ contextBridge.exposeInMainWorld("piApp", {
     ipcRenderer.invoke(desktopIpc.confirmPlanningStage, input) as Promise<DesktopAppState>,
   startPlanningResearch: (input: StartPlanningResearchInput) =>
     ipcRenderer.invoke(desktopIpc.startPlanningResearch, input) as Promise<DesktopAppState>,
+  skipPlanningStage: (input: SkipPlanningStageInput) =>
+    ipcRenderer.invoke(desktopIpc.skipPlanningStage, input) as Promise<DesktopAppState>,
   proposePlanningResearch: (input: ProposePlanningResearchInput) =>
     ipcRenderer.invoke(desktopIpc.proposePlanningResearch, input) as Promise<DesktopAppState>,
   reviewPlanningResearch: (input: ReviewPlanningResearchInput) =>

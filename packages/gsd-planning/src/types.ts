@@ -12,12 +12,15 @@ export type PlanStage =
   | "roadmap"
   | "slice-context"
   | "task";
-export type StageStatus = "not-started" | "active" | "needs-review" | "approved" | "blocked";
+export type StageStatus = "not-started" | "active" | "needs-review" | "approved" | "blocked" | "skipped";
 
 export type RequirementClass = "functional" | "quality" | "constraint" | "integration" | "operational";
 export type RequirementStatus = "active" | "validated" | "deferred" | "out-of-scope";
 export type RequirementSource = "user" | "inferred" | "research" | "execution";
 export type RequirementValidationStatus = "unvalidated" | "covered" | "partial" | "missing";
+export type RiskStatus = "open" | "mitigating" | "accepted" | "resolved";
+export type RiskLikelihood = "low" | "medium" | "high";
+export type RiskImpact = "low" | "medium" | "high";
 
 export interface ProjectShape {
   readonly complexity: "simple" | "complex";
@@ -47,10 +50,36 @@ export interface RequirementRecord {
   readonly notes?: string;
 }
 
+export interface DecisionRecord {
+  readonly id: string;
+  readonly choice: string;
+  readonly rationale: string;
+  readonly alternatives: readonly string[];
+  readonly date: string;
+  readonly linkedThreadIds: readonly string[];
+  readonly linkedPlanChangeIds: readonly string[];
+}
+
+export interface RiskRecord {
+  readonly id: string;
+  readonly title: string;
+  readonly impact: RiskImpact;
+  readonly likelihood: RiskLikelihood;
+  readonly mitigation: string;
+  readonly owner: string;
+  readonly status: RiskStatus;
+  readonly linkedSliceIds: readonly string[];
+  readonly linkedVerificationIds: readonly string[];
+  readonly linkedRiskAcceptanceIds: readonly string[];
+}
+
 export interface AnswerRecord {
   readonly id: string;
   readonly stage: PlanStage;
   readonly questionId: string;
+  readonly questionFrameId?: string;
+  readonly questionFrameVersion?: number;
+  readonly questionFrameSource?: string;
   readonly prompt: string;
   readonly answer: string;
   readonly loadBearing: boolean;
@@ -59,11 +88,69 @@ export interface AnswerRecord {
   readonly createdAt: string;
 }
 
+export type SkippedQuestionReasonType = "not-applicable" | "unknown" | "undecided" | "later";
+export type QuestionStateStatus = "current" | "answered" | "skipped" | "needs-review";
+
+export interface SkippedQuestionRecord {
+  readonly id: string;
+  readonly stage: PlanStage;
+  readonly questionId: string;
+  readonly questionFrameId?: string;
+  readonly questionFrameVersion?: number;
+  readonly questionFrameSource?: string;
+  readonly prompt: string;
+  readonly reasonType: SkippedQuestionReasonType;
+  readonly reason: string;
+  readonly createsOpenQuestion: boolean;
+  readonly createdAt: string;
+}
+
 export interface StageStateRecord {
   readonly stage: PlanStage;
   readonly status: StageStatus;
   readonly activeQuestionId?: string;
   readonly depthConfirmedAt?: string;
+}
+
+export interface SkippedStageRecord {
+  readonly id: string;
+  readonly stage: PlanStage;
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
+export interface PlanRevisionRecord {
+  readonly id: string;
+  readonly revisionNumber: number;
+  readonly sourceType: "accepted-plan" | "accepted-plan-change";
+  readonly sourceId: string;
+  readonly title: string;
+  readonly acceptedOutputId: string;
+  readonly createdAt: string;
+}
+
+export interface QuestionFrameSnapshotRecord {
+  readonly id: string;
+  readonly questionId: string;
+  readonly stage: PlanStage;
+  readonly label: string;
+  readonly prompt: string;
+  readonly helper: string;
+  readonly loadBearing: boolean;
+  readonly optional: boolean;
+  readonly source: string;
+  readonly version: number;
+  readonly capturedAt: string;
+}
+
+export interface QuestionStateRecord {
+  readonly id: string;
+  readonly questionId: string;
+  readonly stage: PlanStage;
+  readonly status: QuestionStateStatus;
+  readonly optional: boolean;
+  readonly reason?: string;
+  readonly updatedAt: string;
 }
 
 export interface GeneratedOutputRecord {
@@ -84,6 +171,22 @@ export interface TaskSessionLinkRecord {
   readonly sessionId: string;
   readonly title: string;
   readonly executionModel?: TaskSessionLinkExecutionModelRecord;
+  readonly createdAt: string;
+}
+
+export interface SliceFocusRecord {
+  readonly id: string;
+  readonly milestoneId: string;
+  readonly milestoneTitle: string;
+  readonly sliceId: string;
+  readonly slicePath: string;
+  readonly sliceTitle: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly taskTitle: string;
+  readonly workspaceId: string;
+  readonly sessionId: string;
+  readonly sessionTitle: string;
   readonly createdAt: string;
 }
 
@@ -130,6 +233,16 @@ export interface TaskVerificationRecord {
   readonly acceptance: string;
   readonly status: TaskVerificationStatus;
   readonly note: string;
+  readonly createdAt: string;
+}
+
+export interface RiskAcceptanceRecord {
+  readonly id: string;
+  readonly riskId?: string;
+  readonly taskId: string;
+  readonly taskPath: string;
+  readonly acceptance: string;
+  readonly rationale: string;
   readonly createdAt: string;
 }
 
@@ -318,11 +431,13 @@ export interface WorkflowPreferencesRecord {
 
 export type ParkedItemReviewStatus = "parked" | "kept" | "dismissed" | "promotion-ready";
 
-export type ParkedItemSourceType = "answer" | "composer";
+export type ParkedItemSourceType = "answer" | "composer" | "skipped-question";
+export type ParkedItemDestination = "backlog" | "open-question";
 
 export interface ParkedItemRecord {
   readonly id: string;
   readonly sourceType: ParkedItemSourceType;
+  readonly destination: ParkedItemDestination;
   readonly sourceAnswerId?: string;
   readonly sourceStage: PlanStage;
   readonly sourceQuestionId: string;
@@ -443,6 +558,15 @@ export type PlanEvent =
       readonly stage: PlanStage;
     }
   | {
+      readonly type: "stage.skipped";
+      readonly stage: PlanStage;
+      readonly reason: string;
+    }
+  | {
+      readonly type: "question-frames.snapshotted";
+      readonly frames: readonly Omit<QuestionFrameSnapshotRecord, "capturedAt">[];
+    }
+  | {
       readonly type: "answer.recorded";
       readonly answer: Omit<AnswerRecord, "id" | "createdAt"> & {
         readonly id?: string;
@@ -455,8 +579,28 @@ export type PlanEvent =
       readonly rationale?: string;
     }
   | {
+      readonly type: "answer.skipped";
+      readonly skip: Omit<SkippedQuestionRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
+      readonly type: "question.state-updated";
+      readonly question: Omit<QuestionStateRecord, "id" | "updatedAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
       readonly type: "requirement.upserted";
       readonly requirement: RequirementRecord;
+    }
+  | {
+      readonly type: "decision.upserted";
+      readonly decision: DecisionRecord;
+    }
+  | {
+      readonly type: "risk.upserted";
+      readonly risk: RiskRecord;
     }
   | {
       readonly type: "generated-output.proposed";
@@ -470,8 +614,20 @@ export type PlanEvent =
       readonly status: "accepted" | "rejected";
     }
   | {
+      readonly type: "plan.revision-created";
+      readonly revision: Omit<PlanRevisionRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
       readonly type: "task.session-linked";
       readonly link: Omit<TaskSessionLinkRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
+      readonly type: "slice.focus-updated";
+      readonly focus: Omit<SliceFocusRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
     }
@@ -488,6 +644,12 @@ export type PlanEvent =
   | {
       readonly type: "task.verification-recorded";
       readonly verification: Omit<TaskVerificationRecord, "id" | "createdAt"> & {
+        readonly id?: string;
+      };
+    }
+  | {
+      readonly type: "risk.accepted";
+      readonly acceptance: Omit<RiskAcceptanceRecord, "id" | "createdAt"> & {
         readonly id?: string;
       };
     }
@@ -621,12 +783,21 @@ export interface PlanListEntry {
 export interface PlanSnapshot extends PlanListEntry {
   readonly project: ProjectSummary;
   readonly requirements: readonly RequirementRecord[];
+  readonly decisions: readonly DecisionRecord[];
+  readonly risks: readonly RiskRecord[];
   readonly answers: readonly AnswerRecord[];
+  readonly skippedQuestions: readonly SkippedQuestionRecord[];
   readonly stages: readonly StageStateRecord[];
+  readonly skippedStages: readonly SkippedStageRecord[];
+  readonly questionFrameSnapshots: readonly QuestionFrameSnapshotRecord[];
+  readonly questionStates: readonly QuestionStateRecord[];
   readonly generatedOutputs: readonly GeneratedOutputRecord[];
+  readonly planRevisions: readonly PlanRevisionRecord[];
   readonly taskSessionLinks: readonly TaskSessionLinkRecord[];
+  readonly sliceFocus: readonly SliceFocusRecord[];
   readonly taskExecutions: readonly TaskExecutionRecord[];
   readonly taskVerifications: readonly TaskVerificationRecord[];
+  readonly riskAcceptances: readonly RiskAcceptanceRecord[];
   readonly shipSummaries: readonly ShipSummaryRecord[];
   readonly legacyReferences: readonly LegacyReferenceRecord[];
   readonly runRecoverySummary?: RunRecoverySummaryRecord;

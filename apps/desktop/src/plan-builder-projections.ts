@@ -110,6 +110,7 @@ function toSliceProjection(
   return {
     id: fallbackId(slice.id, "S", index),
     title: fallbackText(slice.title, `Slice ${index + 1}`),
+    scope: slice.scope,
     status: "pending",
     risk: dependencies.length > 0 ? "high" : "medium",
     depends: dependencies,
@@ -220,7 +221,7 @@ function renderMilestoneContext(milestone: PlanningMilestoneDraft, proposal: Pla
     "",
     fallbackText(milestone.outcome, "Not captured."),
     "",
-    "## Phase",
+    "## Optional Phase Group",
     "",
     renderMilestonePhaseContext(milestone, phase),
     "",
@@ -235,7 +236,7 @@ function renderMilestonePhaseContext(
   phase: PlanningPlanProposalDraft["phases"][number] | undefined,
 ): string {
   if (!phase) {
-    return fallbackText(milestone.phase, "Unassigned");
+    return fallbackText(milestone.phase, "Ungrouped");
   }
   return [
     `${fallbackText(phase.id, "P1")}: ${fallbackText(phase.title, "Untitled phase")}`,
@@ -264,6 +265,7 @@ function renderSliceContext(slice: PlanningSliceDraft, milestone: PlanningMilest
     `# ${fallbackText(slice.id, "Slice")}: ${fallbackText(slice.title, "Untitled slice")} - Context`,
     "",
     `**Milestone:** ${fallbackText(milestone.id, "Milestone")}`,
+    `**Slice Scope:** ${formatSliceScope(slice.scope)}`,
     "",
     "## Goal",
     "",
@@ -273,6 +275,17 @@ function renderSliceContext(slice: PlanningSliceDraft, milestone: PlanningMilest
     "",
     fallbackText(slice.boundary, "Not captured."),
   ].join("\n");
+}
+
+function formatSliceScope(scope: PlanningSliceDraft["scope"]): string {
+  switch (scope) {
+    case "optional":
+      return "Optional";
+    case "stretch":
+      return "Stretch";
+    case "required":
+      return "Required";
+  }
 }
 
 function fallbackId(value: string, prefix: string, index: number): string {

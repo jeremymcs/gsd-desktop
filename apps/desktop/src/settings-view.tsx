@@ -4,8 +4,10 @@ import type {
   GlobalPlanningPreferences,
   ModelSettingsScopeMode,
   NotificationPreferences,
+  PreferenceChangeRecord,
   WorkspaceRecord,
 } from "./desktop-state";
+import { formatRelativeTime } from "./string-utils";
 import type { WorkflowPhaseModelPreferences } from "@pi-gui/gsd-planning";
 import type { DesktopNotificationPermissionStatus } from "./ipc";
 import { SettingsAppearanceSection } from "./settings-appearance-section";
@@ -30,6 +32,7 @@ interface SettingsViewProps {
   readonly modelSettingsScopeMode: ModelSettingsScopeMode;
   readonly integratedTerminalShell: string;
   readonly themeMode: "system" | "light" | "dark";
+  readonly preferenceChanges: readonly PreferenceChangeRecord[];
   readonly onSetModelSettingsScopeMode: (mode: ModelSettingsScopeMode) => void;
   readonly onSelectSection: (section: SettingsSection) => void;
   readonly onSetGlobalPlanningPhaseModels: (phaseModels: WorkflowPhaseModelPreferences) => void;
@@ -61,6 +64,7 @@ export function SettingsView({
   modelSettingsScopeMode,
   integratedTerminalShell,
   themeMode,
+  preferenceChanges,
   onSetModelSettingsScopeMode,
   onSelectSection,
   onSetGlobalPlanningPhaseModels,
@@ -162,9 +166,43 @@ export function SettingsView({
               </button>
             ))}
           </nav>
-          <div className="settings-grid">{sectionBody}</div>
+          <div className="settings-grid">
+            {sectionBody}
+            {preferenceChanges.length > 0 ? (
+              <div className="plan-memory" data-testid="settings-preference-change-log">
+                <div className="plan-memory__title">Preference Changes</div>
+                {preferenceChanges.slice(0, 5).map((change) => (
+                  <article className="plan-memory__item" key={change.id}>
+                    <div className="plan-memory__item-header">
+                      <span>{formatSettingsPreferenceField(change.field)}</span>
+                      <small>{formatRelativeTime(change.changedAt)}</small>
+                    </div>
+                    <p>
+                      {change.from} → {change.to}
+                    </p>
+                    {change.reason ? <p className="plan-memory__note">{change.reason}</p> : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
   );
+}
+
+function formatSettingsPreferenceField(field: string): string {
+  switch (field) {
+    case "defaultModel":
+      return "Model";
+    case "reasoningLevel":
+      return "Reasoning";
+    case "modelSettingsScope":
+      return "Model scope";
+    case "workflowStageModels":
+      return "Workflow stage models";
+    default:
+      return field.startsWith("notifications.") ? `Notifications: ${field.slice("notifications.".length)}` : field;
+  }
 }

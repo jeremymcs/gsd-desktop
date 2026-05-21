@@ -38,7 +38,7 @@ const followUpQuestions: Readonly<Record<string, string>> = {
   milestone_first_outcome: "What should the first milestone prove with real behavior?",
   milestone_sequence: "What order would reduce the biggest uncertainty first?",
   milestone_risks: "Which risk would force the plan to change if it became true?",
-  milestone_ship_signal: "What exact demo, test, or artifact would make this shippable?",
+  milestone_ship_signal: "What exact demo, test, or generated output would make this shippable?",
 };
 
 const uncertaintyPatterns = [

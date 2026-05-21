@@ -85,10 +85,11 @@ test("toggles and persists the primary sidebar from the button and keyboard shor
     await expect(window.locator(".sidebar")).toBeVisible();
     await expect(window.getByTestId("sidebar-toggle")).toBeVisible();
     await expect(window.locator(".sidebar__nav .sidebar__nav-item")).toHaveText([
-      "Home",
-      "Plans",
+      "Project Overview",
       "Threads",
+      "Plans",
       "Backlog",
+      "Worktrees",
       "Skills",
       "Extensions",
       "Project Preferences",

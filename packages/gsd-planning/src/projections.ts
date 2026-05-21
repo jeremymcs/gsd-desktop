@@ -100,6 +100,7 @@ export interface BoundaryMapEntry {
 export interface SliceProjection {
   readonly id: string;
   readonly title: string;
+  readonly scope?: "required" | "optional" | "stretch";
   readonly status?: "pending" | "active" | "done";
   readonly risk: "low" | "medium" | "high";
   readonly depends: readonly string[];
@@ -268,7 +269,7 @@ function renderProject(
       ? milestones.map((milestone) => `- **${milestone.id}: ${milestone.title}** — ${milestone.vision}`).join("\n")
       : "- No milestones projected yet.",
     "",
-    "## Phase Sequence",
+    "## Optional Phase Groups",
     "",
     renderPhaseSequence(phases),
   ].join("\n");
@@ -364,7 +365,7 @@ function renderState(
     `**Active Milestone:** ${formatActive(state?.activeMilestoneId ?? activeMilestone?.id, state?.activeMilestoneTitle ?? activeMilestone?.title)}`,
     `**Active Slice:** ${formatActive(state?.activeSliceId, state?.activeSliceTitle)}`,
     `**Active Task:** ${formatActive(state?.activeTaskId, state?.activeTaskTitle)}`,
-    `**Phase:** ${formatPhase(phase)}`,
+    `**Workflow Stage:** ${formatPhase(phase)}`,
     "",
     "## Recent Decisions",
     "",
@@ -376,7 +377,7 @@ function renderState(
     "",
     "## Next Action",
     "",
-    state?.nextAction ?? "Continue the active planning phase.",
+    state?.nextAction ?? "Continue the active workflow stage.",
     "",
     "## Change Log",
     "",
@@ -407,7 +408,7 @@ function renderNextWork(plan: PlanSnapshot, milestones: readonly MilestoneProjec
     "# Next Work",
     "",
     `**Active Plan:** ${plan.readableId} - ${plan.name}`,
-    `**Phase:** ${formatPhase(plan.activePhase)}`,
+    `**Workflow Stage:** ${formatPhase(plan.activePhase)}`,
     `**Queue:** ${queue.ready.length} ready / ${queue.blocked.length} blocked`,
     "",
     "## Autonomous Run Policy",
@@ -606,7 +607,7 @@ function renderDecisions(decisions: readonly DecisionProjection[]): string {
     "",
     "<!-- Append-only. Never edit or remove existing rows.",
     "     To reverse a decision, add a new row that supersedes it.",
-    "     Read this file at the start of any planning or research phase. -->",
+    "     Read this file at the start of any planning or research stage. -->",
     "",
     "| # | When | Scope | Decision | Choice | Rationale | Revisable? |",
     "|---|------|-------|----------|--------|-----------|------------|",
@@ -659,9 +660,9 @@ function formatChangeProposalStatus(status: ChangeProposalStatus): string {
     case "draft":
       return "Draft";
     case "approved":
-      return "Approved";
+      return "Accepted";
     case "withdrawn":
-      return "Deleted";
+      return "Rejected";
   }
 }
 
@@ -672,9 +673,9 @@ function formatChangeProposalActivityLabel(activity: ChangeProposalActivityRecor
     case "updated":
       return "Edited";
     case "withdrawn":
-      return "Deleted";
+      return "Rejected";
     case "approved":
-      return "Approved";
+      return "Accepted";
     case "task-modified":
       return "Modified";
     case "task-hidden":
@@ -691,7 +692,7 @@ function renderMilestoneRoadmap(
   return [
     `# ${milestone.id}: ${milestone.title}`,
     "",
-    `**Phase:** ${formatPhaseReference(milestone.phaseId, phases)}`,
+    `**Optional Phase Group:** ${formatPhaseReference(milestone.phaseId, phases)}`,
     "",
     `**Vision:** ${milestone.vision}`,
     "",
@@ -713,12 +714,12 @@ function renderMilestoneRoadmap(
 function renderPhaseSequence(phases: readonly PhaseProjection[]): string {
   return phases.length > 0
     ? phases.map((phase) => `- **${phase.id}: ${phase.title}** - ${phase.goal}`).join("\n")
-    : "- No phases projected yet.";
+    : "- No optional phase groups projected yet.";
 }
 
 function formatPhaseReference(phaseId: string | undefined, phases: readonly PhaseProjection[]): string {
   if (!phaseId) {
-    return "Unassigned";
+    return "Ungrouped";
   }
   const phase = phases.find((entry) => entry.id === phaseId);
   return phase ? `${phase.id} - ${phase.title}` : phaseId;
@@ -745,8 +746,9 @@ function derivePhasesFromMilestones(milestones: readonly MilestoneProjection[]):
 function renderSliceLine(slice: SliceProjection): string {
   const requirementIds = getSliceRequirementIds(slice);
   const requirementLabel = requirementIds.length > 0 ? ` \`reqs:[${requirementIds.join(",")}]\`` : "";
+  const scope = slice.scope ?? "required";
   return [
-    `- [${slice.status === "done" ? "x" : " "}] **${slice.id}: ${slice.title}** \`risk:${slice.risk}\` \`depends:[${slice.depends.join(",")}]\`${requirementLabel}`,
+    `- [${slice.status === "done" ? "x" : " "}] **${slice.id}: ${slice.title}** \`scope:${scope}\` \`risk:${slice.risk}\` \`depends:[${slice.depends.join(",")}]\`${requirementLabel}`,
     `  > After this: ${slice.demo}`,
   ].join("\n");
 }
@@ -853,7 +855,7 @@ function renderTaskPlan(milestone: MilestoneProjection, slice: SliceProjection, 
     "### Truths",
     renderBullets(task.mustHaves.truths),
     "",
-    "### Artifacts",
+    "### Outputs",
     renderBullets(task.mustHaves.artifacts),
     "",
     "### Key Links",

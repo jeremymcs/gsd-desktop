@@ -274,7 +274,7 @@ export async function submitComposer(
     return store.emit();
   }
   if (!sessionRef) {
-    return store.withError("Create or select a session before sending a message.");
+    return store.withError("Create or select a thread before sending a message.");
   }
 
   const runtime = store.runtimeByWorkspace.get(sessionRef.workspaceId);
@@ -419,7 +419,7 @@ export async function setSessionThinkingLevel(
   return store.withErrorHandling(async () => {
     await store.driver.setSessionThinkingLevel(sessionRef, thinkingLevel);
     syncSessionConfig(store, key, { thinkingLevel });
-    return finishComposerCommand(store, sessionRef, key, `Thinking set to ${thinkingLevel}`);
+    return finishComposerCommand(store, sessionRef, key, `Reasoning set to ${thinkingLevel}`);
   });
 }
 
@@ -566,7 +566,7 @@ async function runComposerCommand(
   if (parsed.type === "thinking") {
     await store.driver.setSessionThinkingLevel(sessionRef, parsed.thinkingLevel);
     syncSessionConfig(store, key, { thinkingLevel: parsed.thinkingLevel });
-    return finishComposerCommand(store, sessionRef, key, `Thinking set to ${parsed.thinkingLevel}`);
+    return finishComposerCommand(store, sessionRef, key, `Reasoning set to ${parsed.thinkingLevel}`);
   }
 
   if (parsed.type === "status") {
