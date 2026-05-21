@@ -15,7 +15,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DesktopAppStore } from "./app-store";
-import { getChangedFiles, getFileDiff, stageFile } from "./app-store-diff";
+import { getChangedFiles, getFileContent, getFileDiff, stageFile } from "./app-store-diff";
 import { listWorkspaceFiles } from "./app-store-files";
 import { MAIN_DEV_RELOAD_MARKER } from "./dev-reload-main-probe";
 import { NotificationManager } from "./notification-manager";
@@ -852,6 +852,13 @@ app.whenReady().then(async () => {
       return "";
     }
     return getFileDiff(workspacePath, filePath);
+  });
+  ipcMain.handle(desktopIpc.getFileContent, async (_event, workspaceId: string, filePath: string) => {
+    const workspacePath = store.getWorkspacePath(workspaceId);
+    if (!workspacePath) {
+      return "";
+    }
+    return getFileContent(workspacePath, filePath);
   });
   ipcMain.handle(desktopIpc.stageFile, async (_event, workspaceId: string, filePath: string) => {
     const workspacePath = store.getWorkspacePath(workspaceId);

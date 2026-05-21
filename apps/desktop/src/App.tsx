@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type Dispatch, type DragEvent, type KeyboardEvent, type SetStateAction } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ClipboardEvent, type Dispatch, type DragEvent, type KeyboardEvent, type SetStateAction } from "react";
 import type { SessionTreeSnapshot } from "@pi-gui/session-driver/types";
 import type { RuntimeSnapshot } from "@pi-gui/session-driver/runtime-types";
 import {
@@ -17,7 +17,7 @@ import {
 } from "./desktop-state";
 import { formatRelativeTime } from "./string-utils";
 import { ComposerPanel } from "./composer-panel";
-import { DiffPanel, type DiffPanelFileRequest } from "./diff-panel";
+import { DIFF_PANEL_DEFAULT_WIDTH, DiffPanel, type DiffPanelFileRequest } from "./diff-panel";
 import { buildModelOptions } from "./composer-commands";
 import { parseTreeComposerCommand } from "./composer-commands";
 import {
@@ -219,6 +219,7 @@ export default function App() {
   const [openTerminalSessionKeys, setOpenTerminalSessionKeys] = useState<ReadonlySet<string>>(() => new Set());
   const [takeoverTerminalSessionKeys, setTakeoverTerminalSessionKeys] = useState<ReadonlySet<string>>(() => new Set());
   const [terminalHeight, setTerminalHeight] = useState(340);
+  const [diffPanelWidth, setDiffPanelWidth] = useState(DIFF_PANEL_DEFAULT_WIDTH);
   const [diffFileRequest, setDiffFileRequest] = useState<DiffPanelFileRequest | null>(null);
   const [timelinePaneMountVersion, setTimelinePaneMountVersion] = useState(0);
   const [disableTimelineVirtualization, setDisableTimelineVirtualization] = useState(true);
@@ -721,6 +722,23 @@ export default function App() {
 
     schedulePinnedBottomRealignment(3);
   }, [schedulePinnedBottomRealignment]);
+
+  const handleDiffPanelWidthChange = useCallback(
+    (width: number) => {
+      const pane = timelinePaneRef.current;
+      const shouldPreserveBottom = pane ? isNearBottom(pane) || pinnedToBottomRef.current : pinnedToBottomRef.current;
+      if (shouldPreserveBottom) {
+        preserveBottomOnNextPaneResizeRef.current = true;
+      }
+
+      setDiffPanelWidth(width);
+
+      if (shouldPreserveBottom) {
+        schedulePinnedBottomRealignment(2);
+      }
+    },
+    [schedulePinnedBottomRealignment],
+  );
 
   const openSettings = (workspaceId?: string, section?: SettingsSection) => {
     if (!api) {
@@ -1395,6 +1413,9 @@ export default function App() {
     isTerminalVisibleForSelectedThread ? "main--with-terminal" : "",
     showTerminalTakeover ? "main--terminal-takeover" : "",
   ].filter(Boolean).join(" ");
+  const mainStyle = showDiffPanel
+    ? ({ "--diff-panel-width": `${diffPanelWidth}px` } as CSSProperties)
+    : undefined;
   const terminalPanel = isTerminalVisibleForSelectedThread && selectedWorkspace ? (
     <TerminalPanel
       workspace={selectedWorkspace}
@@ -2214,7 +2235,7 @@ export default function App() {
         />
       ) : null}
 
-      <main className={mainClassName}>
+      <main className={mainClassName} style={mainStyle}>
         {showTerminalTakeover ? (
           terminalPanel
         ) : (
@@ -2697,6 +2718,8 @@ export default function App() {
             api={api}
             sessionStatus={selectedSession.status}
             fileRequest={diffFileRequest}
+            width={diffPanelWidth}
+            onWidthChange={handleDiffPanelWidthChange}
           />
         ) : null}
       </main>

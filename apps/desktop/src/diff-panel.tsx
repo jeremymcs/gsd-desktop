@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
 import type { PiDesktopApi } from "./ipc";
 import { InlineDiff } from "./diff-inline";
 import { RefreshIcon } from "./icons";
 import { extensionToLanguage } from "./syntax-highlight";
 import { loadReviewed, pruneReviewed, saveReviewed } from "./reviewed-files-store";
+import { MessageMarkdown } from "./message-markdown";
+
+export const DIFF_PANEL_DEFAULT_WIDTH = 400;
+const DIFF_PANEL_MIN_WIDTH = 320;
+const DIFF_PANEL_MAX_WIDTH = 720;
+const DIFF_PANEL_KEYBOARD_STEP = 24;
 
 interface ChangedFile {
   readonly path: string;
@@ -22,6 +28,8 @@ interface DiffPanelProps {
   readonly api: PiDesktopApi;
   readonly sessionStatus: string | undefined;
   readonly fileRequest?: DiffPanelFileRequest | null;
+  readonly width: number;
+  readonly onWidthChange: (width: number) => void;
 }
 
 export function DiffPanel({
@@ -30,14 +38,20 @@ export function DiffPanel({
   api,
   sessionStatus,
   fileRequest,
+  width,
+  onWidthChange,
 }: DiffPanelProps) {
   const [files, setFiles] = useState<readonly ChangedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [diffText, setDiffText] = useState("");
+  const [fileText, setFileText] = useState("");
+  const [fileTextError, setFileTextError] = useState<string | null>(null);
+  const [markdownMode, setMarkdownMode] = useState<"preview" | "raw">("preview");
   const [loading, setLoading] = useState(false);
   const [reviewed, setReviewed] = useState<ReadonlySet<string>>(() =>
     loadReviewed(workspaceId, sessionId),
   );
+  const panelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setReviewed(loadReviewed(workspaceId, sessionId));
@@ -87,6 +101,38 @@ export function DiffPanel({
     void api.getFileDiff(workspaceId, selectedFile).then(setDiffText);
   }, [api, workspaceId, selectedFile]);
 
+  const selectedFileIsMarkdown = selectedFile ? isMarkdownFile(selectedFile) : false;
+
+  useEffect(() => {
+    setMarkdownMode("preview");
+    setFileText("");
+    setFileTextError(null);
+  }, [selectedFile]);
+
+  useEffect(() => {
+    if (!selectedFile || !selectedFileIsMarkdown) {
+      return;
+    }
+
+    let cancelled = false;
+    void api
+      .getFileContent(workspaceId, selectedFile)
+      .then((content) => {
+        if (!cancelled) {
+          setFileText(content);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFileTextError("Markdown source is unavailable.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, workspaceId, selectedFile, selectedFileIsMarkdown]);
+
   const fileListRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!selectedFile) return;
@@ -121,8 +167,66 @@ export function DiffPanel({
     [files, reviewed],
   );
 
+  const startResize = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+
+      const startX = event.clientX;
+      const startWidth = panelRef.current?.getBoundingClientRect().width ?? width;
+      const previousCursor = document.body.style.cursor;
+      const previousUserSelect = document.body.style.userSelect;
+
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        onWidthChange(clampDiffPanelWidth(startWidth + startX - moveEvent.clientX));
+      };
+      const stopResize = () => {
+        document.body.style.cursor = previousCursor;
+        document.body.style.userSelect = previousUserSelect;
+        window.removeEventListener("mousemove", handleMouseMove);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", stopResize, { once: true });
+    },
+    [onWidthChange, width],
+  );
+
+  const handleResizeKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        onWidthChange(clampDiffPanelWidth(width + DIFF_PANEL_KEYBOARD_STEP));
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        onWidthChange(clampDiffPanelWidth(width - DIFF_PANEL_KEYBOARD_STEP));
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        onWidthChange(DIFF_PANEL_MIN_WIDTH);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        onWidthChange(DIFF_PANEL_MAX_WIDTH);
+      }
+    },
+    [onWidthChange, width],
+  );
+
   return (
-    <aside className="diff-panel">
+    <aside className="diff-panel" ref={panelRef}>
+      <div
+        aria-label="Resize Changes panel"
+        aria-orientation="vertical"
+        aria-valuemax={DIFF_PANEL_MAX_WIDTH}
+        aria-valuemin={DIFF_PANEL_MIN_WIDTH}
+        aria-valuenow={Math.round(width)}
+        className="diff-panel__resize-handle"
+        onKeyDown={handleResizeKeyDown}
+        onMouseDown={startResize}
+        role="separator"
+        tabIndex={0}
+      />
       <div className="diff-panel__header">
         <h2 className="diff-panel__title">Changes</h2>
         {files.length > 0 ? (
@@ -189,12 +293,74 @@ export function DiffPanel({
 
           {selectedFile && diffText ? (
             <div className="diff-panel__viewer">
-              <div className="diff-panel__viewer-header">{selectedFile}</div>
-              <InlineDiff diff={diffText} language={extensionToLanguage(selectedFile)} />
+              <div className="diff-panel__viewer-header">
+                <span>{selectedFile}</span>
+                {selectedFileIsMarkdown ? (
+                  <div className="diff-panel__mode-toggle" role="group" aria-label="Markdown view mode">
+                    <button
+                      aria-pressed={markdownMode === "preview"}
+                      className={`diff-panel__mode-button ${markdownMode === "preview" ? "diff-panel__mode-button--active" : ""}`}
+                      type="button"
+                      onClick={() => setMarkdownMode("preview")}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      aria-pressed={markdownMode === "raw"}
+                      className={`diff-panel__mode-button ${markdownMode === "raw" ? "diff-panel__mode-button--active" : ""}`}
+                      type="button"
+                      onClick={() => setMarkdownMode("raw")}
+                    >
+                      Raw
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {selectedFileIsMarkdown ? (
+                <MarkdownFileViewer text={fileText} error={fileTextError} mode={markdownMode} />
+              ) : (
+                <InlineDiff diff={diffText} language={extensionToLanguage(selectedFile)} />
+              )}
             </div>
           ) : null}
         </>
       )}
     </aside>
+  );
+}
+
+function clampDiffPanelWidth(width: number): number {
+  return Math.max(DIFF_PANEL_MIN_WIDTH, Math.min(DIFF_PANEL_MAX_WIDTH, width));
+}
+
+function isMarkdownFile(filePath: string): boolean {
+  return /\.(md|markdown)$/i.test(filePath);
+}
+
+function MarkdownFileViewer({
+  text,
+  error,
+  mode,
+}: {
+  readonly text: string;
+  readonly error: string | null;
+  readonly mode: "preview" | "raw";
+}) {
+  if (error) {
+    return <div className="diff-panel__viewer-empty">{error}</div>;
+  }
+
+  if (mode === "raw") {
+    return (
+      <pre className="diff-panel__raw-markdown" data-testid="diff-panel-markdown-raw">
+        {text}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="diff-panel__markdown-preview" data-testid="diff-panel-markdown-preview">
+      <MessageMarkdown text={text || " "} />
+    </div>
   );
 }

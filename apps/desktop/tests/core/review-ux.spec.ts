@@ -38,7 +38,7 @@ async function seedThreeFileWorkspace(): Promise<string> {
   await mkdir(join(workspacePath, "src"), { recursive: true });
   await writeFile(join(workspacePath, "src", "foo.ts"), "export const x = 0;\n", "utf8");
   await writeFile(join(workspacePath, "script.py"), "def hello():\n    pass\n", "utf8");
-  await writeFile(join(workspacePath, "notes.md"), "# notes\n", "utf8");
+  await writeFile(join(workspacePath, "notes.md"), "# Notes\n\n- Original\n", "utf8");
   await commitAllInGitRepo(workspacePath, "init");
 
   await writeFile(
@@ -51,7 +51,11 @@ async function seedThreeFileWorkspace(): Promise<string> {
     "def hello():\n    return 'hi'\n",
     "utf8",
   );
-  await writeFile(join(workspacePath, "notes.md"), "# notes\n\nMore.\n", "utf8");
+  await writeFile(
+    join(workspacePath, "notes.md"),
+    "# Notes\n\n- More detail\n\n| Area | Status |\n| --- | --- |\n| Markdown | Preview |\n",
+    "utf8",
+  );
   return workspacePath;
 }
 
@@ -92,11 +96,34 @@ test("syntax-highlights known languages and leaves unknown extensions plain", as
     await expect(diffPanel.locator(".diff-inline")).toHaveAttribute("data-language", "python");
     await expect(diffPanel.locator('.diff-inline [class*="hljs-"]').first()).toBeVisible();
 
-    const mdRow = diffPanel.locator('.diff-panel__file[data-file-path="notes.md"]');
-    await mdRow.locator(".diff-panel__file-name").click();
-    const mdDiff = diffPanel.locator(".diff-inline");
-    await expect(mdDiff).not.toHaveAttribute("data-language", /.*/);
-    await expect(mdDiff.locator('[class*="hljs-"]')).toHaveCount(0);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("markdown files toggle between rendered preview and raw source in Changes", async () => {
+  test.setTimeout(45_000);
+  const { harness, window } = await launchSeeded("Review UX markdown");
+  try {
+    await window.keyboard.press(desktopShortcut("D"));
+
+    const diffPanel = window.locator(".diff-panel");
+    await diffPanel.locator('.diff-panel__file[data-file-path="notes.md"] .diff-panel__file-name').click();
+
+    const previewButton = diffPanel.getByRole("button", { name: "Preview" });
+    const rawButton = diffPanel.getByRole("button", { name: "Raw" });
+    await expect(previewButton).toHaveAttribute("aria-pressed", "true");
+    await expect(rawButton).toHaveAttribute("aria-pressed", "false");
+
+    const preview = diffPanel.getByTestId("diff-panel-markdown-preview");
+    await expect(preview.locator("h1")).toHaveText("Notes");
+    await expect(preview.locator("table")).toContainText("Markdown");
+
+    await rawButton.click();
+    await expect(previewButton).toHaveAttribute("aria-pressed", "false");
+    await expect(rawButton).toHaveAttribute("aria-pressed", "true");
+    await expect(diffPanel.getByTestId("diff-panel-markdown-raw")).toContainText("| Markdown | Preview |");
+    await expect(diffPanel.locator(".diff-inline")).toHaveCount(0);
   } finally {
     await harness.close();
   }
@@ -155,7 +182,7 @@ test("reviewed checkboxes update counter, prune on changes, and survive relaunch
     await expect(reopenedPanel.getByTestId("diff-panel-reviewed-notes.md")).not.toBeChecked();
 
     await commitFiles(workspacePath, ["src/foo.ts"], "land foo");
-    await reopenedPanel.locator('button[aria-label="Refresh"]').click();
+    await reopenedPanel.getByLabel("Refresh Changes").click();
     await expect(reopenedPanel.locator(".diff-panel__file")).toHaveCount(2);
     await expect(reopenedPanel.getByTestId("diff-panel-counter")).toHaveText("Reviewed 1 of 2");
 

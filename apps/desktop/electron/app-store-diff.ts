@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 function validateFilePath(workspacePath: string, filePath: string): string {
@@ -7,6 +8,11 @@ function validateFilePath(workspacePath: string, filePath: string): string {
     throw new Error("Path escapes workspace");
   }
   return filePath;
+}
+
+function resolveWorkspaceFilePath(workspacePath: string, filePath: string): string {
+  validateFilePath(workspacePath, filePath);
+  return path.resolve(workspacePath, filePath);
 }
 
 export interface ChangedFileEntry {
@@ -87,6 +93,10 @@ export function getFileDiff(workspacePath: string, filePath: string): Promise<st
       },
     );
   });
+}
+
+export function getFileContent(workspacePath: string, filePath: string): Promise<string> {
+  return readFile(resolveWorkspaceFilePath(workspacePath, filePath), "utf8");
 }
 
 export function stageFile(workspacePath: string, filePath: string): Promise<void> {

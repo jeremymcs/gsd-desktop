@@ -132,9 +132,9 @@ export function ProjectHomeView({
                     <span className="project-home__thread-icon">
                       <ChatIcon />
                     </span>
-                    <span>
+                    <span className="project-home__thread-body">
                       <strong>{thread.session.title}</strong>
-                      <small>{thread.session.preview || thread.environment.label}</small>
+                      <small className="project-home__thread-preview">{thread.session.preview || thread.environment.label}</small>
                     </span>
                     <time>{formatRelativeTime(thread.session.updatedAt)}</time>
                   </button>

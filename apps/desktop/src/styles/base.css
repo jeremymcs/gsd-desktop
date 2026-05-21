@@ -61,6 +61,8 @@
   --button-primary-disabled-bg: #b7becc;
   --button-primary-disabled-border: #b7becc;
   --button-primary-disabled-ink: #ffffff;
+  --hit-area-min: 40px;
+  --press-scale: 0.96;
 }
 
 :root.dark {
@@ -128,6 +130,7 @@ body {
   line-height: var(--line-body);
   letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
@@ -176,6 +179,7 @@ svg {
   font-size: clamp(28px, 2.5vw, 40px);
   letter-spacing: 0;
   line-height: 1.06;
+  text-wrap: balance;
 }
 
 .loading-card p,
@@ -187,6 +191,7 @@ svg {
   color: var(--muted);
   line-height: var(--line-body);
   font-size: var(--type-body);
+  text-wrap: pretty;
 }
 
 .loading-card p {
@@ -211,7 +216,7 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 36px;
+  min-height: var(--hit-area-min);
   padding: 0 13px;
   border-radius: 9px;
   background: var(--surface);
@@ -223,7 +228,8 @@ svg {
     background 140ms ease,
     border-color 140ms ease,
     color 140ms ease,
-    opacity 140ms ease;
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 .button--primary {
@@ -245,6 +251,10 @@ svg {
 .button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--surface) 88%, var(--surface-muted) 12%);
   border-color: var(--line-strong);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 .button--primary:hover:not(:disabled) {

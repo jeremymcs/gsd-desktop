@@ -175,6 +175,7 @@ export const desktopIpc = {
   listWorkspaceFiles: "pi-gui:list-workspace-files",
   getChangedFiles: "pi-gui:get-changed-files",
   getFileDiff: "pi-gui:get-file-diff",
+  getFileContent: "pi-gui:get-file-content",
   stageFile: "pi-gui:stage-file",
   getThemeMode: "pi-gui:get-theme-mode",
   getResolvedTheme: "pi-gui:get-resolved-theme",
@@ -432,6 +433,7 @@ export interface PiDesktopApi {
   listWorkspaceFiles(workspaceId: string): Promise<string[]>;
   getChangedFiles(workspaceId: string): Promise<{ path: string; status: "added" | "modified" | "deleted" | "untracked"; staged: boolean }[]>;
   getFileDiff(workspaceId: string, filePath: string): Promise<string>;
+  getFileContent(workspaceId: string, filePath: string): Promise<string>;
   stageFile(workspaceId: string, filePath: string): Promise<void>;
   toggleWindowMaximize(): Promise<void>;
   openExternal(url: string): Promise<void>;
